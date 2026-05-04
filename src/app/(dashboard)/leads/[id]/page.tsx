@@ -23,10 +23,17 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
   await connectToDatabase();
 
   const [leadDoc, scopeDoc, signedProposalCount, proposals] = await Promise.all([
-    LeadModel.findById(id).lean(),
-    ScopeManifestModel.findOne({ leadId: id }).lean(),
+    LeadModel.findById(id)
+      .select(
+        "title contactName email phone source category urgency score priorityBand priorityFlag status description budget",
+      )
+      .lean(),
+    ScopeManifestModel.findOne({ leadId: id }).select("isCompleted signedAt").lean(),
     ProposalModel.countDocuments({ leadId: id, status: "signed" }),
-    ProposalModel.find({ leadId: id }).sort({ updatedAt: -1 }).lean(),
+    ProposalModel.find({ leadId: id })
+      .sort({ updatedAt: -1 })
+      .select("version status approvalStatus")
+      .lean(),
   ]);
 
   if (!leadDoc) {

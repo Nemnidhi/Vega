@@ -31,7 +31,7 @@ export async function getDashboardMetrics() {
     ActivityLogModel.find({})
       .sort({ createdAt: -1 })
       .limit(10)
-      .populate("actorId", "fullName role")
+      .select("action entityType createdAt")
       .lean(),
   ]);
 
@@ -48,13 +48,18 @@ export async function getDashboardMetrics() {
 
 export async function getLeads() {
   await connectToDatabase();
-  const leads = await LeadModel.find({}).sort({ updatedAt: -1 }).lean();
+  const leads = await LeadModel.find({})
+    .sort({ updatedAt: -1 })
+    .select("title contactName email status category score priorityBand")
+    .lean();
   return serializeForJson(leads);
 }
 
 export async function getLeadById(id: string) {
   await connectToDatabase();
-  const lead = await LeadModel.findById(id).lean();
+  const lead = await LeadModel.findById(id)
+    .select("title status score priorityBand")
+    .lean();
   return serializeForJson(lead);
 }
 
@@ -70,13 +75,25 @@ export async function getPipelineBoard() {
     "closed_lost",
   ];
 
-  const items = await Promise.all(
-    stages.map(async (stage) => {
-      const leads = await LeadModel.find({ status: stage }).sort({ updatedAt: -1 }).lean();
-      return { stage, leads: serializeForJson(leads) };
-    }),
-  );
-  return items;
+  const stageMap = new Map(stages.map((stage) => [stage, [] as unknown[]]));
+  const leads = await LeadModel.find({ status: { $in: stages } })
+    .sort({ updatedAt: -1 })
+    .select("status title contactName priorityBand score")
+    .lean();
+
+  for (const lead of leads) {
+    const stage = String((lead as { status?: unknown }).status ?? "");
+    const bucket = stageMap.get(stage);
+    if (bucket) {
+      bucket.push(lead);
+    }
+  }
+
+  const items = stages.map((stage) => ({
+    stage,
+    leads: stageMap.get(stage) ?? [],
+  }));
+  return serializeForJson(items);
 }
 
 export async function getScopeByLeadId(leadId: string) {
@@ -89,7 +106,8 @@ export async function getProposals() {
   await connectToDatabase();
   const proposals = await ProposalModel.find({})
     .sort({ updatedAt: -1 })
-    .populate("leadId", "title priorityBand")
+    .select("version status approvalStatus leadId clientId")
+    .populate("leadId", "title")
     .populate("clientId", "legalName")
     .lean();
   return serializeForJson(proposals);
@@ -98,9 +116,11 @@ export async function getProposals() {
 export async function getProposalById(id: string) {
   await connectToDatabase();
   const proposal = await ProposalModel.findById(id)
-    .populate("leadId")
-    .populate("clientId")
-    .populate("scopeManifestId")
+    .select(
+      "status approvalStatus projectSummary timeline scopeOfWork exclusions pricing paymentSchedule changeOrderClause signatureBlock leadId clientId",
+    )
+    .populate("leadId", "title")
+    .populate("clientId", "legalName")
     .lean();
   return serializeForJson(proposal);
 }
@@ -109,6 +129,7 @@ export async function getPricingComponents() {
   await connectToDatabase();
   const components = await PricingComponentModel.find({})
     .sort({ isActive: -1, updatedAt: -1 })
+    .select("code title category basePrice complexityMultiplier marginPercentage finalPrice isActive")
     .lean();
   return serializeForJson(components);
 }
@@ -117,8 +138,8 @@ export async function getChangeOrders() {
   await connectToDatabase();
   const changeOrders = await ChangeOrderModel.find({})
     .sort({ updatedAt: -1 })
-    .populate("leadId", "title status")
-    .populate("clientId", "legalName")
+    .select("requestedFeature additionalPrice currency timelineImpactDays approvalStatus leadId")
+    .populate("leadId", "title")
     .lean();
   return serializeForJson(changeOrders);
 }
@@ -126,10 +147,21 @@ export async function getChangeOrders() {
 export async function getClientVault(clientId: string) {
   await connectToDatabase();
   const [client, proposals, scopes, changeOrders] = await Promise.all([
-    ClientModel.findById(clientId).lean(),
-    ProposalModel.find({ clientId }).sort({ updatedAt: -1 }).lean(),
-    ScopeManifestModel.find({ clientId }).sort({ updatedAt: -1 }).lean(),
-    ChangeOrderModel.find({ clientId }).sort({ updatedAt: -1 }).lean(),
+    ClientModel.findById(clientId)
+      .select("legalName primaryContactName primaryContactEmail")
+      .lean(),
+    ProposalModel.find({ clientId })
+      .sort({ updatedAt: -1 })
+      .select("status approvalStatus")
+      .lean(),
+    ScopeManifestModel.find({ clientId })
+      .sort({ updatedAt: -1 })
+      .select("isCompleted signedAt")
+      .lean(),
+    ChangeOrderModel.find({ clientId })
+      .sort({ updatedAt: -1 })
+      .select("approvalStatus requestedFeature")
+      .lean(),
   ]);
 
   return serializeForJson({ client, proposals, scopes, changeOrders });
@@ -137,6 +169,9 @@ export async function getClientVault(clientId: string) {
 
 export async function getClients() {
   await connectToDatabase();
-  const clients = await ClientModel.find({}).sort({ updatedAt: -1 }).lean();
+  const clients = await ClientModel.find({})
+    .sort({ updatedAt: -1 })
+    .select("legalName primaryContactName primaryContactEmail")
+    .lean();
   return serializeForJson(clients);
 }

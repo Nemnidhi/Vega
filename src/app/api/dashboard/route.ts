@@ -26,7 +26,7 @@ export async function GET() {
       ActivityLogModel.find({})
         .sort({ createdAt: -1 })
         .limit(12)
-        .populate("actorId", "fullName role")
+        .select("action entityType createdAt")
         .lean(),
     ]);
 

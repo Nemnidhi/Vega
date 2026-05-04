@@ -27,7 +27,7 @@ export async function connectToDatabase() {
 
     cache.promise = mongoose.connect(env.MONGODB_URI, {
       dbName: env.MONGODB_DB_NAME,
-      autoIndex: true,
+      autoIndex: process.env.NODE_ENV !== "production",
     });
   }
 
