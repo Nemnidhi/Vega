@@ -1,7 +1,10 @@
 export { ActivityLogModel } from "@/models/ActivityLog";
+export { ChatMessageModel } from "@/models/ChatMessage";
 export { ChangeOrderModel } from "@/models/ChangeOrder";
 export { ClientModel } from "@/models/Client";
+export { ClientQueryModel } from "@/models/ClientQuery";
 export { LeadModel } from "@/models/Lead";
+export { ProjectModel } from "@/models/Project";
 export { PricingComponentModel } from "@/models/PricingComponent";
 export { ProposalModel } from "@/models/Proposal";
 export { ScopeManifestModel } from "@/models/ScopeManifest";

@@ -3,12 +3,15 @@ import { DashboardHeader } from "@/components/dashboard/header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getClientVault } from "@/lib/dashboard/queries";
+import { requireRoleAccess } from "@/lib/auth/role-access";
 
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
 
 export default async function ClientVaultPage({ params }: { params: Params }) {
+  await requireRoleAccess(["admin", "sales"]);
+
   const { id } = await params;
   const vault = await getClientVault(id);
   const data = vault as {

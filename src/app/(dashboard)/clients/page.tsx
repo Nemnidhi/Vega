@@ -2,10 +2,13 @@ import Link from "next/link";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getClients } from "@/lib/dashboard/queries";
+import { requireRoleAccess } from "@/lib/auth/role-access";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
+  await requireRoleAccess(["admin", "sales"]);
+
   const clients = (await getClients()) as Array<{
     _id: string;
     legalName: string;

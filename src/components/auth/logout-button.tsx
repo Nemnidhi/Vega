@@ -3,12 +3,16 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-export function LogoutButton() {
+interface LogoutButtonProps {
+  redirectTo?: string;
+}
+
+export function LogoutButton({ redirectTo = "/admin" }: LogoutButtonProps) {
   const router = useRouter();
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    router.push(redirectTo);
     router.refresh();
   }
 

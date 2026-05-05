@@ -1,0 +1,59 @@
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/db/mongodb";
+import { UserModel } from "@/models";
+import { clientLoginSchema } from "@/lib/validation/client-auth";
+import { verifyPassword } from "@/lib/auth/password";
+import { buildSessionCookieValue } from "@/lib/auth/session";
+import { AUTH_COOKIE_MAX_AGE_SECONDS, AUTH_COOKIE_NAME } from "@/lib/auth/constants";
+import { fail, handleApiError } from "@/lib/api/responses";
+
+export async function POST(request: Request) {
+  try {
+    await connectToDatabase();
+    const payload = clientLoginSchema.parse(await request.json());
+    const normalizedEmail = payload.email.toLowerCase();
+
+    const user = await UserModel.findOne({ email: normalizedEmail });
+    if (!user || user.role !== "client" || user.status !== "active" || !user.passwordHash) {
+      return fail("Invalid email or password.", 401);
+    }
+
+    const isValid = verifyPassword(payload.password, user.passwordHash);
+    if (!isValid) {
+      return fail("Invalid email or password.", 401);
+    }
+
+    const sessionValue = buildSessionCookieValue({
+      userId: String(user._id),
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+    });
+
+    const response = NextResponse.json({
+      success: true,
+      data: {
+        user: {
+          id: String(user._id),
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+        },
+      },
+    });
+
+    response.cookies.set({
+      name: AUTH_COOKIE_NAME,
+      value: sessionValue,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+    });
+
+    return response;
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

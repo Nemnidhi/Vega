@@ -14,6 +14,7 @@ export interface User extends BaseDocument {
   fullName: string;
   email: string;
   role: UserRole;
+  passwordHash?: string | null;
   status: UserStatus;
   phone?: string;
   department?: string;

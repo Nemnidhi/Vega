@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { LeadModel, ProposalModel, ScopeManifestModel } from "@/models";
+import { LeadModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
+import { requireRoleAccess } from "@/lib/auth/role-access";
 
 export const dynamic = "force-dynamic";
 
@@ -19,22 +19,16 @@ function priorityVariant(priorityBand: string): "danger" | "warning" | "accent" 
 type Params = Promise<{ id: string }>;
 
 export default async function LeadDetailPage({ params }: { params: Params }) {
+  await requireRoleAccess(["admin", "sales"]);
+
   const { id } = await params;
   await connectToDatabase();
 
-  const [leadDoc, scopeDoc, signedProposalCount, proposals] = await Promise.all([
-    LeadModel.findById(id)
-      .select(
-        "title contactName email phone source category urgency score priorityBand priorityFlag status description budget",
-      )
-      .lean(),
-    ScopeManifestModel.findOne({ leadId: id }).select("isCompleted signedAt").lean(),
-    ProposalModel.countDocuments({ leadId: id, status: "signed" }),
-    ProposalModel.find({ leadId: id })
-      .sort({ updatedAt: -1 })
-      .select("version status approvalStatus")
-      .lean(),
-  ]);
+  const leadDoc = await LeadModel.findById(id)
+    .select(
+      "title contactName email phone source category urgency score priorityBand priorityFlag status description budget",
+    )
+    .lean();
 
   if (!leadDoc) {
     notFound();
@@ -57,27 +51,9 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     budget?: { min: number; max: number; currency: string };
   };
 
-  const scope = serializeForJson(scopeDoc) as {
-    _id: string;
-    isCompleted: boolean;
-    signedAt?: string | null;
-  } | null;
-  const proposalItems = serializeForJson(proposals) as Array<{
-    _id: string;
-    version: number;
-    status: string;
-    approvalStatus: string;
-  }>;
-
-  const scopeReady = Boolean(scope?.isCompleted && scope?.signedAt);
-  const proposalReady = signedProposalCount > 0;
-
   return (
     <section className="space-y-6">
-      <DashboardHeader
-        title={lead.title}
-        subtitle="Lead detail page with scoring, scope-lock state, and proposal readiness."
-      />
+      <DashboardHeader title={lead.title} subtitle="Lead details and current status." />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -95,15 +71,19 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               </p>
             ) : null}
             <p>
-              <span className="text-muted-foreground">Source:</span>{" "}
+              <span className="text-muted-foreground">Source:</span> {" "}
               {lead.source.replaceAll("_", " ")}
             </p>
             <p>
-              <span className="text-muted-foreground">Category:</span>{" "}
+              <span className="text-muted-foreground">Category:</span> {" "}
               {lead.category.replaceAll("_", " ")}
             </p>
             <p>
               <span className="text-muted-foreground">Urgency:</span> {lead.urgency}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Status:</span> {" "}
+              {lead.status.replaceAll("_", " ")}
             </p>
             <p>
               <span className="text-muted-foreground">Description:</span> {lead.description}
@@ -119,7 +99,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Silent Lead Scoring</CardTitle>
+            <CardTitle>Lead Score</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-3xl font-semibold">{lead.score ?? 0}</p>
@@ -128,53 +108,9 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             </Badge>
             <p className="text-sm text-muted-foreground">
               {lead.priorityFlag
-                ? "High-ticket lead: partner negotiation priority."
-                : "Standard pipeline handling applies."}
+                ? "High-priority lead."
+                : "Standard pipeline lead."}
             </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Scope-Lock Readiness</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>Scope manifest completed: {scopeReady ? "Yes" : "No"}</p>
-            <p>Signed proposal available: {proposalReady ? "Yes" : "No"}</p>
-            <p className="text-muted-foreground">
-              Closed Won is blocked until both checks are complete.
-            </p>
-            <Link href={`/scope/${lead._id}`} className="text-accent hover:underline">
-              Open Scope Manifest
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Proposals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {proposalItems.length === 0 ? (
-              <p className="text-muted-foreground">No proposal yet.</p>
-            ) : (
-              proposalItems.map((proposal) => (
-                <p key={proposal._id}>
-                  v{proposal.version} - {proposal.status} ({proposal.approvalStatus}){" "}
-                  <Link
-                    href={`/proposals/${proposal._id}`}
-                    className="ml-1 text-accent hover:underline"
-                  >
-                    view
-                  </Link>
-                </p>
-              ))
-            )}
-            <Link href="/proposals" className="text-accent hover:underline">
-              Create or manage proposals
-            </Link>
           </CardContent>
         </Card>
       </div>

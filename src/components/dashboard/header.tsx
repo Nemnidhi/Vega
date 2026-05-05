@@ -1,12 +1,17 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 interface DashboardHeaderProps {
   title: string;
   subtitle?: string;
+  showLeadCta?: boolean;
 }
 
-export function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {
+export function DashboardHeader({
+  title,
+  subtitle,
+  showLeadCta = true,
+}: DashboardHeaderProps) {
   return (
     <header className="relative mb-6 overflow-hidden rounded-3xl border border-border/70 bg-surface/88 p-5 shadow-[0_16px_42px_rgba(8,26,48,0.1)] backdrop-blur md:p-6">
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(16,170,154,0.18)_0%,rgba(16,170,154,0)_70%)]" />
@@ -27,10 +32,19 @@ export function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
+        {showLeadCta ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="accent">Command Active</Badge>
+            <Link
+              href="/leads"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-white/90 px-4.5 text-sm font-semibold tracking-wide text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_18px_rgba(8,29,51,0.08)] transition-all duration-200 hover:bg-white"
+            >
+              New Lead
+            </Link>
+          </div>
+        ) : (
           <Badge variant="accent">Command Active</Badge>
-          <Button variant="secondary">New Lead</Button>
-        </div>
+        )}
       </div>
     </header>
   );

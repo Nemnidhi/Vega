@@ -8,17 +8,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getDashboardMetrics } from "@/lib/dashboard/queries";
+import { requireRoleAccess } from "@/lib/auth/role-access";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  await requireRoleAccess(["admin", "sales"], { redirectTo: "/projects" });
+
   const metrics = (await getDashboardMetrics()) as {
     totalLeads: number;
     heavyArtilleryLeads: number;
     standardPipelineLeads: number;
     volumePipelineLeads: number;
     closedWonLeads: number;
-    openChangeOrders: number;
     recentActivity: Array<{
       _id: string;
       action: string;
@@ -43,7 +45,7 @@ export default async function DashboardPage() {
     {
       title: "Closed Won",
       value: String(metrics.closedWonLeads),
-      helperText: "Converted leads with scope + proposal lock.",
+      helperText: "Converted leads.",
       trend: "up" as const,
     },
     {
@@ -58,19 +60,13 @@ export default async function DashboardPage() {
       helperText: "Sub-50 leads for scale throughput.",
       trend: "neutral" as const,
     },
-    {
-      title: "Open Change Orders",
-      value: String(metrics.openChangeOrders),
-      helperText: "Pending out-of-scope protection items.",
-      trend: metrics.openChangeOrders > 0 ? ("down" as const) : ("neutral" as const),
-    },
   ];
 
   return (
     <section className="space-y-6">
       <DashboardHeader
-        title="Strategic Operations Dashboard"
-        subtitle="Command center for lead filtration, scope lock, proposals, pricing, and audit protection."
+        title="CRM Overview"
+        subtitle="Quick summary of leads, conversions, and pending actions."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -88,17 +84,17 @@ export default async function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Final Integration Rules</CardTitle>
+            <CardTitle>CRM Rules</CardTitle>
             <CardDescription>
-              Enforcement logic active across API workflows.
+              Basic checks used across lead workflows.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>1. No Closed Won without completed scope + signed proposal</p>
-            <p>2. No engineering start before scope lock and signed mandate</p>
-            <p>3. High-ticket leads flagged immediately via scoring</p>
-            <p>4. Pricing applies margin protection by default</p>
-            <p>5. Sensitive actions are activity-logged</p>
+            <p>1. Keep lead details complete and accurate.</p>
+            <p>2. Update lead status regularly.</p>
+            <p>3. Prioritize high-intent leads first.</p>
+            <p>4. Keep notes clear for team handoff.</p>
+            <p>5. Sensitive actions are activity-logged.</p>
           </CardContent>
         </Card>
 
@@ -106,7 +102,7 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Recent Audit Activity</CardTitle>
             <CardDescription>
-              Lead, proposal, scope, pricing, and change-order events.
+              Lead-related events.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">

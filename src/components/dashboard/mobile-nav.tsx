@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { dashboardNavItems } from "@/components/dashboard/nav-items";
+import { getDashboardNavItems } from "@/components/dashboard/nav-items";
+import type { UserRole } from "@/types/user";
 
-export function MobileDashboardNav() {
+interface MobileDashboardNavProps {
+  role: UserRole;
+}
+
+export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
   const pathname = usePathname();
+  const navItems = getDashboardNavItems(role);
 
   return (
     <div className="mb-4 lg:hidden">
       <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-surface/80 p-2 shadow-[0_10px_28px_rgba(11,28,49,0.08)] backdrop-blur">
-        {dashboardNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
 

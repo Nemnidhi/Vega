@@ -4,11 +4,15 @@ import {
   ChangeOrderModel,
   ClientModel,
   LeadModel,
+  ProjectModel,
   PricingComponentModel,
   ProposalModel,
   ScopeManifestModel,
+  UserModel,
 } from "@/models";
+import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { serializeForJson } from "@/lib/utils/serialize";
+import type { UserRole } from "@/types/user";
 
 export async function getDashboardMetrics() {
   await connectToDatabase();
@@ -19,7 +23,6 @@ export async function getDashboardMetrics() {
     standardPipelineLeads,
     volumePipelineLeads,
     closedWonLeads,
-    openChangeOrders,
     recentActivity,
   ] = await Promise.all([
     LeadModel.countDocuments(),
@@ -27,7 +30,6 @@ export async function getDashboardMetrics() {
     LeadModel.countDocuments({ priorityBand: "standard_sales" }),
     LeadModel.countDocuments({ priorityBand: "volume_pipeline" }),
     LeadModel.countDocuments({ status: "closed_won" }),
-    ChangeOrderModel.countDocuments({ approvalStatus: { $in: ["pending", "draft"] } }),
     ActivityLogModel.find({})
       .sort({ createdAt: -1 })
       .limit(10)
@@ -41,7 +43,6 @@ export async function getDashboardMetrics() {
     standardPipelineLeads,
     volumePipelineLeads,
     closedWonLeads,
-    openChangeOrders,
     recentActivity,
   });
 }
@@ -50,7 +51,7 @@ export async function getLeads() {
   await connectToDatabase();
   const leads = await LeadModel.find({})
     .sort({ updatedAt: -1 })
-    .select("title contactName email status category score priorityBand")
+    .select("title contactName email source status category score priorityBand")
     .lean();
   return serializeForJson(leads);
 }
@@ -174,4 +175,47 @@ export async function getClients() {
     .select("legalName primaryContactName primaryContactEmail")
     .lean();
   return serializeForJson(clients);
+}
+
+export async function getStaffUsers() {
+  await connectToDatabase();
+  const users = await UserModel.find({ role: { $in: LOGIN_ROLES } })
+    .sort({ createdAt: -1 })
+    .select("fullName email role status lastLoginAt createdAt")
+    .lean();
+  return serializeForJson(users);
+}
+
+export async function getDevelopers() {
+  await connectToDatabase();
+  const developers = await UserModel.find({ role: "developer", status: "active" })
+    .sort({ fullName: 1 })
+    .select("fullName email role status")
+    .lean();
+  return serializeForJson(developers);
+}
+
+export async function getProjectsForActor(actor: { role: UserRole; userId: string }) {
+  await connectToDatabase();
+
+  const query =
+    actor.role === "developer"
+      ? {
+          $or: [
+            { assignedDeveloperId: actor.userId },
+            { "tasks.assignedDeveloperId": actor.userId },
+          ],
+        }
+      : {};
+
+  const projects = await ProjectModel.find(query)
+    .sort({ updatedAt: -1 })
+    .populate("assignedDeveloperId", "fullName email role status")
+    .populate("createdBy", "fullName email role")
+    .populate("tasks.assignedDeveloperId", "fullName email role status")
+    .populate("tasks.completedByDeveloperId", "fullName email role status")
+    .populate("tasks.createdBy", "fullName email role")
+    .lean();
+
+  return serializeForJson(projects);
 }

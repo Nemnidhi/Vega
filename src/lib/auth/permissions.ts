@@ -72,6 +72,9 @@ export const permissionRules = {
   approveHighTicket: ["admin", "partner"] as UserRole[],
   manageScope: ["admin", "partner", "project_manager"] as UserRole[],
   managePricing: ["admin", "partner"] as UserRole[],
+  manageUsers: ["admin"] as UserRole[],
+  manageProjectAssignments: ["admin"] as UserRole[],
+  accessProjectAssignments: ["admin", "developer"] as UserRole[],
   createChangeOrders: ["admin", "partner", "project_manager", "sales"] as UserRole[],
   accessClientVault: ["admin", "partner", "project_manager", "client"] as UserRole[],
 };

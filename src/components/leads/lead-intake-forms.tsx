@@ -6,88 +6,50 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-type IntakeType =
-  | "software_request"
-  | "infrastructure"
-  | "legal_automation"
-  | "retainer_enterprise";
-
-const intakeCatalog: Record<
-  IntakeType,
-  { title: string; hint: string; defaultTitle: string }
-> = {
-  software_request: {
-    title: "Basic software request",
-    hint: "Ideal for product MVP, workflow tools, and web applications.",
-    defaultTitle: "Custom software request",
-  },
-  infrastructure: {
-    title: "High-ticket infrastructure request",
-    hint: "For architecture modernization, cloud migration, and scalability work.",
-    defaultTitle: "Infrastructure modernization request",
-  },
-  legal_automation: {
-    title: "Legal-tech automation request",
-    hint: "For legal workflow automation, drafting engines, and case systems.",
-    defaultTitle: "Legal automation request",
-  },
-  retainer_enterprise: {
-    title: "Retainer / enterprise request",
-    hint: "For strategic long-term delivery and enterprise advisory mandates.",
-    defaultTitle: "Enterprise retainer request",
-  },
-};
+type LeadCategory = "software_request" | "infrastructure" | "other";
 
 type LeadFormState = {
   title: string;
   contactName: string;
   email: string;
   phone: string;
+  category: LeadCategory;
   source: "website" | "referral" | "cold_outreach" | "paid_ads" | "event" | "partner" | "other";
   urgency: "low" | "medium" | "high" | "critical";
-  budgetMin: string;
-  budgetMax: string;
   description: string;
-  tags: string;
 };
 
 const initialState: LeadFormState = {
-  title: intakeCatalog.software_request.defaultTitle,
+  title: "",
   contactName: "",
   email: "",
   phone: "",
+  category: "software_request",
   source: "website",
   urgency: "medium",
-  budgetMin: "",
-  budgetMax: "",
   description: "",
-  tags: "",
 };
 
 export function LeadIntakeForms() {
-  const [intakeType, setIntakeType] = useState<IntakeType>("software_request");
   const [form, setForm] = useState<LeadFormState>(initialState);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>("");
-  const selectedType = intakeCatalog[intakeType];
 
   const canSubmit = useMemo(
     () =>
+      form.title.trim().length >= 3 &&
       form.contactName.trim().length >= 2 &&
       form.email.trim().includes("@") &&
       form.description.trim().length >= 10,
-    [form.contactName, form.description, form.email],
+    [form.contactName, form.description, form.email, form.title],
   );
 
   async function submitLead(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage("");
-    try {
-      const budgetMin = Number(form.budgetMin);
-      const budgetMax = Number(form.budgetMax);
-      const hasBudget = Number.isFinite(budgetMin) && Number.isFinite(budgetMax);
 
+    try {
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,17 +58,11 @@ export function LeadIntakeForms() {
           contactName: form.contactName,
           email: form.email,
           phone: form.phone || undefined,
+          category: form.category,
           source: form.source,
-          category: intakeType,
           urgency: form.urgency,
-          budget: hasBudget
-            ? { min: budgetMin, max: budgetMax, currency: "INR" }
-            : undefined,
           description: form.description,
-          tags: form.tags
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
+          tags: [],
         }),
       });
 
@@ -115,11 +71,8 @@ export function LeadIntakeForms() {
         throw new Error(data?.error?.message ?? "Lead creation failed");
       }
 
-      setMessage("Lead captured and scored successfully.");
-      setForm({
-        ...initialState,
-        title: selectedType.defaultTitle,
-      });
+      setMessage("Lead saved successfully.");
+      setForm(initialState);
       window.location.reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to create lead");
@@ -131,34 +84,13 @@ export function LeadIntakeForms() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lead Capture — The Intent Harvesters</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">{selectedType.hint}</p>
+        <CardTitle>Create Lead</CardTitle>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Fill basic details to add a lead quickly.
+        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-2 sm:grid-cols-2">
-          {Object.entries(intakeCatalog).map(([key, item]) => (
-            <button
-              key={key}
-              type="button"
-              className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
-                intakeType === key
-                  ? "border-accent bg-accent-soft text-accent-strong"
-                  : "border-border bg-surface hover:bg-surface-soft"
-              }`}
-              onClick={() => {
-                const nextType = key as IntakeType;
-                setIntakeType(nextType);
-                setForm((prev) => ({
-                  ...prev,
-                  title: intakeCatalog[nextType].defaultTitle,
-                }));
-              }}
-            >
-              <p className="font-semibold">{item.title}</p>
-            </button>
-          ))}
-        </div>
 
+      <CardContent className="space-y-4">
         <form className="grid gap-3" onSubmit={submitLead}>
           <Input
             value={form.title}
@@ -166,6 +98,7 @@ export function LeadIntakeForms() {
             placeholder="Lead title"
             required
           />
+
           <div className="grid gap-3 sm:grid-cols-2">
             <Input
               value={form.contactName}
@@ -183,19 +116,30 @@ export function LeadIntakeForms() {
               required
             />
           </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <Input
               value={form.phone}
               onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
               placeholder="Phone (optional)"
             />
-            <Input
-              value={form.tags}
-              onChange={(event) => setForm((prev) => ({ ...prev, tags: event.target.value }))}
-              placeholder="Tags: fintech, litigation, etc"
-            />
+            <select
+              className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+              value={form.category}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  category: event.target.value as LeadFormState["category"],
+                }))
+              }
+            >
+              <option value="software_request">Software Request</option>
+              <option value="infrastructure">Infrastructure</option>
+              <option value="other">Other</option>
+            </select>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <select
               className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
               value={form.source}
@@ -214,6 +158,7 @@ export function LeadIntakeForms() {
               <option value="partner">Partner</option>
               <option value="other">Other</option>
             </select>
+
             <select
               className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
               value={form.urgency}
@@ -229,32 +174,20 @@ export function LeadIntakeForms() {
               <option value="high">High</option>
               <option value="critical">Critical</option>
             </select>
-            <Input
-              value={form.budgetMin}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, budgetMin: event.target.value }))
-              }
-              placeholder="Budget min"
-              type="number"
-            />
           </div>
-          <Input
-            value={form.budgetMax}
-            onChange={(event) => setForm((prev) => ({ ...prev, budgetMax: event.target.value }))}
-            placeholder="Budget max"
-            type="number"
-          />
+
           <Textarea
             value={form.description}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, description: event.target.value }))
             }
-            placeholder="Describe requirements, context, outcomes, constraints..."
+            placeholder="Short requirement summary..."
             required
           />
+
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={!canSubmit || loading}>
-              {loading ? "Capturing..." : "Capture Lead"}
+              {loading ? "Saving..." : "Save Lead"}
             </Button>
             {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
           </div>

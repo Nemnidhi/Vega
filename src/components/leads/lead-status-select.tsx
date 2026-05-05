@@ -12,6 +12,10 @@ const statusOptions = [
   "closed_lost",
 ] as const;
 
+function statusLabel(value: string) {
+  return value.replaceAll("_", " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
 export function LeadStatusSelect({
   leadId,
   currentStatus,
@@ -56,7 +60,7 @@ export function LeadStatusSelect({
       >
         {statusOptions.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {statusLabel(option)}
           </option>
         ))}
       </select>

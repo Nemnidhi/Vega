@@ -31,6 +31,12 @@ const userSchema = new Schema(
       required: true,
       index: true,
     },
+    passwordHash: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+      default: null,
+    },
     status: {
       type: String,
       enum: ["active", "inactive", "invited"],
