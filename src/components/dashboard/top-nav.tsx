@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { getDashboardNavItems } from "@/components/dashboard/nav-items";
+import {
+  getDashboardNavItems,
+  isDashboardNavItemActive,
+} from "@/components/dashboard/nav-items";
 import { cn } from "@/lib/utils/cn";
 import type { UserRole } from "@/types/user";
 
@@ -32,16 +35,17 @@ export function DashboardTopNav({ role, userLabel }: DashboardTopNavProps) {
 
       <nav className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = isDashboardNavItemActive(pathname, item.href);
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
                 isActive
-                  ? "border-accent bg-accent-soft text-accent-strong"
+                  ? "border-accent/40 bg-accent/10 text-accent-strong"
                   : "border-transparent bg-white text-muted-foreground hover:border-border hover:bg-surface-soft hover:text-foreground",
               )}
             >

@@ -8,6 +8,8 @@ type DashboardNavItem = {
 
 const dashboardNavItems: DashboardNavItem[] = [
   { label: "Home", href: "/dashboard", roles: ["admin", "sales"] },
+  { label: "Calendar", href: "/calendar", roles: ["admin", "sales", "developer"] },
+  { label: "Attendance", href: "/attendance", roles: ["admin", "sales", "developer"] },
   { label: "Projects", href: "/projects", roles: ["admin", "developer"] },
   { label: "Chat", href: "/chat", roles: ["admin", "developer", "sales"] },
   { label: "Leads", href: "/leads", roles: ["admin", "sales"] },
@@ -18,4 +20,18 @@ const dashboardNavItems: DashboardNavItem[] = [
 
 export function getDashboardNavItems(role: UserRole) {
   return dashboardNavItems.filter((item) => item.roles.includes(role));
+}
+
+function normalizePath(path: string) {
+  const cleanPath = path.split("?")[0]?.split("#")[0] ?? "/";
+  if (cleanPath.length > 1 && cleanPath.endsWith("/")) {
+    return cleanPath.slice(0, -1);
+  }
+  return cleanPath;
+}
+
+export function isDashboardNavItemActive(pathname: string, href: string) {
+  const currentPath = normalizePath(pathname);
+  const navPath = normalizePath(href);
+  return currentPath === navPath || currentPath.startsWith(`${navPath}/`);
 }

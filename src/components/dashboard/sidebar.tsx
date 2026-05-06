@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { getDashboardNavItems } from "@/components/dashboard/nav-items";
+import {
+  getDashboardNavItems,
+  isDashboardNavItemActive,
+} from "@/components/dashboard/nav-items";
 import type { UserRole } from "@/types/user";
 
 interface DashboardSidebarProps {
@@ -29,17 +32,17 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
 
         <nav className="space-y-1">
           {navItems.map((item, index) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = isDashboardNavItemActive(pathname, item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "group flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors duration-150",
                   isActive
-                    ? "border-accent bg-accent-soft text-accent-strong"
+                    ? "border-accent/40 bg-accent/10 text-accent-strong"
                     : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-soft hover:text-foreground",
                 )}
               >
