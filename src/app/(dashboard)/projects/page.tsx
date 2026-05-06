@@ -49,14 +49,24 @@ export default async function ProjectsPage() {
     <section className="space-y-6">
       <DashboardHeader
         title="Projects and Tasks"
-        subtitle="Create projects, track running execution, and review completed project history."
+        subtitle="Create projects and open any project card to view full details and task assignment."
         showLeadCta={false}
+        action={
+          session.role === "admin"
+            ? {
+                label: "Create Project",
+                href: "/projects?createProject=1",
+              }
+            : undefined
+        }
       />
       <ProjectAssignmentBoard
         initialProjects={projects as ProjectPageItem[]}
         developerOptions={developers as Array<{ _id: string; fullName: string; email: string }>}
         canManage={session.role === "admin"}
         currentUserId={session.userId}
+        showProjectCards
+        showInlineDetails={false}
       />
     </section>
   );

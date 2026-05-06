@@ -47,7 +47,7 @@ export function ClientSignupForm() {
   }
 
   return (
-    <Card className="overflow-visible border-white/65 bg-white/92">
+    <Card className="overflow-visible">
       <CardHeader>
         <CardTitle className="text-2xl">Client Sign Up</CardTitle>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">

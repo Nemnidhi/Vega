@@ -14,7 +14,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HRMS Command Center",
+  title: "Vega",
   description: "Lead-to-delivery strategic operations dashboard.",
 };
 

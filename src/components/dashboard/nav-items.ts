@@ -7,7 +7,7 @@ type DashboardNavItem = {
 };
 
 const dashboardNavItems: DashboardNavItem[] = [
-  { label: "Overview", href: "/dashboard", roles: ["admin", "sales"] },
+  { label: "Home", href: "/dashboard", roles: ["admin", "sales"] },
   { label: "Projects", href: "/projects", roles: ["admin", "developer"] },
   { label: "Chat", href: "/chat", roles: ["admin", "developer", "sales"] },
   { label: "Leads", href: "/leads", roles: ["admin", "sales"] },

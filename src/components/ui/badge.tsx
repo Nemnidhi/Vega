@@ -2,11 +2,11 @@ import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
 const badgeVariants = {
-  neutral: "bg-white text-foreground ring-1 ring-border",
-  success: "bg-[#dff7eb] text-[#0f7d4d] ring-1 ring-[#9ed5b8]",
-  warning: "bg-[#fff0dc] text-[#9f4f0f] ring-1 ring-[#f4c58a]",
-  danger: "bg-[#ffe2df] text-[#b62a22] ring-1 ring-[#f0a8a2]",
-  accent: "bg-[#d7f5f2] text-[#0f6a64] ring-1 ring-[#9fded9]",
+  neutral: "border border-border bg-white text-foreground",
+  success: "border border-[#b8d7c3] bg-[#edf7f0] text-[#2f6a42]",
+  warning: "border border-[#dec39d] bg-[#f8f1e4] text-[#8a5a1f]",
+  danger: "border border-[#e2b3ae] bg-[#faecea] text-[#a43c35]",
+  accent: "border border-[#bac8d5] bg-[#ecf2f7] text-[#274d6f]",
 } as const;
 
 type BadgeVariant = keyof typeof badgeVariants;
@@ -19,7 +19,7 @@ export function Badge({ className, variant = "neutral", ...props }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
         badgeVariants[variant],
         className,
       )}

@@ -15,19 +15,19 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
   const navItems = getDashboardNavItems(role);
 
   return (
-    <aside className="hidden h-screen w-[300px] shrink-0 border-r border-white/10 bg-[linear-gradient(155deg,#061325_0%,#102a46_58%,#0a4f56_100%)] p-5 text-white lg:sticky lg:top-0 lg:flex lg:overflow-y-auto">
+    <aside className="hidden h-screen w-[280px] shrink-0 border-r border-border bg-white p-5 lg:sticky lg:top-0 lg:flex lg:overflow-y-auto">
       <div className="flex min-h-full flex-col">
-        <div className="mb-7 rounded-3xl border border-white/20 bg-white/8 p-5 backdrop-blur">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/70">
-            HRMS
+        <div className="mb-6 rounded-lg border border-border bg-surface-soft p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Vega
           </p>
-          <h1 className="mt-2 text-2xl font-semibold leading-8">Command Center</h1>
-          <p className="mt-3 inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-white/90">
+          <h1 className="mt-2 text-xl font-semibold text-foreground">Command Center</h1>
+          <p className="mt-3 inline-flex rounded-md border border-border bg-white px-2.5 py-1 text-[11px] uppercase tracking-wide text-foreground">
             {role.replaceAll("_", " ")}
           </p>
         </div>
 
-        <nav className="space-y-1.5">
+        <nav className="space-y-1">
           {navItems.map((item, index) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -37,17 +37,17 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "group flex items-center justify-between rounded-2xl px-3.5 py-3 text-sm font-medium transition-all duration-200",
+                  "group flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors duration-150",
                   isActive
-                    ? "bg-[linear-gradient(135deg,#159c95_0%,#1d4ed8_100%)] text-white shadow-[0_12px_25px_rgba(11,128,120,0.4)]"
-                    : "text-white/75 hover:bg-white/10 hover:text-white",
+                    ? "border-accent bg-accent-soft text-accent-strong"
+                    : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-soft hover:text-foreground",
                 )}
               >
                 <span>{item.label}</span>
                 <span
                   className={cn(
                     "font-mono text-[11px] transition-colors",
-                    isActive ? "text-white/90" : "text-white/45 group-hover:text-white/70",
+                    isActive ? "text-accent-strong" : "text-muted-foreground/70 group-hover:text-foreground",
                   )}
                 >
                   {String(index + 1).padStart(2, "0")}
@@ -58,11 +58,11 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
         </nav>
 
         <div className="mt-auto pt-5">
-          <div className="rounded-3xl border border-white/20 bg-white/8 p-4 backdrop-blur">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+          <div className="rounded-lg border border-border bg-surface-soft p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Security Grid
             </p>
-            <p className="mt-2 text-sm leading-6 text-white/90">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Session auth is live with role-level control and full audit traceability.
             </p>
           </div>

@@ -5,25 +5,36 @@ interface DashboardHeaderProps {
   title: string;
   subtitle?: string;
   showLeadCta?: boolean;
+  action?: {
+    label: string;
+    href: string;
+  };
 }
 
 export function DashboardHeader({
   title,
   subtitle,
   showLeadCta = true,
+  action,
 }: DashboardHeaderProps) {
-  return (
-    <header className="relative mb-6 overflow-hidden rounded-3xl border border-border/70 bg-surface/88 p-5 shadow-[0_16px_42px_rgba(8,26,48,0.1)] backdrop-blur md:p-6">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[radial-gradient(circle,rgba(16,170,154,0.18)_0%,rgba(16,170,154,0)_70%)]" />
-      <div className="pointer-events-none absolute -bottom-20 left-1/3 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(29,78,216,0.14)_0%,rgba(29,78,216,0)_70%)]" />
+  const cta = action
+    ? action
+    : showLeadCta
+      ? {
+          label: "New Lead",
+          href: "/leads",
+        }
+      : null;
 
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
+  return (
+    <header className="mb-6 rounded-xl border border-border bg-white p-5 shadow-sm md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Strategic Operations
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Operations
           </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-          {title}
+            {title}
           </h2>
           {subtitle ? (
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
@@ -32,19 +43,17 @@ export function DashboardHeader({
           ) : null}
         </div>
 
-        {showLeadCta ? (
-          <div className="flex items-center gap-2">
-            <Badge variant="accent">Command Active</Badge>
-            <Link
-              href="/leads"
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-white/90 px-4.5 text-sm font-semibold tracking-wide text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_8px_18px_rgba(8,29,51,0.08)] transition-all duration-200 hover:bg-white"
-            >
-              New Lead
-            </Link>
-          </div>
-        ) : (
+        <div className="flex items-center gap-2">
           <Badge variant="accent">Command Active</Badge>
-        )}
+          {cta ? (
+            <Link
+              href={cta.href}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+            >
+              {cta.label}
+            </Link>
+          ) : null}
+        </div>
       </div>
     </header>
   );

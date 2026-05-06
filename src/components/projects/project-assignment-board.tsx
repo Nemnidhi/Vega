@@ -1,6 +1,8 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,11 +46,24 @@ type DeveloperOption = {
   email: string;
 };
 
+type ProjectSortOption =
+  | "recent"
+  | "oldest"
+  | "tasks_desc"
+  | "tasks_asc"
+  | "completion_desc";
+
+type ProjectHealthFilter = "all" | "with_blocked" | "with_pending_alerts";
+
 interface ProjectAssignmentBoardProps {
   initialProjects: ProjectItem[];
   developerOptions: DeveloperOption[];
   canManage: boolean;
   currentUserId?: string;
+  showProjectCards?: boolean;
+  showInlineDetails?: boolean;
+  initialSelectedProjectId?: string | null;
+  projectDetailsPageBasePath?: string;
 }
 
 const initialProjectForm = {
@@ -96,12 +111,36 @@ function getPendingAlertKeys(projects: ProjectItem[]) {
   return keys;
 }
 
+function getProjectTaskSummary(project: ProjectItem) {
+  const totalTasks = project.tasks.length;
+  const completedTasks = project.tasks.filter((task) => task.status === "done").length;
+  const blockedTasks = project.tasks.filter((task) => task.status === "blocked").length;
+  const pendingAlerts = project.tasks.filter((task) => task.completionAlertPending).length;
+  const completionRate =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  return {
+    totalTasks,
+    completedTasks,
+    blockedTasks,
+    pendingAlerts,
+    completionRate,
+  };
+}
+
 export function ProjectAssignmentBoard({
   initialProjects,
   developerOptions,
   canManage,
   currentUserId,
+  showProjectCards = true,
+  showInlineDetails = false,
+  initialSelectedProjectId = null,
+  projectDetailsPageBasePath = "/projects",
 }: ProjectAssignmentBoardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState(initialProjects);
   const [projectForm, setProjectForm] = useState({
     ...initialProjectForm,
@@ -115,22 +154,166 @@ export function ProjectAssignmentBoard({
     {},
   );
   const [alertLoadingMap, setAlertLoadingMap] = useState<Record<string, boolean>>({});
+  const [showCreateProjectForm, setShowCreateProjectForm] = useState(false);
   const [message, setMessage] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    initialSelectedProjectId,
+  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
+  const [healthFilter, setHealthFilter] = useState<ProjectHealthFilter>("all");
+  const [sortBy, setSortBy] = useState<ProjectSortOption>("recent");
   const pendingAlertKeysRef = useRef<Set<string>>(new Set());
+  const isCreateProjectRequested =
+    canManage && searchParams.get("createProject") === "1";
+  const isCreateProjectModalOpen =
+    showCreateProjectForm || isCreateProjectRequested;
+
+  function clearCreateProjectModalQuery() {
+    if (!isCreateProjectRequested) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("createProject");
+    const nextUrl = nextParams.size > 0 ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }
+
+  function closeCreateProjectModal() {
+    setShowCreateProjectForm(false);
+    clearCreateProjectModalQuery();
+  }
 
   const defaultDeveloperId = useMemo(
     () => developerOptions[0]?._id ?? "",
     [developerOptions],
   );
 
-  const runningProjects = useMemo(
-    () => projects.filter((project) => project.status !== "completed"),
+  const orderedProjects = useMemo(
+    () =>
+      [...projects].sort(
+        (a, b) =>
+          new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime(),
+      ),
     [projects],
   );
-  const completedProjects = useMemo(
-    () => projects.filter((project) => project.status === "completed"),
-    [projects],
+  const selectedProject = useMemo(() => {
+    if (!showInlineDetails) {
+      return null;
+    }
+    if (!selectedProjectId) {
+      return null;
+    }
+    return orderedProjects.find((project) => project._id === selectedProjectId) ?? null;
+  }, [orderedProjects, selectedProjectId, showInlineDetails]);
+  const filteredProjects = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    const results = orderedProjects.filter((project) => {
+      if (statusFilter !== "all" && project.status !== statusFilter) {
+        return false;
+      }
+
+      if (
+        healthFilter === "with_blocked" &&
+        !project.tasks.some((task) => task.status === "blocked")
+      ) {
+        return false;
+      }
+
+      if (
+        healthFilter === "with_pending_alerts" &&
+        !project.tasks.some((task) => task.completionAlertPending)
+      ) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const description = project.description?.toLowerCase() ?? "";
+      const assignedTo = resolveUserLabel(project.assignedDeveloperId).toLowerCase();
+      const taskMatch = project.tasks.some((task) => {
+        const taskTitle = task.title.toLowerCase();
+        const taskDescription = task.description?.toLowerCase() ?? "";
+        return (
+          taskTitle.includes(normalizedSearch) ||
+          taskDescription.includes(normalizedSearch)
+        );
+      });
+
+      return (
+        project.title.toLowerCase().includes(normalizedSearch) ||
+        description.includes(normalizedSearch) ||
+        assignedTo.includes(normalizedSearch) ||
+        taskMatch
+      );
+    });
+
+    return [...results].sort((a, b) => {
+      const aSummary = getProjectTaskSummary(a);
+      const bSummary = getProjectTaskSummary(b);
+      const aUpdated = new Date(a.updatedAt ?? 0).getTime();
+      const bUpdated = new Date(b.updatedAt ?? 0).getTime();
+
+      if (sortBy === "oldest") {
+        return aUpdated - bUpdated;
+      }
+      if (sortBy === "tasks_desc") {
+        return bSummary.totalTasks - aSummary.totalTasks;
+      }
+      if (sortBy === "tasks_asc") {
+        return aSummary.totalTasks - bSummary.totalTasks;
+      }
+      if (sortBy === "completion_desc") {
+        return bSummary.completionRate - aSummary.completionRate;
+      }
+      return bUpdated - aUpdated;
+    });
+  }, [healthFilter, orderedProjects, searchTerm, sortBy, statusFilter]);
+  const filteredRunningCount = useMemo(
+    () => filteredProjects.filter((project) => project.status !== "completed").length,
+    [filteredProjects],
+  );
+  const filteredCompletedCount = useMemo(
+    () => filteredProjects.filter((project) => project.status === "completed").length,
+    [filteredProjects],
+  );
+  const filteredTaskInsights = useMemo(() => {
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let blockedTasks = 0;
+    let pendingAlerts = 0;
+
+    for (const project of filteredProjects) {
+      const summary = getProjectTaskSummary(project);
+      totalTasks += summary.totalTasks;
+      completedTasks += summary.completedTasks;
+      blockedTasks += summary.blockedTasks;
+      pendingAlerts += summary.pendingAlerts;
+    }
+
+    const completionRate =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    return {
+      totalTasks,
+      completedTasks,
+      blockedTasks,
+      pendingAlerts,
+      completionRate,
+    };
+  }, [filteredProjects]);
+  const projectsNeedingAttention = useMemo(
+    () =>
+      filteredProjects.filter((project) => {
+        const summary = getProjectTaskSummary(project);
+        return summary.blockedTasks > 0 || summary.pendingAlerts > 0;
+      }),
+    [filteredProjects],
   );
   const pendingCompletionAlerts = useMemo(
     () =>
@@ -207,6 +390,35 @@ export function ProjectAssignmentBoard({
     return () => clearTimeout(timeout);
   }, [popupMessage]);
 
+  useEffect(() => {
+    if (!isCreateProjectModalOpen) {
+      return;
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !projectLoading) {
+        setShowCreateProjectForm(false);
+
+        if (isCreateProjectRequested) {
+          const nextParams = new URLSearchParams(searchParams.toString());
+          nextParams.delete("createProject");
+          const nextUrl = nextParams.size > 0 ? `${pathname}?${nextParams.toString()}` : pathname;
+          router.replace(nextUrl, { scroll: false });
+        }
+      }
+    }
+
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [
+    isCreateProjectModalOpen,
+    isCreateProjectRequested,
+    pathname,
+    projectLoading,
+    router,
+    searchParams,
+  ]);
+
   function resolveUserLabel(value: UserRef | string | null | undefined) {
     if (!value) {
       return "Unassigned";
@@ -257,11 +469,14 @@ export function ProjectAssignmentBoard({
         throw new Error(data?.error?.message ?? "Failed to create project assignment");
       }
 
-      setProjects((prev) => [data.data as ProjectItem, ...prev]);
+      const createdProject = data.data as ProjectItem;
+      setProjects((prev) => [createdProject, ...prev]);
+      setSelectedProjectId(createdProject._id);
       setProjectForm({
         ...initialProjectForm,
         assignedDeveloperId: defaultDeveloperId,
       });
+      closeCreateProjectModal();
       setMessage("Project created successfully.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to create project");
@@ -467,18 +682,108 @@ export function ProjectAssignmentBoard({
     );
   }
 
-  function renderRunningProjectCard(project: ProjectItem) {
+  function renderProjectSelectorCard(project: ProjectItem) {
+    const isSelected = selectedProjectId === project._id;
+    const detailsHref = `${projectDetailsPageBasePath}/${project._id}`;
+    const summary = getProjectTaskSummary(project);
+    const statusToneClass =
+      project.status === "completed"
+        ? "border-[#b8d7c3] bg-[#edf7f0] text-[#2f6a42]"
+        : project.status === "in_progress"
+          ? "border-[#bac8d5] bg-[#ecf2f7] text-[#274d6f]"
+          : project.status === "on_hold"
+            ? "border-[#e2b3ae] bg-[#faecea] text-[#a43c35]"
+            : "border-[#dec39d] bg-[#f8f1e4] text-[#8a5a1f]";
+
+    if (!showInlineDetails) {
+      return (
+        <Link key={project._id} href={detailsHref} className="block">
+          <Card className="transition-colors hover:border-foreground/30 hover:bg-white">
+            <CardHeader className="space-y-2 pb-1">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base md:text-base">{project.title}</CardTitle>
+                <span
+                  className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusToneClass}`}
+                >
+                  {formatStatus(project.status)}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0 text-xs text-muted-foreground">
+              <p>Assigned to: {resolveUserLabel(project.assignedDeveloperId)}</p>
+              <p>
+                Tasks: {summary.totalTasks} | Done: {summary.completedTasks} | Blocked:{" "}
+                {summary.blockedTasks}
+              </p>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>Progress</span>
+                  <span className="font-semibold text-foreground">{summary.completionRate}%</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-surface-soft">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all"
+                    style={{ width: `${summary.completionRate}%` }}
+                  />
+                </div>
+              </div>
+              <p>Updated: {formatDate(project.updatedAt)}</p>
+              <p className="pt-1 text-[11px] font-medium text-foreground/80">
+                Open project details
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        key={project._id}
+        type="button"
+        className="w-full cursor-pointer text-left"
+        onClick={() => setSelectedProjectId(project._id)}
+        aria-pressed={isSelected}
+      >
+        <Card
+          className={
+            isSelected
+              ? "border-foreground/40 bg-white shadow-md ring-1 ring-foreground/20"
+              : "transition-colors hover:border-foreground/30 hover:bg-white"
+          }
+        >
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-base md:text-base">{project.title}</CardTitle>
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Status: {formatStatus(project.status)}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-1 pt-0 text-xs text-muted-foreground">
+            <p>Assigned to: {resolveUserLabel(project.assignedDeveloperId)}</p>
+            <p>Tasks: {project.tasks.length}</p>
+            <p>Updated: {formatDate(project.updatedAt)}</p>
+            <p className="pt-1 text-[11px] font-medium text-foreground/80">
+              Click to view details
+            </p>
+          </CardContent>
+        </Card>
+      </button>
+    );
+  }
+
+  function renderProjectDetailsCard(project: ProjectItem) {
     const taskForm = readTaskForm(project._id);
     const taskLoading = taskLoadingMap[project._id] ?? false;
     const statusLoading = statusLoadingMap[project._id] ?? false;
+    const isCompletedProject = project.status === "completed";
 
     return (
-      <Card key={project._id}>
+      <Card key={`details-${project._id}`}>
         <CardHeader>
           <CardTitle>{project.title}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             Assigned to: {resolveUserLabel(project.assignedDeveloperId)} | Status:{" "}
-            {formatStatus(project.status)}
+            {formatStatus(project.status)} | Last updated: {formatDate(project.updatedAt)}
           </p>
           {project.description ? (
             <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
@@ -491,16 +796,32 @@ export function ProjectAssignmentBoard({
                 type="button"
                 variant="secondary"
                 disabled={statusLoading}
-                onClick={() =>
-                  updateProjectStatus(project._id, "completed", "Project moved to completed history.")
-                }
+                onClick={() => {
+                  if (isCompletedProject) {
+                    updateProjectStatus(
+                      project._id,
+                      "in_progress",
+                      "Project moved back to running.",
+                    );
+                    return;
+                  }
+                  updateProjectStatus(
+                    project._id,
+                    "completed",
+                    "Project moved to completed history.",
+                  );
+                }}
               >
-                {statusLoading ? "Updating..." : "Mark Completed"}
+                {statusLoading
+                  ? "Updating..."
+                  : isCompletedProject
+                    ? "Move To Running"
+                    : "Mark Completed"}
               </Button>
             </div>
           ) : null}
 
-          {canManage ? (
+          {canManage && !isCompletedProject ? (
             <form className="grid gap-3" onSubmit={(event) => createTask(project._id, event)}>
               <Input
                 placeholder="Task title"
@@ -544,42 +865,12 @@ export function ProjectAssignmentBoard({
             </form>
           ) : null}
 
-          {renderTaskTable(project)}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  function renderCompletedProjectCard(project: ProjectItem) {
-    const statusLoading = statusLoadingMap[project._id] ?? false;
-
-    return (
-      <Card key={project._id}>
-        <CardHeader>
-          <CardTitle>{project.title}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Assigned to: {resolveUserLabel(project.assignedDeveloperId)} | Completed on:{" "}
-            {formatDate(project.updatedAt)}
-          </p>
-          {project.description ? (
-            <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
+          {canManage && isCompletedProject ? (
+            <p className="text-sm text-muted-foreground">
+              Move this project to running if you want to assign new tasks.
+            </p>
           ) : null}
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {canManage ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={statusLoading}
-                onClick={() =>
-                  updateProjectStatus(project._id, "in_progress", "Project moved back to running.")
-                }
-              >
-                {statusLoading ? "Updating..." : "Move To Running"}
-              </Button>
-            </div>
-          ) : null}
+
           {renderTaskTable(project)}
         </CardContent>
       </Card>
@@ -600,12 +891,22 @@ export function ProjectAssignmentBoard({
         </div>
       ) : null}
 
-      {canManage ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Project</CardTitle>
-          </CardHeader>
-          <CardContent>
+      {canManage && isCreateProjectModalOpen ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-foreground">Create New Project</h3>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={closeCreateProjectModal}
+                disabled={projectLoading}
+              >
+                Close
+              </Button>
+            </div>
+
             <form className="grid gap-3" onSubmit={createProject}>
               <Input
                 placeholder="Project title"
@@ -646,24 +947,21 @@ export function ProjectAssignmentBoard({
                 <Button type="submit" disabled={projectLoading || developerOptions.length === 0}>
                   {projectLoading ? "Creating..." : "Create Project"}
                 </Button>
-                {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={closeCreateProjectModal}
+                  disabled={projectLoading}
+                >
+                  Cancel
+                </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Assigned Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              This view shows projects and tasks assigned to you by admin.
-            </p>
-            {message ? <p className="mt-2 text-sm text-muted-foreground">{message}</p> : null}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
+      ) : null}
+
+      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
       {canManage ? (
         <Card>
@@ -710,49 +1008,148 @@ export function ProjectAssignmentBoard({
         </Card>
       ) : null}
 
-      {canManage ? (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Running Projects ({runningProjects.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {runningProjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No running projects right now.</p>
-              ) : (
-                runningProjects.map((project) => renderRunningProjectCard(project))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Completed Projects History ({completedProjects.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {completedProjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No completed projects in history yet.
-                </p>
-              ) : (
-                completedProjects.map((project) => renderCompletedProjectCard(project))
-              )}
-            </CardContent>
-          </Card>
-        </>
-      ) : projects.length === 0 ? (
+      {showProjectCards ? (
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            No projects assigned to you yet.
+          <CardHeader>
+            <CardTitle>
+              All Projects ({filteredProjects.length}
+              {filteredProjects.length !== orderedProjects.length
+                ? ` of ${orderedProjects.length}`
+                : ""})
+            </CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Running: {filteredRunningCount} | Completed: {filteredCompletedCount}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 lg:grid-cols-4">
+              <div className="rounded-lg border border-border bg-white p-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Task Completion
+                </p>
+                <p className="mt-1 text-xl font-semibold text-foreground">
+                  {filteredTaskInsights.completionRate}%
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-white p-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Total Tasks
+                </p>
+                <p className="mt-1 text-xl font-semibold text-foreground">
+                  {filteredTaskInsights.totalTasks}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-white p-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Blocked Tasks
+                </p>
+                <p className="mt-1 text-xl font-semibold text-foreground">
+                  {filteredTaskInsights.blockedTasks}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-white p-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Pending Alerts
+                </p>
+                <p className="mt-1 text-xl font-semibold text-foreground">
+                  {filteredTaskInsights.pendingAlerts}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-4">
+              <Input
+                placeholder="Search by project, developer, task..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+              <select
+                className="h-11 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as "all" | ProjectStatus)
+                }
+              >
+                <option value="all">All statuses</option>
+                <option value="planned">Planned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="on_hold">On Hold</option>
+                <option value="completed">Completed</option>
+              </select>
+              <select
+                className="h-11 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
+                value={healthFilter}
+                onChange={(event) =>
+                  setHealthFilter(event.target.value as ProjectHealthFilter)
+                }
+              >
+                <option value="all">All health states</option>
+                <option value="with_blocked">With blocked tasks</option>
+                <option value="with_pending_alerts">With pending alerts</option>
+              </select>
+              <select
+                className="h-11 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
+                value={sortBy}
+                onChange={(event) =>
+                  setSortBy(event.target.value as ProjectSortOption)
+                }
+              >
+                <option value="recent">Sort: Recently updated</option>
+                <option value="oldest">Sort: Oldest updated</option>
+                <option value="tasks_desc">Sort: Most tasks</option>
+                <option value="tasks_asc">Sort: Least tasks</option>
+                <option value="completion_desc">Sort: Highest completion</option>
+              </select>
+            </div>
+
+            {projectsNeedingAttention.length > 0 ? (
+              <div className="rounded-xl border border-border/70 bg-white p-3">
+                <p className="text-sm font-semibold text-foreground">Needs Attention</p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  {projectsNeedingAttention.slice(0, 4).map((project) => {
+                    const summary = getProjectTaskSummary(project);
+                    return (
+                      <Link
+                        key={project._id}
+                        href={`${projectDetailsPageBasePath}/${project._id}`}
+                        className="rounded-md border border-border bg-surface-soft px-2.5 py-1 hover:bg-white"
+                      >
+                        {project.title} | blocked: {summary.blockedTasks}, alerts: {summary.pendingAlerts}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {filteredProjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {orderedProjects.length === 0
+                  ? canManage
+                    ? "No projects created yet."
+                    : "No projects assigned to you yet."
+                  : "No projects match the current filters."}
+              </p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredProjects.map((project) => renderProjectSelectorCard(project))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        projects.map((project) =>
-          project.status === "completed"
-            ? renderCompletedProjectCard(project)
-            : renderRunningProjectCard(project),
+      ) : null}
+
+      {showInlineDetails ? (
+        selectedProject ? (
+          renderProjectDetailsCard(selectedProject)
+        ) : (
+          <Card>
+            <CardContent className="pt-6 text-sm text-muted-foreground">
+              Select a project card to view full details and tasks.
+            </CardContent>
+          </Card>
         )
-      )}
+      ) : null}
     </section>
   );
 }

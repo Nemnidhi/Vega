@@ -26,14 +26,14 @@ function priorityVariant(priorityBand: string): "danger" | "warning" | "accent" 
 
 export function KanbanBoard({ stages }: { stages: PipelineStage[] }) {
   return (
-    <div className="rounded-3xl border border-border/70 bg-surface/60 p-3 shadow-[0_12px_30px_rgba(8,26,48,0.08)]">
+    <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
       <div className="mb-3 px-2 text-xs text-muted-foreground">
         Scroll horizontally on smaller screens to see all stages.
       </div>
       <div className="no-scrollbar overflow-x-auto pb-2">
         <div className="grid min-w-[1220px] grid-flow-col auto-cols-[minmax(240px,1fr)] gap-4">
           {stages.map((stage) => (
-            <Card key={stage.stage} className="min-h-[360px] border-border/80 bg-white/72">
+            <Card key={stage.stage} className="min-h-[360px]">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-sm">{stageTitle(stage.stage)}</CardTitle>
@@ -52,7 +52,7 @@ export function KanbanBoard({ stages }: { stages: PipelineStage[] }) {
                     <Link
                       key={lead._id}
                       href={`/leads/${lead._id}`}
-                      className="group block rounded-xl border border-border bg-white p-3 text-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-surface-soft hover:shadow-[0_10px_22px_rgba(8,29,51,0.12)]"
+                      className="group block rounded-lg border border-border bg-white p-3 text-xs transition-colors duration-150 hover:bg-surface-soft"
                     >
                       <p className="text-sm font-semibold leading-5 text-foreground break-words">
                         {lead.title}

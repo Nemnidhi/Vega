@@ -8,9 +8,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-border/70 bg-surface/88 backdrop-blur",
-        "shadow-[0_16px_40px_rgba(7,24,44,0.08)]",
-        "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-20 before:bg-[linear-gradient(180deg,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_100%)]",
+        "rounded-xl border border-border bg-surface",
+        "shadow-sm",
         className,
       )}
       {...props}
@@ -22,7 +21,7 @@ export function CardHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative p-6 pb-1", className)} {...props} />;
+  return <div className={cn("p-5 pb-2", className)} {...props} />;
 }
 
 export function CardTitle({
@@ -53,12 +52,12 @@ export function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative p-6", className)} {...props} />;
+  return <div className={cn("p-5", className)} {...props} />;
 }
 
 export function CardFooter({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative p-6 pt-0", className)} {...props} />;
+  return <div className={cn("p-5 pt-0", className)} {...props} />;
 }

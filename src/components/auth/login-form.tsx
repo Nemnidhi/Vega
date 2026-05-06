@@ -22,7 +22,7 @@ interface LoginFormProps {
 export function LoginForm({
   lockedRole,
   title = "Sign In",
-  description = "Start a secure HRMS session with role-based access for admin, developer, and sales.",
+  description = "Start a secure Vega session with role-based access for admin, developer, and sales.",
 }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -66,7 +66,7 @@ export function LoginForm({
   }
 
   return (
-    <Card className="overflow-visible border-white/65 bg-white/92">
+    <Card className="overflow-visible">
       <CardHeader>
         <CardTitle className="text-2xl">{title}</CardTitle>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>

@@ -1,13 +1,11 @@
-import Link from "next/link";
-import { LogoutButton } from "@/components/auth/logout-button";
 import { UniversalChat } from "@/components/chat/universal-chat";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LOGIN_ROLES, getStaffHomeRoute } from "@/lib/auth/constants";
+import { DashboardTopNav } from "@/components/dashboard/top-nav";
+import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
+import type { UserRole } from "@/types/user";
 
 export const dynamic = "force-dynamic";
 
@@ -38,32 +36,10 @@ export default async function ChatPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1300px] space-y-6 p-4 md:p-7 lg:p-8">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle>Universal Chat</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Team members can chat with each other.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href={getStaffHomeRoute(loginRole)}>
-                <Button variant="secondary" size="sm">
-                  Back
-                </Button>
-              </Link>
-              <LogoutButton redirectTo="/login" />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Signed in as {session.fullName ?? session.email} ({session.role.replaceAll("_", " ")}
-            )
-          </p>
-        </CardContent>
-      </Card>
+      <DashboardTopNav
+        role={loginRole as UserRole}
+        userLabel={session.fullName ?? session.email}
+      />
 
       <UniversalChat
         currentUserId={session.userId}
