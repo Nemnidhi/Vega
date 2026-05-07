@@ -24,6 +24,22 @@ type TaskAssignmentEmailInput = {
   requestHeaders?: Headers;
 };
 
+type TaskCompletionAlertEmailInput = {
+  adminEmail: string;
+  adminName?: string;
+  developerName?: string;
+  projectId: string;
+  projectTitle: string;
+  taskId: string;
+  taskTitle: string;
+  taskDescription?: string;
+  completedAt?: Date | string | null;
+  allProjectTasksCompleted?: boolean;
+  completionRate?: number;
+  requestOrigin?: string;
+  requestHeaders?: Headers;
+};
+
 type MailConfig = {
   host: string;
   port: number;
@@ -104,6 +120,7 @@ function firstHeaderValue(value: string | null) {
 }
 
 function getBaseUrl(input: { requestOrigin?: string; requestHeaders?: Headers }) {
+  const emailAppBaseUrl = normalizeBaseUrl(process.env.EMAIL_APP_BASE_URL);
   const appBaseUrl = normalizeBaseUrl(process.env.APP_BASE_URL);
   const publicAppUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
   const requestOrigin = normalizeBaseUrl(input.requestOrigin);
@@ -118,12 +135,12 @@ function getBaseUrl(input: { requestOrigin?: string; requestHeaders?: Headers })
     ? normalizeBaseUrl(`${forwardedProto}://${forwardedHost}`)
     : null;
 
-  const candidates = [appBaseUrl, publicAppUrl, forwardedOrigin, requestOrigin].filter(
+  const candidates = [emailAppBaseUrl, appBaseUrl, publicAppUrl, forwardedOrigin, requestOrigin].filter(
     (value): value is string => Boolean(value),
   );
   const nonLocalCandidate = candidates.find((value) => !isLocalhostUrl(value));
 
-  if (process.env.NODE_ENV === "production" && nonLocalCandidate) {
+  if (nonLocalCandidate) {
     return nonLocalCandidate;
   }
 
@@ -154,6 +171,22 @@ function compactText(value?: string | null) {
   }
 
   return value.trim().replace(/\s+/g, " ");
+}
+
+function formatCompletionTimestamp(value?: Date | string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 async function sendAssignmentEmail(input: {
@@ -282,6 +315,82 @@ export async function sendTaskAssignmentEmail(input: TaskAssignmentEmailInput) {
 
   return sendAssignmentEmail({
     to: input.developerEmail,
+    subject,
+    html,
+    text,
+  });
+}
+
+export async function sendTaskCompletionAlertEmailToAdmin(
+  input: TaskCompletionAlertEmailInput,
+) {
+  const baseUrl = getBaseUrl({
+    requestOrigin: input.requestOrigin,
+    requestHeaders: input.requestHeaders,
+  });
+  const taskLink = getProjectLink(baseUrl, input.projectId, input.taskId);
+  const adminName = compactText(input.adminName) || "Admin";
+  const developerName = compactText(input.developerName) || "Developer";
+  const projectTitle = compactText(input.projectTitle);
+  const taskTitle = compactText(input.taskTitle);
+  const taskDescription = compactText(input.taskDescription);
+  const completedAt = formatCompletionTimestamp(input.completedAt);
+  const completionRate =
+    typeof input.completionRate === "number" && Number.isFinite(input.completionRate)
+      ? Math.max(0, Math.min(100, Math.round(input.completionRate)))
+      : null;
+
+  const subject = input.allProjectTasksCompleted
+    ? `Project tasks completed: ${projectTitle}`
+    : `Task completed: ${taskTitle}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
+      <p>Hi ${escapeHtml(adminName)},</p>
+      <p>${escapeHtml(developerName)} marked a task as completed.</p>
+      <p><strong>Project:</strong> ${escapeHtml(projectTitle)}</p>
+      <p><strong>Task:</strong> ${escapeHtml(taskTitle)}</p>
+      ${
+        taskDescription
+          ? `<p><strong>Task overview:</strong> ${escapeHtml(taskDescription)}</p>`
+          : ""
+      }
+      ${completedAt ? `<p><strong>Completed at:</strong> ${escapeHtml(completedAt)}</p>` : ""}
+      ${
+        completionRate !== null
+          ? `<p><strong>Project task completion:</strong> ${completionRate}%</p>`
+          : ""
+      }
+      ${
+        input.allProjectTasksCompleted
+          ? `<p style="color: #166534;"><strong>All tasks in this project are now completed.</strong></p>`
+          : ""
+      }
+      <p>
+        <a href="${escapeHtml(taskLink)}" style="color: #1d4ed8; font-weight: 600;">
+          Review Task
+        </a>
+      </p>
+      <p style="color: #4b5563; font-size: 12px;">If the link does not open, copy this URL: ${escapeHtml(taskLink)}</p>
+    </div>
+  `;
+
+  const text = [
+    `Hi ${adminName},`,
+    "",
+    `${developerName} marked a task as completed.`,
+    `Project: ${projectTitle}`,
+    `Task: ${taskTitle}`,
+    taskDescription ? `Task overview: ${taskDescription}` : "",
+    completedAt ? `Completed at: ${completedAt}` : "",
+    completionRate !== null ? `Project task completion: ${completionRate}%` : "",
+    input.allProjectTasksCompleted ? "All tasks in this project are now completed." : "",
+    `Review Task: ${taskLink}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return sendAssignmentEmail({
+    to: input.adminEmail,
     subject,
     html,
     text,
