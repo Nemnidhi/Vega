@@ -17,6 +17,12 @@ export interface Client extends BaseDocument {
   address?: ClientAddress;
   companySize?: string;
   industry?: string;
+  preferredCommunication?: "email" | "phone" | "whatsapp" | "slack" | "meetings";
+  requirementSummary?: string;
+  requirementDetails?: string;
+  onboardingStatus?: "pending" | "in_progress" | "completed";
+  onboardedByUserId?: ObjectId | null;
+  onboardedAt?: string | null;
   leadId?: ObjectId | null;
   accountManagerId?: ObjectId | null;
 }

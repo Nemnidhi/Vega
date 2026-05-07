@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const statusOptions = [
   "new",
@@ -23,6 +24,7 @@ export function LeadStatusSelect({
   leadId: string;
   currentStatus: string;
 }) {
+  const router = useRouter();
   const [status, setStatus] = useState(currentStatus);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +44,7 @@ export function LeadStatusSelect({
       if (!response.ok || !data.success) {
         throw new Error(data?.error?.message ?? "Status update failed");
       }
-      window.location.reload();
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Status update failed");
     } finally {
@@ -56,7 +58,7 @@ export function LeadStatusSelect({
         value={status}
         disabled={loading}
         onChange={(event) => updateStatus(event.target.value)}
-        className="h-9 rounded-md border border-border bg-white px-2 text-xs"
+        className="h-10 min-w-[11rem] rounded-md border border-border bg-white px-3 text-sm"
       >
         {statusOptions.map((option) => (
           <option key={option} value={option}>

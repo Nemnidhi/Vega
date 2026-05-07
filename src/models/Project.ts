@@ -1,5 +1,30 @@
 import { model, models, Schema, type InferSchemaType } from "mongoose";
 
+const taskHistorySchema = new Schema(
+  {
+    action: {
+      type: String,
+      enum: ["assigned", "status_changed", "completion_alert_acknowledged"],
+      required: true,
+    },
+    actorId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    assignedDeveloperId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    fromStatus: {
+      type: String,
+      enum: ["todo", "in_progress", "blocked", "done"],
+      default: null,
+    },
+    toStatus: {
+      type: String,
+      enum: ["todo", "in_progress", "blocked", "done"],
+      default: null,
+    },
+    note: { type: String, trim: true, maxlength: 300, default: "" },
+    changedAt: { type: Date, default: Date.now, required: true },
+  },
+  { _id: false },
+);
+
 const projectTaskSchema = new Schema(
   {
     title: {
@@ -27,6 +52,7 @@ const projectTaskSchema = new Schema(
     completedAt: { type: Date, default: null },
     completedByDeveloperId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     completionAlertPending: { type: Boolean, default: false, index: true },
+    history: { type: [taskHistorySchema], default: [] },
   },
   {
     timestamps: true,
@@ -73,7 +99,11 @@ export type ProjectDocument = InferSchemaType<typeof projectSchema>;
 const existingProjectModel = models.Project;
 
 // In dev HMR, an older cached model can miss newly added task fields and break populate().
-if (existingProjectModel && !existingProjectModel.schema.path("tasks.completedByDeveloperId")) {
+if (
+  existingProjectModel &&
+  (!existingProjectModel.schema.path("tasks.completedByDeveloperId") ||
+    !existingProjectModel.schema.path("tasks.history"))
+) {
   delete models.Project;
 }
 

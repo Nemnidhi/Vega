@@ -4,17 +4,16 @@ import { createProjectSchema } from "@/lib/validation/project";
 import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { ProjectModel, UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
+import { sendProjectAssignmentEmail } from "@/lib/notifications/assignment-email";
 
-async function ensureDeveloperExists(userId: string) {
-  const developer = await UserModel.findOne({
+async function getActiveDeveloper(userId: string) {
+  return UserModel.findOne({
     _id: userId,
     role: "developer",
     status: "active",
   })
-    .select("_id")
+    .select("_id fullName email")
     .lean();
-
-  return Boolean(developer);
 }
 
 export async function GET() {
@@ -40,6 +39,8 @@ export async function GET() {
       .populate("tasks.assignedDeveloperId", "fullName email role status")
       .populate("tasks.completedByDeveloperId", "fullName email role status")
       .populate("tasks.createdBy", "fullName email role")
+      .populate("tasks.history.actorId", "fullName email role status")
+      .populate("tasks.history.assignedDeveloperId", "fullName email role status")
       .lean();
 
     return ok(serializeForJson(projects));
@@ -55,10 +56,11 @@ export async function POST(request: Request) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageProjectAssignments });
 
     const payload = createProjectSchema.parse(await request.json());
-    const hasDeveloper = await ensureDeveloperExists(payload.assignedDeveloperId);
-    if (!hasDeveloper) {
+    const developer = await getActiveDeveloper(payload.assignedDeveloperId);
+    if (!developer) {
       return fail("Assigned developer not found or inactive.", 404);
     }
+    const actorUser = await UserModel.findById(actor.userId).select("fullName email").lean();
 
     const project = await ProjectModel.create({
       title: payload.title,
@@ -69,12 +71,32 @@ export async function POST(request: Request) {
       tasks: [],
     });
 
+    try {
+      const emailResult = await sendProjectAssignmentEmail({
+        developerEmail: developer.email,
+        developerName: developer.fullName,
+        assignedByName: actorUser?.fullName ?? actorUser?.email ?? "Admin",
+        projectId: String(project._id),
+        projectTitle: project.title,
+        projectDescription: project.description,
+        requestOrigin: new URL(request.url).origin,
+        requestHeaders: request.headers,
+      });
+      if (!emailResult.sent) {
+        console.warn("Project assignment email skipped due to missing SMTP configuration.");
+      }
+    } catch (notificationError) {
+      console.error("Failed to send project assignment email.", notificationError);
+    }
+
     const hydrated = await ProjectModel.findById(project._id)
       .populate("assignedDeveloperId", "fullName email role status")
       .populate("createdBy", "fullName email role")
       .populate("tasks.assignedDeveloperId", "fullName email role status")
       .populate("tasks.completedByDeveloperId", "fullName email role status")
       .populate("tasks.createdBy", "fullName email role")
+      .populate("tasks.history.actorId", "fullName email role status")
+      .populate("tasks.history.assignedDeveloperId", "fullName email role status")
       .lean();
 
     return ok(serializeForJson(hydrated), { status: 201 });

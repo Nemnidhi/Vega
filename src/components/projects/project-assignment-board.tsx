@@ -16,6 +16,16 @@ type UserRef = {
   status?: string;
 };
 
+type TaskHistoryItem = {
+  action: "assigned" | "status_changed" | "completion_alert_acknowledged";
+  actorId?: UserRef | string | null;
+  assignedDeveloperId?: UserRef | string | null;
+  fromStatus?: "todo" | "in_progress" | "blocked" | "done" | null;
+  toStatus?: "todo" | "in_progress" | "blocked" | "done" | null;
+  note?: string;
+  changedAt?: string | null;
+};
+
 type TaskItem = {
   _id: string;
   title: string;
@@ -26,6 +36,7 @@ type TaskItem = {
   completedAt?: string | null;
   completionAlertPending?: boolean;
   createdAt?: string | null;
+  history?: TaskHistoryItem[];
 };
 
 type ProjectStatus = "planned" | "in_progress" | "on_hold" | "completed";
@@ -82,12 +93,25 @@ function formatStatus(status: string) {
   return status.replaceAll("_", " ");
 }
 
+function formatHistoryAction(action: TaskHistoryItem["action"]) {
+  if (action === "assigned") return "Assigned";
+  if (action === "status_changed") return "Status Changed";
+  return "Alert Acknowledged";
+}
+
 function formatDate(value?: string | null) {
   if (!value) {
     return "--";
   }
   return new Date(value).toLocaleString("en-IN");
 }
+
+const taskStatusFlowOrder: Array<TaskItem["status"]> = [
+  "todo",
+  "in_progress",
+  "blocked",
+  "done",
+];
 
 function getUserId(value: UserRef | string | null | undefined) {
   if (!value) {
@@ -128,6 +152,26 @@ function getProjectTaskSummary(project: ProjectItem) {
   };
 }
 
+function dedupeProjectsById(projects: ProjectItem[]) {
+  const projectMap = new Map<string, ProjectItem>();
+
+  for (const project of projects) {
+    const existing = projectMap.get(project._id);
+    if (!existing) {
+      projectMap.set(project._id, project);
+      continue;
+    }
+
+    const existingUpdatedAt = new Date(existing.updatedAt ?? 0).getTime();
+    const nextUpdatedAt = new Date(project.updatedAt ?? 0).getTime();
+    if (nextUpdatedAt >= existingUpdatedAt) {
+      projectMap.set(project._id, project);
+    }
+  }
+
+  return [...projectMap.values()];
+}
+
 export function ProjectAssignmentBoard({
   initialProjects,
   developerOptions,
@@ -141,7 +185,7 @@ export function ProjectAssignmentBoard({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useState(() => dedupeProjectsById(initialProjects));
   const [projectForm, setProjectForm] = useState({
     ...initialProjectForm,
     assignedDeveloperId: developerOptions[0]?._id ?? "",
@@ -364,7 +408,7 @@ export function ProjectAssignmentBoard({
         }
 
         pendingAlertKeysRef.current = nextAlertKeys;
-        setProjects(nextProjects);
+        setProjects(dedupeProjectsById(nextProjects));
       } catch {
         // ignore polling errors and retry on next interval
       }
@@ -447,9 +491,14 @@ export function ProjectAssignmentBoard({
   }
 
   function syncProject(updatedProject: ProjectItem) {
-    setProjects((prev) =>
-      prev.map((project) => (project._id === updatedProject._id ? updatedProject : project)),
-    );
+    setProjects((prev) => {
+      const exists = prev.some((project) => project._id === updatedProject._id);
+      const nextProjects = exists
+        ? prev.map((project) => (project._id === updatedProject._id ? updatedProject : project))
+        : [updatedProject, ...prev];
+
+      return dedupeProjectsById(nextProjects);
+    });
   }
 
   async function createProject(event: FormEvent<HTMLFormElement>) {
@@ -470,7 +519,7 @@ export function ProjectAssignmentBoard({
       }
 
       const createdProject = data.data as ProjectItem;
-      setProjects((prev) => [createdProject, ...prev]);
+      setProjects((prev) => dedupeProjectsById([createdProject, ...prev]));
       setSelectedProjectId(createdProject._id);
       setProjectForm({
         ...initialProjectForm,
@@ -625,7 +674,7 @@ export function ProjectAssignmentBoard({
               const isMarkingCompleted = completeTaskLoadingMap[loadingKey] ?? false;
 
               return (
-                <tr key={task._id} className="border-b border-border/70">
+                <tr id={`task-${task._id}`} key={task._id} className="border-b border-border/70">
                   <td className="px-2 py-3">
                     <p className="font-semibold text-foreground">{task.title}</p>
                     {task.description ? (
@@ -678,6 +727,212 @@ export function ProjectAssignmentBoard({
             ) : null}
           </tbody>
         </table>
+      </div>
+    );
+  }
+
+  function renderTaskFlowchart(project: ProjectItem) {
+    const orderedTasks = [...project.tasks].sort((left, right) => {
+      const leftTime = new Date(left.createdAt ?? 0).getTime();
+      const rightTime = new Date(right.createdAt ?? 0).getTime();
+      return leftTime - rightTime;
+    });
+
+    if (orderedTasks.length === 0) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-surface-soft/65 px-3 py-5 text-sm text-muted-foreground">
+          No tasks assigned yet. Flowchart will build automatically as soon as tasks are assigned.
+        </div>
+      );
+    }
+
+    function getStatusTone(status: TaskItem["status"]) {
+      if (status === "done") return "border-[#b8d7c3] bg-[#edf7f0] text-[#2f6a42]";
+      if (status === "blocked") return "border-danger/40 bg-danger/10 text-danger";
+      if (status === "in_progress") return "border-accent/40 bg-accent/10 text-accent-strong";
+      return "border-[#dec39d] bg-[#f8f1e4] text-[#8a5a1f]";
+    }
+
+    function getTaskProgress(status: TaskItem["status"]) {
+      const statusIndex = taskStatusFlowOrder.indexOf(status);
+      if (statusIndex < 0) return 0;
+      return Math.round((statusIndex / (taskStatusFlowOrder.length - 1)) * 100);
+    }
+
+    return (
+      <div className="space-y-4 rounded-xl border border-border bg-white p-4 shadow-sm">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Task Flowchart</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            As tasks get assigned, this flow builds step-by-step. Admin can trace each transition.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-surface p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Assignment Graph
+          </p>
+          <div className="no-scrollbar mt-2 overflow-x-auto pb-2">
+            <div className="relative flex min-w-max items-center gap-3 px-1 py-2">
+              <span className="pointer-events-none absolute left-4 right-4 top-1/2 h-px bg-border" />
+              {orderedTasks.map((task, index) => {
+                const isLast = index === orderedTasks.length - 1;
+                return (
+                  <div key={`flow-${task._id}`} className="relative z-10 flex items-center gap-3">
+                    <div className="min-w-[190px] rounded-lg border border-border bg-white p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent/30 bg-accent/10 px-1 text-[10px] font-semibold text-accent-strong">
+                          {index + 1}
+                        </span>
+                        <span
+                          className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getStatusTone(task.status)}`}
+                        >
+                          {formatStatus(task.status)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-foreground">{task.title}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {resolveUserLabel(task.assignedDeveloperId)}
+                      </p>
+                    </div>
+                    {!isLast ? (
+                      <span className="inline-flex rounded-full border border-border bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm">
+                        -&gt;
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {orderedTasks.map((task, index) => {
+            const history = [...(task.history ?? [])].sort((left, right) => {
+              const leftTime = new Date(left.changedAt ?? 0).getTime();
+              const rightTime = new Date(right.changedAt ?? 0).getTime();
+              return leftTime - rightTime;
+            });
+
+            const visitedStatuses = new Set<TaskItem["status"]>(["todo", task.status]);
+            for (const entry of history) {
+              if (entry.fromStatus) {
+                visitedStatuses.add(entry.fromStatus);
+              }
+              if (entry.toStatus) {
+                visitedStatuses.add(entry.toStatus);
+              }
+            }
+
+            const taskProgress = getTaskProgress(task.status);
+
+            return (
+              <div key={task._id} className="rounded-xl border border-border bg-surface p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Step {index + 1}: {task.title}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Assigned to: {resolveUserLabel(task.assignedDeveloperId)}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${getStatusTone(task.status)}`}
+                  >
+                    {formatStatus(task.status)}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Status Journey Progress</span>
+                    <span className="font-semibold text-foreground">{taskProgress}%</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-accent transition-all"
+                      style={{ width: `${taskProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 overflow-x-auto">
+                  <div className="flex min-w-max items-center gap-2">
+                    {taskStatusFlowOrder.map((stage, stageIndex) => {
+                      const isCurrent = task.status === stage;
+                      const isVisited = visitedStatuses.has(stage);
+
+                      const stageClass = isCurrent
+                        ? getStatusTone(stage)
+                        : isVisited
+                          ? "border-border bg-white text-foreground"
+                          : "border-border/50 bg-surface-soft text-muted-foreground";
+
+                      return (
+                        <div key={`${task._id}-${stage}`} className="flex items-center gap-2 text-center">
+                          <span
+                            className={`inline-flex min-w-[110px] items-center justify-center rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${stageClass}`}
+                          >
+                            {formatStatus(stage)}
+                          </span>
+                          {stageIndex < taskStatusFlowOrder.length - 1 ? (
+                            <span className="inline-flex rounded-full border border-border bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              -&gt;
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                  <p>Created: {formatDate(task.createdAt)}</p>
+                  {task.completedAt ? <p>Completed: {formatDate(task.completedAt)}</p> : null}
+                  {task.completionAlertPending ? <p>Pending admin alert</p> : null}
+                </div>
+
+                {canManage ? (
+                  <div className="mt-3 rounded-md border border-border bg-white p-2.5">
+                    <p className="text-xs font-semibold text-foreground">Trace Log</p>
+                    {history.length === 0 ? (
+                      <p className="mt-1 text-xs text-muted-foreground">No trace entries yet.</p>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        {history.map((entry, historyIndex) => (
+                          <div
+                            key={`${task._id}-history-${historyIndex}`}
+                            className="relative border-l border-border pl-3 text-xs text-muted-foreground"
+                          >
+                            <span className="absolute -left-[5px] top-1 h-2 w-2 rounded-full bg-accent" />
+                            <p className="font-medium text-foreground">
+                              {formatHistoryAction(entry.action)} | {formatDate(entry.changedAt)}
+                            </p>
+                            <p>
+                              Actor: {resolveUserLabel(entry.actorId)}{" "}
+                              {entry.assignedDeveloperId
+                                ? `| Assignee: ${resolveUserLabel(entry.assignedDeveloperId)}`
+                                : ""}
+                            </p>
+                            {entry.fromStatus || entry.toStatus ? (
+                              <p>
+                                Status: {formatStatus(entry.fromStatus ?? "todo")} {"->"}{" "}
+                                {formatStatus(entry.toStatus ?? task.status)}
+                              </p>
+                            ) : null}
+                            {entry.note ? <p>Note: {entry.note}</p> : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -872,6 +1127,7 @@ export function ProjectAssignmentBoard({
           ) : null}
 
           {renderTaskTable(project)}
+          {renderTaskFlowchart(project)}
         </CardContent>
       </Card>
     );

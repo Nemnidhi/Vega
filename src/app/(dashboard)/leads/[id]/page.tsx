@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
+import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
@@ -85,6 +86,12 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               <span className="text-muted-foreground">Status:</span> {" "}
               {lead.status.replaceAll("_", " ")}
             </p>
+            <div className="space-y-1">
+              <p>
+                <span className="text-muted-foreground">Change Status:</span>
+              </p>
+              <LeadStatusSelect leadId={lead._id} currentStatus={lead.status} />
+            </div>
             <p>
               <span className="text-muted-foreground">Description:</span> {lead.description}
             </p>

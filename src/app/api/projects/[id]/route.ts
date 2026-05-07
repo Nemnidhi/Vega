@@ -32,6 +32,8 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
       .populate("tasks.assignedDeveloperId", "fullName email role status")
       .populate("tasks.completedByDeveloperId", "fullName email role status")
       .populate("tasks.createdBy", "fullName email role")
+      .populate("tasks.history.actorId", "fullName email role status")
+      .populate("tasks.history.assignedDeveloperId", "fullName email role status")
       .lean();
 
     return ok(serializeForJson(hydrated));

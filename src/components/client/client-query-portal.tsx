@@ -18,10 +18,66 @@ type QueryRecord = {
   updatedAt: string;
 };
 
+type OnboardingChecklist = {
+  accountSetup: boolean;
+  businessProfile: boolean;
+  requirementsShared: boolean;
+  documentsShared: boolean;
+  kickoffCallBooked: boolean;
+};
+
+type OnboardingRecord = {
+  companyName: string;
+  primaryGoal: string;
+  kickoffDate: string | null;
+  preferredCommunication: "email" | "phone" | "whatsapp" | "slack" | "meetings";
+  billingContactEmail: string;
+  projectBrief: string;
+  onboardingNotes: string;
+  checklist: OnboardingChecklist;
+};
+
+type OnboardingFormState = Omit<OnboardingRecord, "kickoffDate"> & {
+  kickoffDate: string;
+};
+
 interface ClientQueryPortalProps {
   initialQueries: QueryRecord[];
+  initialOnboarding: OnboardingRecord;
   clientName: string;
 }
+
+const onboardingSteps: Array<{
+  key: keyof OnboardingChecklist;
+  label: string;
+  help: string;
+}> = [
+  {
+    key: "accountSetup",
+    label: "Account and access confirmed",
+    help: "Ensure your login and portal access are working.",
+  },
+  {
+    key: "businessProfile",
+    label: "Business profile shared",
+    help: "Add your business context and main contacts.",
+  },
+  {
+    key: "requirementsShared",
+    label: "Requirements submitted",
+    help: "Provide goals, scope, and must-have expectations.",
+  },
+  {
+    key: "documentsShared",
+    label: "Documents uploaded",
+    help: "Share supporting files and reference documents.",
+  },
+  {
+    key: "kickoffCallBooked",
+    label: "Kickoff call scheduled",
+    help: "Finalize kickoff date and communication process.",
+  },
+];
 
 function statusVariant(status: QueryRecord["status"]) {
   if (status === "resolved") return "success" as const;
@@ -43,8 +99,23 @@ function formatDateTime(value: string) {
   return new Date(value).toLocaleString("en-IN");
 }
 
-export function ClientQueryPortal({ initialQueries, clientName }: ClientQueryPortalProps) {
+function toDateInputValue(value: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+}
+
+export function ClientQueryPortal({
+  initialQueries,
+  initialOnboarding,
+  clientName,
+}: ClientQueryPortalProps) {
   const [queries, setQueries] = useState(initialQueries);
+  const [onboarding, setOnboarding] = useState<OnboardingFormState>({
+    ...initialOnboarding,
+    kickoffDate: toDateInputValue(initialOnboarding.kickoffDate),
+  });
   const [projectName, setProjectName] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -54,6 +125,8 @@ export function ClientQueryPortal({ initialQueries, clientName }: ClientQueryPor
   const [searchQuery, setSearchQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [savingOnboarding, setSavingOnboarding] = useState(false);
+  const [onboardingMessage, setOnboardingMessage] = useState("");
   const [formMessage, setFormMessage] = useState("");
 
   const canSubmit = useMemo(
@@ -87,6 +160,72 @@ export function ClientQueryPortal({ initialQueries, clientName }: ClientQueryPor
       return statusMatch && priorityMatch && searchMatch;
     });
   }, [priorityFilter, queries, searchQuery, statusFilter]);
+
+  const onboardingCompletedCount = useMemo(
+    () =>
+      onboardingSteps.filter((item) => onboarding.checklist[item.key]).length,
+    [onboarding.checklist],
+  );
+
+  const onboardingProgress = useMemo(
+    () => Math.round((onboardingCompletedCount / onboardingSteps.length) * 100),
+    [onboardingCompletedCount],
+  );
+
+  const onboardingStatus = useMemo(() => {
+    if (onboardingCompletedCount === 0) {
+      return "Not Started";
+    }
+    if (onboardingCompletedCount === onboardingSteps.length) {
+      return "Completed";
+    }
+    return "In Progress";
+  }, [onboardingCompletedCount]);
+
+  function toggleOnboardingStep(step: keyof OnboardingChecklist) {
+    setOnboarding((prev) => ({
+      ...prev,
+      checklist: {
+        ...prev.checklist,
+        [step]: !prev.checklist[step],
+      },
+    }));
+  }
+
+  async function saveOnboarding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingOnboarding(true);
+    setOnboardingMessage("");
+
+    try {
+      const response = await fetch("/api/client/onboarding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...onboarding,
+          kickoffDate: onboarding.kickoffDate || null,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error?.message ?? "Failed to save onboarding details");
+      }
+
+      const saved = data.data as OnboardingRecord;
+      setOnboarding({
+        ...saved,
+        kickoffDate: toDateInputValue(saved.kickoffDate),
+      });
+      setOnboardingMessage("Onboarding details saved.");
+    } catch (error) {
+      setOnboardingMessage(
+        error instanceof Error ? error.message : "Failed to save onboarding details",
+      );
+    } finally {
+      setSavingOnboarding(false);
+    }
+  }
 
   async function refreshQueries() {
     setRefreshing(true);
@@ -157,6 +296,139 @@ export function ClientQueryPortal({ initialQueries, clientName }: ClientQueryPor
             <p className="text-xs text-muted-foreground">Resolved</p>
             <p className="mt-1 text-2xl font-semibold">{stats.resolved}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Client Onboarding</CardTitle>
+            <Badge
+              variant={
+                onboardingProgress === 100
+                  ? "success"
+                  : onboardingProgress === 0
+                    ? "neutral"
+                    : "warning"
+              }
+            >
+              {onboardingStatus}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="h-2 overflow-hidden rounded-full bg-[#ece8de]">
+              <div
+                className="h-full bg-accent transition-[width] duration-200"
+                style={{ width: `${onboardingProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {onboardingCompletedCount}/{onboardingSteps.length} onboarding steps completed.
+            </p>
+          </div>
+
+          <form className="grid gap-3" onSubmit={saveOnboarding}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                value={onboarding.companyName}
+                onChange={(event) =>
+                  setOnboarding((prev) => ({ ...prev, companyName: event.target.value }))
+                }
+                placeholder="Company name"
+              />
+              <Input
+                value={onboarding.primaryGoal}
+                onChange={(event) =>
+                  setOnboarding((prev) => ({ ...prev, primaryGoal: event.target.value }))
+                }
+                placeholder="Primary onboarding goal"
+              />
+              <Input
+                type="date"
+                value={onboarding.kickoffDate}
+                onChange={(event) =>
+                  setOnboarding((prev) => ({ ...prev, kickoffDate: event.target.value }))
+                }
+              />
+              <select
+                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+                value={onboarding.preferredCommunication}
+                onChange={(event) =>
+                  setOnboarding((prev) => ({
+                    ...prev,
+                    preferredCommunication: event.target.value as OnboardingFormState["preferredCommunication"],
+                  }))
+                }
+              >
+                <option value="email">Email</option>
+                <option value="phone">Phone Call</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="slack">Slack</option>
+                <option value="meetings">Meetings</option>
+              </select>
+              <Input
+                type="email"
+                value={onboarding.billingContactEmail}
+                onChange={(event) =>
+                  setOnboarding((prev) => ({
+                    ...prev,
+                    billingContactEmail: event.target.value,
+                  }))
+                }
+                placeholder="Billing contact email"
+                className="md:col-span-2"
+              />
+            </div>
+
+            <Textarea
+              value={onboarding.projectBrief}
+              onChange={(event) =>
+                setOnboarding((prev) => ({ ...prev, projectBrief: event.target.value }))
+              }
+              placeholder="Project brief and onboarding context"
+            />
+            <Textarea
+              value={onboarding.onboardingNotes}
+              onChange={(event) =>
+                setOnboarding((prev) => ({ ...prev, onboardingNotes: event.target.value }))
+              }
+              placeholder="Notes for your onboarding manager"
+            />
+
+            <div className="rounded-xl border border-border bg-white p-3">
+              <p className="text-sm font-semibold">Onboarding Checklist</p>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {onboardingSteps.map((item) => (
+                  <label
+                    key={item.key}
+                    className="flex items-start gap-2 rounded-md border border-border p-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={onboarding.checklist[item.key]}
+                      onChange={() => toggleOnboardingStep(item.key)}
+                      className="mt-0.5 h-4 w-4 rounded border-border accent-accent"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-foreground">{item.label}</span>
+                      <span className="block text-xs text-muted-foreground">{item.help}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" disabled={savingOnboarding}>
+                {savingOnboarding ? "Saving..." : "Save Onboarding"}
+              </Button>
+              {onboardingMessage ? (
+                <p className="text-sm text-muted-foreground">{onboardingMessage}</p>
+              ) : null}
+            </div>
+          </form>
         </CardContent>
       </Card>
 

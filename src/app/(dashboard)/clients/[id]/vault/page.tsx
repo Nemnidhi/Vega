@@ -15,7 +15,19 @@ export default async function ClientVaultPage({ params }: { params: Params }) {
   const { id } = await params;
   const vault = await getClientVault(id);
   const data = vault as {
-    client: { legalName: string; primaryContactName: string; primaryContactEmail: string } | null;
+    client: {
+      legalName: string;
+      primaryContactName: string;
+      primaryContactEmail: string;
+      primaryContactPhone?: string;
+      industry?: string;
+      companySize?: string;
+      preferredCommunication?: "email" | "phone" | "whatsapp" | "slack" | "meetings";
+      requirementSummary?: string;
+      requirementDetails?: string;
+      onboardingStatus?: "pending" | "in_progress" | "completed";
+      onboardedAt?: string | null;
+    } | null;
     proposals: Array<{ _id: string; status: string; approvalStatus: string }>;
     scopes: Array<{ _id: string; isCompleted: boolean; signedAt?: string | null }>;
     changeOrders: Array<{ _id: string; approvalStatus: string; requestedFeature: string }>;
@@ -39,6 +51,42 @@ export default async function ClientVaultPage({ params }: { params: Params }) {
         <CardContent className="space-y-1 text-sm">
           <p>{data.client.primaryContactName}</p>
           <p className="text-muted-foreground">{data.client.primaryContactEmail}</p>
+          {data.client.primaryContactPhone ? (
+            <p className="text-muted-foreground">{data.client.primaryContactPhone}</p>
+          ) : null}
+          {data.client.onboardingStatus ? (
+            <Badge variant={data.client.onboardingStatus === "completed" ? "success" : "warning"}>
+              {data.client.onboardingStatus.replaceAll("_", " ")}
+            </Badge>
+          ) : null}
+          {data.client.onboardedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Onboarded on {new Date(data.client.onboardedAt).toLocaleDateString("en-IN")}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Onboarding Requirements</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {data.client.requirementSummary ? (
+            <p>{data.client.requirementSummary}</p>
+          ) : (
+            <p className="text-muted-foreground">Requirement summary not available.</p>
+          )}
+          {data.client.requirementDetails ? (
+            <p className="text-muted-foreground">{data.client.requirementDetails}</p>
+          ) : null}
+          <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+            <p>Industry: {data.client.industry ?? "Not set"}</p>
+            <p>Company size: {data.client.companySize ?? "Not set"}</p>
+            <p>
+              Preferred communication: {data.client.preferredCommunication ?? "Not set"}
+            </p>
+          </div>
         </CardContent>
       </Card>
 

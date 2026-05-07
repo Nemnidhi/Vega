@@ -3,10 +3,44 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { requireRoleAccess } from "@/lib/auth/role-access";
-import { ClientQueryModel } from "@/models";
+import { ClientOnboardingModel, ClientQueryModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 
 export const dynamic = "force-dynamic";
+
+type InitialOnboarding = {
+  companyName: string;
+  primaryGoal: string;
+  kickoffDate: string | null;
+  preferredCommunication: "email" | "phone" | "whatsapp" | "slack" | "meetings";
+  billingContactEmail: string;
+  projectBrief: string;
+  onboardingNotes: string;
+  checklist: {
+    accountSetup: boolean;
+    businessProfile: boolean;
+    requirementsShared: boolean;
+    documentsShared: boolean;
+    kickoffCallBooked: boolean;
+  };
+};
+
+const defaultOnboarding: InitialOnboarding = {
+  companyName: "",
+  primaryGoal: "",
+  kickoffDate: null,
+  preferredCommunication: "email",
+  billingContactEmail: "",
+  projectBrief: "",
+  onboardingNotes: "",
+  checklist: {
+    accountSetup: false,
+    businessProfile: false,
+    requirementsShared: false,
+    documentsShared: false,
+    kickoffCallBooked: false,
+  },
+};
 
 export default async function ClientQueriesPage() {
   const session = await requireRoleAccess(["client"], {
@@ -18,6 +52,9 @@ export default async function ClientQueriesPage() {
   const records = await ClientQueryModel.find({ raisedBy: session.userId })
     .sort({ createdAt: -1 })
     .lean();
+  const onboardingRecord = await ClientOnboardingModel.findOne({
+    clientUserId: session.userId,
+  }).lean();
 
   const initialQueries = serializeForJson(records) as Array<{
     _id: string;
@@ -29,6 +66,9 @@ export default async function ClientQueriesPage() {
     createdAt: string;
     updatedAt: string;
   }>;
+  const initialOnboarding = serializeForJson(
+    onboardingRecord ?? defaultOnboarding,
+  ) as InitialOnboarding;
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl space-y-6 p-4 md:p-7 lg:p-8">
@@ -53,6 +93,7 @@ export default async function ClientQueriesPage() {
 
       <ClientQueryPortal
         initialQueries={initialQueries}
+        initialOnboarding={initialOnboarding}
         clientName={session.fullName ?? session.email}
       />
     </main>

@@ -149,7 +149,9 @@ export async function getClientVault(clientId: string) {
   await connectToDatabase();
   const [client, proposals, scopes, changeOrders] = await Promise.all([
     ClientModel.findById(clientId)
-      .select("legalName primaryContactName primaryContactEmail")
+      .select(
+        "legalName primaryContactName primaryContactEmail primaryContactPhone industry companySize preferredCommunication requirementSummary requirementDetails onboardingStatus onboardedAt",
+      )
       .lean(),
     ProposalModel.find({ clientId })
       .sort({ updatedAt: -1 })
@@ -172,7 +174,9 @@ export async function getClients() {
   await connectToDatabase();
   const clients = await ClientModel.find({})
     .sort({ updatedAt: -1 })
-    .select("legalName primaryContactName primaryContactEmail")
+    .select(
+      "legalName primaryContactName primaryContactEmail primaryContactPhone preferredCommunication requirementSummary onboardingStatus onboardedAt",
+    )
     .lean();
   return serializeForJson(clients);
 }
@@ -215,6 +219,8 @@ export async function getProjectsForActor(actor: { role: UserRole; userId: strin
     .populate("tasks.assignedDeveloperId", "fullName email role status")
     .populate("tasks.completedByDeveloperId", "fullName email role status")
     .populate("tasks.createdBy", "fullName email role")
+    .populate("tasks.history.actorId", "fullName email role status")
+    .populate("tasks.history.assignedDeveloperId", "fullName email role status")
     .lean();
 
   return serializeForJson(projects);

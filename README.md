@@ -46,11 +46,18 @@ cp .env.example .env.local
 ```env
 NEXT_PUBLIC_APP_NAME=HRMS Command Center
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+APP_BASE_URL=https://your-live-domain.com
 MONGODB_URI=mongodb://127.0.0.1:27017/hrms
 MONGODB_DB_NAME=hrms
 AUTH_SECRET=replace-with-a-32-char-secret
 AUTH_TRUST_HOST=true
 LEAD_CAPTURE_ALLOWED_ORIGINS=https://nemnidhi.com,https://www.nemnidhi.com
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_USER=alerts@your-company.com
+SMTP_PASS=replace-with-smtp-password
+SMTP_FROM_EMAIL=alerts@your-company.com
+SMTP_FROM_NAME=HRMS Command Center
 ```
 
 4. Run app:
@@ -65,6 +72,9 @@ npm run dev
 npm run lint
 npm run build
 ```
+
+Project and task assignment emails are sent only when SMTP variables are configured.
+Use `APP_BASE_URL` as your live domain to ensure email links never point to localhost.
 
 ## Core Routes
 

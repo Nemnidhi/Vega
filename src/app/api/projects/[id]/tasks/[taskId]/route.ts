@@ -39,6 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
       }
     }
 
+    const previousStatus = task.status;
     task.status = payload.status;
     if (payload.status === "done") {
       task.completedAt = new Date();
@@ -55,6 +56,25 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
       task.completionAlertPending = false;
     }
 
+    if (!Array.isArray(task.history)) {
+      task.history = [];
+    }
+
+    if (previousStatus !== payload.status) {
+      task.history.push({
+        action: "status_changed",
+        actorId: actor.userId,
+        assignedDeveloperId: task.assignedDeveloperId,
+        fromStatus: previousStatus,
+        toStatus: payload.status,
+        note:
+          actor.role === "developer"
+            ? "Task marked as completed by assigned developer."
+            : "Task status updated by admin.",
+        changedAt: new Date(),
+      });
+    }
+
     await project.save();
 
     const hydrated = await ProjectModel.findById(project._id)
@@ -63,6 +83,8 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
       .populate("tasks.assignedDeveloperId", "fullName email role status")
       .populate("tasks.completedByDeveloperId", "fullName email role status")
       .populate("tasks.createdBy", "fullName email role")
+      .populate("tasks.history.actorId", "fullName email role status")
+      .populate("tasks.history.assignedDeveloperId", "fullName email role status")
       .lean();
 
     return ok(serializeForJson(hydrated));

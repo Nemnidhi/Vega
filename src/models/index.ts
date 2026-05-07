@@ -3,6 +3,7 @@ export { AttendanceModel } from "@/models/Attendance";
 export { ChatMessageModel } from "@/models/ChatMessage";
 export { ChangeOrderModel } from "@/models/ChangeOrder";
 export { ClientModel } from "@/models/Client";
+export { ClientOnboardingModel } from "@/models/ClientOnboarding";
 export { ClientQueryModel } from "@/models/ClientQuery";
 export { LeadModel } from "@/models/Lead";
 export { LeaveBalanceModel } from "@/models/LeaveBalance";
