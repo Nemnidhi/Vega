@@ -13,6 +13,8 @@
   --success: #2f6a42;
   --warning: #8a5a1f;
   --danger: #a43c35;
+  --app-font-sans: "Segoe UI", Inter, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --app-font-mono: "Cascadia Code", "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 @theme inline {
@@ -28,8 +30,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-sans: var(--font-space-grotesk);
-  --font-mono: var(--font-ibm-plex-mono);
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
 }
 
 * {

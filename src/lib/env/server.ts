@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const serverEnvSchema = z.object({
   MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
+  MONGODB_DIRECT_URI: z.string().optional(),
+  MONGODB_DNS_SERVERS: z.string().default("1.1.1.1,8.8.8.8"),
   MONGODB_DB_NAME: z.string().min(1, "MONGODB_DB_NAME is required"),
   AUTH_SECRET: z.string().min(16, "AUTH_SECRET must be at least 16 characters"),
   AUTH_TRUST_HOST: z.enum(["true", "false"]).default("true"),
