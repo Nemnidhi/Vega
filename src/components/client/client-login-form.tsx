@@ -41,15 +41,15 @@ export function ClientLoginForm() {
   }
 
   return (
-    <Card className="overflow-visible">
-      <CardHeader>
-        <CardTitle className="text-2xl">Client Login</CardTitle>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+    <Card className="overflow-visible border-border shadow-sm">
+      <CardHeader className="space-y-1 pb-4 sm:pb-6">
+        <CardTitle className="text-xl sm:text-2xl">Client Login</CardTitle>
+        <p className="text-sm leading-6 text-muted-foreground">
           Sign in to raise project queries and track responses.
         </p>
       </CardHeader>
       <CardContent>
-        <form className="space-y-4" onSubmit={login}>
+        <form className="space-y-3.5 sm:space-y-4" onSubmit={login}>
           <Input
             type="email"
             placeholder="client-email@company.com"
@@ -64,11 +64,11 @@ export function ClientLoginForm() {
             onChange={(event) => setPassword(event.target.value)}
             required
           />
-          <Button className="mt-2 w-full" type="submit" disabled={loading}>
+          <Button className="mt-1 w-full sm:mt-2" type="submit" disabled={loading}>
             {loading ? "Signing in..." : "Continue"}
           </Button>
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
-          <p className="text-sm text-muted-foreground">
+          {error ? <p className="text-sm leading-6 text-danger">{error}</p> : null}
+          <p className="text-sm leading-6 text-muted-foreground">
             No account yet?{" "}
             <Link href="/client/signup" className="font-medium text-accent hover:underline">
               Create client account

@@ -88,6 +88,7 @@ const leadSchema = new Schema(
 );
 
 leadSchema.index({ status: 1, updatedAt: -1 });
+leadSchema.index({ updatedAt: -1 });
 leadSchema.index({ priorityBand: 1, score: -1 });
 leadSchema.index({ sourceDomain: 1, createdAt: -1 });
 

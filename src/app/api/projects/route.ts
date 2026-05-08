@@ -1,3 +1,4 @@
+import { type NextRequest } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { createProjectSchema } from "@/lib/validation/project";
@@ -16,11 +17,36 @@ async function getActiveDeveloper(userId: string) {
     .lean();
 }
 
-export async function GET() {
+type ProjectPopulationQuery<TSelf> = {
+  populate(path: string, select: string): TSelf;
+};
+
+function applyProjectPopulation<T extends ProjectPopulationQuery<T>>(
+  query: T,
+  includeHistory: boolean,
+) {
+  let populated = query
+    .populate("assignedDeveloperId", "fullName email role status")
+    .populate("createdBy", "fullName email role")
+    .populate("tasks.assignedDeveloperId", "fullName email role status")
+    .populate("tasks.completedByDeveloperId", "fullName email role status")
+    .populate("tasks.createdBy", "fullName email role");
+
+  if (includeHistory) {
+    populated = populated
+      .populate("tasks.history.actorId", "fullName email role status")
+      .populate("tasks.history.assignedDeveloperId", "fullName email role status");
+  }
+
+  return populated;
+}
+
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: permissionRules.accessProjectAssignments });
+    const includeHistory = request.nextUrl.searchParams.get("includeHistory") !== "0";
 
     const query =
       actor.role === "developer"
@@ -32,16 +58,10 @@ export async function GET() {
           }
         : {};
 
-    const projects = await ProjectModel.find(query)
-      .sort({ updatedAt: -1 })
-      .populate("assignedDeveloperId", "fullName email role status")
-      .populate("createdBy", "fullName email role")
-      .populate("tasks.assignedDeveloperId", "fullName email role status")
-      .populate("tasks.completedByDeveloperId", "fullName email role status")
-      .populate("tasks.createdBy", "fullName email role")
-      .populate("tasks.history.actorId", "fullName email role status")
-      .populate("tasks.history.assignedDeveloperId", "fullName email role status")
-      .lean();
+    const projects = await applyProjectPopulation(
+      ProjectModel.find(query).sort({ updatedAt: -1 }),
+      includeHistory,
+    ).lean();
 
     return ok(serializeForJson(projects));
   } catch (error) {
@@ -89,15 +109,10 @@ export async function POST(request: Request) {
       console.error("Failed to send project assignment email.", notificationError);
     }
 
-    const hydrated = await ProjectModel.findById(project._id)
-      .populate("assignedDeveloperId", "fullName email role status")
-      .populate("createdBy", "fullName email role")
-      .populate("tasks.assignedDeveloperId", "fullName email role status")
-      .populate("tasks.completedByDeveloperId", "fullName email role status")
-      .populate("tasks.createdBy", "fullName email role")
-      .populate("tasks.history.actorId", "fullName email role status")
-      .populate("tasks.history.assignedDeveloperId", "fullName email role status")
-      .lean();
+    const hydrated = await applyProjectPopulation(
+      ProjectModel.findById(project._id),
+      true,
+    ).lean();
 
     return ok(serializeForJson(hydrated), { status: 201 });
   } catch (error) {

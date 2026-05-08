@@ -9,7 +9,7 @@ import { getStaffUsers } from "@/lib/dashboard/queries";
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
-  await requireRoleAccess(["admin"]);
+  const session = await requireRoleAccess(["admin"]);
 
   const users = (await getStaffUsers()) as Array<{
     _id: string;
@@ -35,9 +35,9 @@ export default async function UsersPage() {
     <section className="space-y-6">
       <DashboardHeader
         title="User Access"
-        subtitle="Admin-only staff access control for creating accounts and updating user credentials."
+        subtitle="Admin-only staff access control for creating, updating, and deleting staff users."
       />
-      <UserManagementPanel initialUsers={initialUsers} />
+      <UserManagementPanel initialUsers={initialUsers} currentUserId={session.userId} />
     </section>
   );
 }

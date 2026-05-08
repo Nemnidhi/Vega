@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,9 @@ interface UniversalChatProps {
   currentUserId: string;
   currentUserLabel: string;
   initialUsers: ChatUser[];
+  initialSelectedUserId?: string;
+  mobileMode?: "split" | "people" | "thread";
+  mobileBackHref?: string;
 }
 
 function userId(value: UserRef | string) {
@@ -68,9 +72,51 @@ function getDisplayName(user: { fullName?: string | null; email: string }) {
   return user.email;
 }
 
-export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }: UniversalChatProps) {
+function getUserInitial(value: { fullName?: string | null; email: string }) {
+  const source = value.fullName?.trim() || value.email.trim();
+  const parts = source
+    .split(" ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return "?";
+  }
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? "";
+  return `${first}${second}`.toUpperCase();
+}
+
+function SendIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 2 11 13" />
+      <path d="m22 2-7 20-4-9-9-4Z" />
+    </svg>
+  );
+}
+
+export function UniversalChat({
+  currentUserId,
+  currentUserLabel,
+  initialUsers,
+  initialSelectedUserId,
+  mobileMode = "split",
+  mobileBackHref = "/chat",
+}: UniversalChatProps) {
+  const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
-  const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?._id ?? "");
+  const [selectedUserId, setSelectedUserId] = useState(
+    initialSelectedUserId ?? initialUsers[0]?._id ?? "",
+  );
   const [messages, setMessages] = useState<ChatMessageRecord[]>([]);
   const [draftMessage, setDraftMessage] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -102,6 +148,7 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
   const [sending, setSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const threadEndRef = useRef<HTMLDivElement | null>(null);
+  const usersRefreshInFlightRef = useRef(false);
 
   const selectedUser = useMemo(
     () => users.find((item) => item._id === selectedUserId) ?? null,
@@ -131,6 +178,19 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
     setMessageLimit(100);
     setThreadSearchValue("");
   }, []);
+
+  const activateUser = useCallback(
+    (nextUserId: string) => {
+      const isPhoneViewport =
+        typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+      if (mobileMode === "people" && isPhoneViewport) {
+        router.push(`/chat/${nextUserId}`);
+        return;
+      }
+      selectUser(nextUserId);
+    },
+    [mobileMode, router, selectUser],
+  );
 
   const visibleUsers = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -167,15 +227,23 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
   }, [listMode, pinnedUserSet, roleFilter, searchValue, users]);
 
   const refreshUsers = useCallback(
-    async (showLoader = true) => {
+    async (
+      showLoader = true,
+      options?: { suppressErrors?: boolean; signal?: AbortSignal },
+    ) => {
+      if (usersRefreshInFlightRef.current) {
+        return;
+      }
       if (showLoader) {
         setRefreshingUsers(true);
       }
+      usersRefreshInFlightRef.current = true;
 
       try {
         const response = await fetch("/api/chat/users", {
           method: "GET",
           cache: "no-store",
+          signal: options?.signal,
         });
         const data = await response.json();
         if (!response.ok || !data.success) {
@@ -189,11 +257,21 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
         if (!selectedExists) {
           selectUser(nextUsers[0]?._id ?? "");
         }
+        if (!options?.suppressErrors) {
+          setErrorMessage("");
+        }
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        if (options?.suppressErrors) {
+          return;
+        }
         setErrorMessage(
           error instanceof Error ? error.message : "Failed to refresh chat users.",
         );
       } finally {
+        usersRefreshInFlightRef.current = false;
         if (showLoader) {
           setRefreshingUsers(false);
         }
@@ -203,7 +281,11 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
   );
 
   const loadMessages = useCallback(
-    async (targetUserId: string, showLoader = true) => {
+    async (
+      targetUserId: string,
+      showLoader = true,
+      options?: { markRead?: boolean; suppressErrors?: boolean; signal?: AbortSignal },
+    ) => {
       if (!targetUserId) {
         setMessages([]);
         return;
@@ -214,11 +296,13 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
       }
 
       try {
+        const markRead = options?.markRead === false ? "0" : "1";
         const response = await fetch(
-          `/api/chat/messages?with=${encodeURIComponent(targetUserId)}&limit=${messageLimit}`,
+          `/api/chat/messages?with=${encodeURIComponent(targetUserId)}&limit=${messageLimit}&markRead=${markRead}`,
           {
             method: "GET",
             cache: "no-store",
+            signal: options?.signal,
           },
         );
         const data = await response.json();
@@ -232,8 +316,16 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
             item._id === targetUserId ? { ...item, unreadCount: 0 } : item,
           ),
         );
-        setErrorMessage("");
+        if (!options?.suppressErrors) {
+          setErrorMessage("");
+        }
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        if (options?.suppressErrors) {
+          return;
+        }
         setErrorMessage(error instanceof Error ? error.message : "Failed to load messages.");
       } finally {
         if (showLoader) {
@@ -246,21 +338,49 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
 
   useEffect(() => {
     const loadTimer = setTimeout(() => {
-      void loadMessages(selectedUserId, true);
+      void loadMessages(selectedUserId, true, { markRead: true });
     }, 0);
 
     return () => clearTimeout(loadTimer);
   }, [loadMessages, selectedUserId]);
 
   useEffect(() => {
-    const pollTimer = setInterval(() => {
-      void refreshUsers(false);
-      if (selectedUserId) {
-        void loadMessages(selectedUserId, false);
-      }
-    }, 7000);
+    const pollIntervalMs = 12000;
+    let disposed = false;
+    const controller = new AbortController();
 
-    return () => clearInterval(pollTimer);
+    async function pollOnce() {
+      if (disposed) {
+        return;
+      }
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      await refreshUsers(false, {
+        suppressErrors: true,
+        signal: controller.signal,
+      });
+
+      if (selectedUserId) {
+        await loadMessages(selectedUserId, false, {
+          markRead: false,
+          suppressErrors: true,
+          signal: controller.signal,
+        });
+      }
+    }
+
+    void pollOnce();
+    const pollTimer = setInterval(() => {
+      void pollOnce();
+    }, pollIntervalMs);
+
+    return () => {
+      disposed = true;
+      controller.abort();
+      clearInterval(pollTimer);
+    };
   }, [loadMessages, refreshUsers, selectedUserId]);
 
   useEffect(() => {
@@ -277,6 +397,10 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
 
   const selectedUserPinned = selectedUser ? pinnedUserSet.has(selectedUser._id) : false;
   const canLoadOlderMessages = messageLimit < 200;
+  const showPeopleOnMobile = mobileMode !== "thread";
+  const showThreadOnMobile = mobileMode !== "people";
+  const whatsappMobilePeople = mobileMode === "people";
+  const whatsappMobileThread = mobileMode === "thread";
 
   function togglePinned(userIdToToggle: string) {
     setPinnedUserIds((previous) => {
@@ -336,12 +460,27 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
   }
 
   return (
-    <section className="grid gap-4 lg:h-[calc(100vh-11rem)] lg:grid-cols-[340px_minmax(0,1fr)]">
-      <Card className="flex flex-col overflow-hidden lg:h-full">
-        <CardHeader className="pb-3">
+    <section
+      className={cn(
+        "grid gap-4 lg:h-[calc(100vh-11rem)] lg:grid-cols-[340px_minmax(0,1fr)]",
+        whatsappMobilePeople || whatsappMobileThread
+          ? "h-[calc(100dvh-6.5rem)] gap-0 lg:gap-4"
+          : "",
+      )}
+    >
+      <Card
+        className={cn(
+          "overflow-hidden lg:h-full",
+          showPeopleOnMobile ? "flex flex-col" : "hidden lg:flex lg:flex-col",
+          whatsappMobilePeople
+            ? "h-full rounded-xl border border-border bg-surface shadow-sm lg:h-full"
+            : "",
+        )}
+      >
+        <CardHeader className={cn("pb-3", whatsappMobilePeople ? "border-b border-border bg-white" : "")}>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <CardTitle>People</CardTitle>
+              <CardTitle>Chats</CardTitle>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -364,8 +503,9 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
             placeholder="Search by name or role"
+            className="mt-2"
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className={cn("grid grid-cols-2 gap-2", whatsappMobilePeople ? "hidden lg:grid" : "")}>
             <select
               className="h-10 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
               value={roleFilter}
@@ -402,35 +542,51 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
                   <button
                     key={item._id}
                     type="button"
-                    onClick={() => selectUser(item._id)}
+                    onClick={() => activateUser(item._id)}
                     className={cn(
-                      "w-full rounded-2xl border px-3 py-2.5 text-left transition-all",
+                      "w-full px-3 py-2.5 text-left transition-all",
+                      whatsappMobilePeople
+                        ? "rounded-xl border border-border bg-white shadow-sm"
+                        : "rounded-2xl border",
                       isActive
-                        ? "border-accent/50 bg-accent-soft/70"
-                        : "border-border bg-white/75 hover:border-accent/40 hover:bg-white",
+                        ? whatsappMobilePeople
+                          ? "border-accent/50 bg-accent-soft/70"
+                          : "border-accent/50 bg-accent-soft/70"
+                        : whatsappMobilePeople
+                          ? "hover:bg-white"
+                          : "border-border bg-white/75 hover:border-accent/40 hover:bg-white",
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {getDisplayName(item)}
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={cn(
+                          "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                          whatsappMobilePeople
+                            ? "bg-accent/15 text-accent-strong"
+                            : "bg-surface-soft text-foreground",
+                        )}
+                      >
+                        {getUserInitial(item)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {getDisplayName(item)}
+                          </p>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {formatTimestamp(item.lastMessageAt)}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {item.lastMessage
+                            ? `${item.lastMessageFromSelf ? "You: " : ""}${item.lastMessage}`
+                            : "No messages yet"}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
-                        {isPinned ? <Badge variant="accent">PIN</Badge> : null}
+                        {isPinned && !whatsappMobilePeople ? <Badge variant="accent">PIN</Badge> : null}
                         {unreadCount > 0 ? <Badge variant="danger">{unreadCount}</Badge> : null}
                       </div>
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.lastMessage
-                          ? `${item.lastMessageFromSelf ? "You: " : ""}${item.lastMessage}`
-                          : "No messages yet"}
-                      </p>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {formatTimestamp(item.lastMessageAt)}
-                      </span>
                     </div>
                   </button>
                 );
@@ -440,28 +596,57 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
         </CardContent>
       </Card>
 
-      <Card className="flex flex-col overflow-hidden lg:h-full">
-        <CardHeader className="pb-3">
+      <Card
+        className={cn(
+          "overflow-hidden lg:h-full",
+          showThreadOnMobile ? "flex flex-col" : "hidden lg:flex lg:flex-col",
+          mobileMode === "thread"
+            ? "h-full rounded-xl border border-border bg-surface-soft shadow-sm sm:h-auto lg:h-full lg:bg-surface"
+            : undefined,
+        )}
+      >
+        <CardHeader className={cn("pb-3", whatsappMobileThread ? "border-b border-border bg-white" : "")}>
           {selectedUser ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle>{getDisplayName(selectedUser)}</CardTitle>
-                <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                  {selectedUser.role.replaceAll("_", " ")}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
+            whatsappMobileThread ? (
+              <div className="flex items-center gap-3">
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() => togglePinned(selectedUser._id)}
+                  className="h-9 w-9 shrink-0 rounded-full p-0"
+                  onClick={() => router.push(mobileBackHref)}
                 >
-                  {selectedUserPinned ? "Unpin Chat" : "Pin Chat"}
+                  <span aria-hidden="true">←</span>
+                  <span className="sr-only">Back to chats</span>
                 </Button>
-                <Badge variant="accent">Signed in as {currentUserLabel}</Badge>
+                <div className="min-w-0">
+                  <CardTitle className="truncate">{getDisplayName(selectedUser)}</CardTitle>
+                  <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-muted-foreground">
+                    {selectedUser.role.replaceAll("_", " ")}
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle>{getDisplayName(selectedUser)}</CardTitle>
+                  <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                    {selectedUser.role.replaceAll("_", " ")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => togglePinned(selectedUser._id)}
+                  >
+                    {selectedUserPinned ? "Unpin Chat" : "Pin Chat"}
+                  </Button>
+                  <Badge variant="accent">Signed in as {currentUserLabel}</Badge>
+                </div>
+              </div>
+            )
           ) : (
             <CardTitle>Choose a user to start chat</CardTitle>
           )}
@@ -469,13 +654,13 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
         <CardContent className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden pt-0">
           {errorMessage ? <p className="text-sm text-danger">{errorMessage}</p> : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className={cn("flex flex-wrap items-center justify-between gap-2", whatsappMobileThread ? "hidden lg:flex" : "")}>
             <Input
               value={threadSearchValue}
               onChange={(event) => setThreadSearchValue(event.target.value)}
               placeholder="Search in current chat messages"
               disabled={!selectedUser}
-              className="min-w-[240px] flex-1"
+              className="w-full flex-1 sm:min-w-[240px]"
             />
             <Button
               type="button"
@@ -484,11 +669,25 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
               onClick={() => setMessageLimit((previous) => Math.min(previous + 50, 200))}
               disabled={!selectedUser || loadingMessages || !canLoadOlderMessages}
             >
-              {canLoadOlderMessages ? `Load Older (${messageLimit}/200)` : "History Full"}
+              {canLoadOlderMessages ? (
+                <>
+                  <span className="sm:hidden">{`Older (${messageLimit}/200)`}</span>
+                  <span className="hidden sm:inline">{`Load Older (${messageLimit}/200)`}</span>
+                </>
+              ) : (
+                "History Full"
+              )}
             </Button>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border bg-white/65 p-3">
+          <div
+            className={cn(
+              "min-h-0 flex-1 space-y-2 overflow-y-auto p-3",
+              whatsappMobileThread
+                ? "rounded-none border-0 bg-surface-soft pb-2"
+                : "rounded-2xl border border-border bg-white/65",
+            )}
+          >
             {!selectedUser ? (
               <p className="text-sm text-muted-foreground">Select any user from left panel.</p>
             ) : loadingMessages ? (
@@ -515,9 +714,14 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
                       )}
                     >
                       <p className="whitespace-pre-wrap text-sm leading-6">{item.message}</p>
-                      <p className={cn("mt-1 text-[11px]", mine ? "text-white/85" : "text-muted-foreground")}>
+                      <p
+                        className={cn(
+                          "mt-1 text-[11px]",
+                          mine ? "text-white/85" : "text-muted-foreground",
+                        )}
+                      >
                         {formatTimestamp(item.createdAt)}
-                        {mine ? ` | ${item.readAt ? "Seen" : "Sent"}` : ""}
+                        {mine ? ` | ${item.readAt ? "✓✓" : "✓"}` : ""}
                       </p>
                     </div>
                   </div>
@@ -527,27 +731,51 @@ export function UniversalChat({ currentUserId, currentUserLabel, initialUsers }:
             <div ref={threadEndRef} />
           </div>
 
-          <form onSubmit={sendMessage} className="flex items-center gap-2">
-            <Textarea
-              value={draftMessage}
-              onChange={(event) => setDraftMessage(event.target.value)}
-              onKeyDown={handleDraftKeyDown}
-              placeholder={
-                selectedUser
-                  ? `Message ${getDisplayName(selectedUser)}...`
-                  : "Select a user first"
-              }
-              disabled={!selectedUser || sending}
-              className="h-12 min-h-12 flex-1 resize-none"
-              maxLength={2000}
-            />
-            <Button
-              type="submit"
-              className="shrink-0"
-              disabled={!selectedUser || sending || draftMessage.trim().length === 0}
-            >
-              {sending ? "Sending..." : "Send Message"}
-            </Button>
+          <form
+            onSubmit={sendMessage}
+            className={cn(
+              "sticky bottom-0 z-10 mt-auto pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80",
+              whatsappMobileThread
+                ? "border-0 bg-surface px-2 pb-2"
+                : "border-t border-border bg-white/95",
+            )}
+          >
+            <div className="flex items-end gap-2">
+              <Textarea
+                value={draftMessage}
+                onChange={(event) => setDraftMessage(event.target.value)}
+                onKeyDown={handleDraftKeyDown}
+                placeholder={
+                  selectedUser
+                    ? `Message ${getDisplayName(selectedUser)}...`
+                    : "Select a user first"
+                }
+                disabled={!selectedUser || sending}
+                className={cn(
+                  "min-h-12 flex-1 resize-none",
+                  whatsappMobileThread
+                    ? "h-11 rounded-full bg-white px-4 py-2 shadow-sm"
+                    : "h-12",
+                )}
+                maxLength={2000}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className={cn(
+                  "shrink-0 p-0",
+                  whatsappMobileThread
+                    ? "h-11 w-11 rounded-full border-0 bg-accent text-white hover:bg-accent-strong"
+                    : "h-12 w-12 rounded-xl",
+                )}
+                disabled={!selectedUser || sending || draftMessage.trim().length === 0}
+              >
+                <SendIcon />
+                <span className="sr-only">
+                  {sending ? "Sending message" : "Send message"}
+                </span>
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

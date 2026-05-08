@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const params = getChatThreadSchema.parse({
       with: request.nextUrl.searchParams.get("with"),
       limit: request.nextUrl.searchParams.get("limit") ?? undefined,
+      markRead: request.nextUrl.searchParams.get("markRead") ?? undefined,
     });
 
     if (params.with === actor.userId) {
@@ -35,14 +36,16 @@ export async function GET(request: NextRequest) {
       throw new Error("Chat user not found.");
     }
 
-    await ChatMessageModel.updateMany(
-      {
-        senderId: params.with,
-        recipientId: actor.userId,
-        readAt: null,
-      },
-      { $set: { readAt: new Date() } },
-    );
+    if (params.markRead) {
+      await ChatMessageModel.updateMany(
+        {
+          senderId: params.with,
+          recipientId: actor.userId,
+          readAt: null,
+        },
+        { $set: { readAt: new Date() } },
+      );
+    }
 
     const messages = await ChatMessageModel.find({
       $or: [
@@ -50,10 +53,9 @@ export async function GET(request: NextRequest) {
         { senderId: params.with, recipientId: actor.userId },
       ],
     })
+      .select("senderId recipientId message createdAt readAt")
       .sort({ createdAt: -1 })
       .limit(params.limit)
-      .populate("senderId", "fullName email role")
-      .populate("recipientId", "fullName email role")
       .lean();
 
     return ok(serializeForJson([...messages].reverse()));
@@ -93,12 +95,17 @@ export async function POST(request: Request) {
       message: payload.message,
     });
 
-    const hydrated = await ChatMessageModel.findById(created._id)
-      .populate("senderId", "fullName email role")
-      .populate("recipientId", "fullName email role")
-      .lean();
-
-    return ok(serializeForJson(hydrated), { status: 201 });
+    return ok(
+      serializeForJson({
+        _id: created._id,
+        senderId: created.senderId,
+        recipientId: created.recipientId,
+        message: created.message,
+        createdAt: created.createdAt,
+        readAt: created.readAt,
+      }),
+      { status: 201 },
+    );
   } catch (error) {
     return handleApiError(error);
   }

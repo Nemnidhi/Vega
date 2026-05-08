@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 
 interface LogoutButtonProps {
   redirectTo?: string;
+  className?: string;
 }
 
-export function LogoutButton({ redirectTo = "/admin" }: LogoutButtonProps) {
+export function LogoutButton({ redirectTo = "/admin", className }: LogoutButtonProps) {
   const router = useRouter();
 
   async function logout() {
@@ -17,7 +19,7 @@ export function LogoutButton({ redirectTo = "/admin" }: LogoutButtonProps) {
   }
 
   return (
-    <Button variant="secondary" size="sm" onClick={logout}>
+    <Button variant="secondary" size="sm" onClick={logout} className={cn(className)}>
       Logout
     </Button>
   );

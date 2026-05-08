@@ -71,17 +71,17 @@ export default async function ClientQueriesPage() {
   ) as InitialOnboarding;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-5xl space-y-6 p-4 md:p-7 lg:p-8">
+    <main className="mx-auto min-h-screen w-full max-w-5xl space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-7 lg:p-8">
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Client Query Portal</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 Signed in as {session.fullName ?? session.email}
               </p>
             </div>
-            <LogoutButton redirectTo="/client/login" />
+            <LogoutButton redirectTo="/client/login" className="w-full sm:w-auto" />
           </div>
         </CardHeader>
         <CardContent>

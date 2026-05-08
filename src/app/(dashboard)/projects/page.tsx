@@ -41,7 +41,7 @@ export default async function ProjectsPage() {
     getProjectsForActor({
       role: session.role,
       userId: session.userId,
-    }),
+    }, { includeHistory: false }),
     session.role === "admin" ? getDevelopers() : Promise.resolve([]),
   ]);
 

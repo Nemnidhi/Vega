@@ -274,10 +274,10 @@ export function ClientQueryPortal({
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Welcome, {clientName}</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl">Welcome, {clientName}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border border-border bg-white p-3">
@@ -301,7 +301,7 @@ export function ClientQueryPortal({
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Client Onboarding</CardTitle>
             <Badge
               variant={
@@ -316,7 +316,7 @@ export function ClientQueryPortal({
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3.5 sm:space-y-4">
           <div className="space-y-2">
             <div className="h-2 overflow-hidden rounded-full bg-[#ece8de]">
               <div
@@ -329,8 +329,8 @@ export function ClientQueryPortal({
             </p>
           </div>
 
-          <form className="grid gap-3" onSubmit={saveOnboarding}>
-            <div className="grid gap-3 md:grid-cols-2">
+          <form className="grid gap-3.5 sm:gap-4" onSubmit={saveOnboarding}>
+            <div className="grid gap-3 sm:grid-cols-2">
               <Input
                 value={onboarding.companyName}
                 onChange={(event) =>
@@ -353,7 +353,7 @@ export function ClientQueryPortal({
                 }
               />
               <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+                className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
                 value={onboarding.preferredCommunication}
                 onChange={(event) =>
                   setOnboarding((prev) => ({
@@ -378,11 +378,12 @@ export function ClientQueryPortal({
                   }))
                 }
                 placeholder="Billing contact email"
-                className="md:col-span-2"
+                className="sm:col-span-2"
               />
             </div>
 
             <Textarea
+              className="min-h-[110px] sm:min-h-[120px]"
               value={onboarding.projectBrief}
               onChange={(event) =>
                 setOnboarding((prev) => ({ ...prev, projectBrief: event.target.value }))
@@ -390,6 +391,7 @@ export function ClientQueryPortal({
               placeholder="Project brief and onboarding context"
             />
             <Textarea
+              className="min-h-[96px] sm:min-h-[110px]"
               value={onboarding.onboardingNotes}
               onChange={(event) =>
                 setOnboarding((prev) => ({ ...prev, onboardingNotes: event.target.value }))
@@ -399,11 +401,11 @@ export function ClientQueryPortal({
 
             <div className="rounded-xl border border-border bg-white p-3">
               <p className="text-sm font-semibold">Onboarding Checklist</p>
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {onboardingSteps.map((item) => (
                   <label
                     key={item.key}
-                    className="flex items-start gap-2 rounded-md border border-border p-2"
+                    className="flex items-start gap-2 rounded-md border border-border p-2.5"
                   >
                     <input
                       type="checkbox"
@@ -420,12 +422,12 @@ export function ClientQueryPortal({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={savingOnboarding}>
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+              <Button type="submit" disabled={savingOnboarding} className="w-full sm:w-auto">
                 {savingOnboarding ? "Saving..." : "Save Onboarding"}
               </Button>
               {onboardingMessage ? (
-                <p className="text-sm text-muted-foreground">{onboardingMessage}</p>
+                <p className="text-sm leading-6 text-muted-foreground">{onboardingMessage}</p>
               ) : null}
             </div>
           </form>
@@ -437,7 +439,7 @@ export function ClientQueryPortal({
           <CardTitle>Raise New Query</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-3" onSubmit={submitQuery}>
+          <form className="grid gap-3.5 sm:gap-4" onSubmit={submitQuery}>
             <Input
               value={projectName}
               onChange={(event) => setProjectName(event.target.value)}
@@ -451,7 +453,7 @@ export function ClientQueryPortal({
               required
             />
             <select
-              className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={priority}
               onChange={(event) => setPriority(event.target.value as QueryRecord["priority"])}
             >
@@ -460,16 +462,19 @@ export function ClientQueryPortal({
               <option value="high">High priority</option>
             </select>
             <Textarea
+              className="min-h-[120px] sm:min-h-[132px]"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               placeholder="Describe your project query in detail..."
               required
             />
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={!canSubmit || submitting}>
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+              <Button type="submit" disabled={!canSubmit || submitting} className="w-full sm:w-auto">
                 {submitting ? "Submitting..." : "Raise Query"}
               </Button>
-              {formMessage ? <p className="text-sm text-muted-foreground">{formMessage}</p> : null}
+              {formMessage ? (
+                <p className="text-sm leading-6 text-muted-foreground">{formMessage}</p>
+              ) : null}
             </div>
           </form>
         </CardContent>
@@ -477,22 +482,28 @@ export function ClientQueryPortal({
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Track Queries</CardTitle>
-            <Button variant="secondary" size="sm" onClick={refreshQueries} disabled={refreshing}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={refreshQueries}
+              disabled={refreshing}
+              className="w-full sm:w-auto"
+            >
               {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search by project, subject, message"
             />
             <select
-              className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as "all" | QueryRecord["status"])}
             >
@@ -502,7 +513,7 @@ export function ClientQueryPortal({
               <option value="resolved">Resolved</option>
             </select>
             <select
-              className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={priorityFilter}
               onChange={(event) =>
                 setPriorityFilter(event.target.value as "all" | QueryRecord["priority"])
@@ -522,18 +533,18 @@ export function ClientQueryPortal({
           ) : (
             filteredQueries.map((query) => (
               <div key={query._id} className="rounded-xl border border-border bg-white p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold">{query.subject}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Project: {query.projectName}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={priorityVariant(query.priority)}>{humanize(query.priority)}</Badge>
                     <Badge variant={statusVariant(query.status)}>{humanize(query.status)}</Badge>
                   </div>
                 </div>
                 <p className="mt-2 text-sm text-foreground">{query.message}</p>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div className="mt-3 flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                   <p>Raised: {formatDateTime(query.createdAt)}</p>
                   <p>Last Update: {formatDateTime(query.updatedAt)}</p>
                 </div>

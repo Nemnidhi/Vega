@@ -69,3 +69,41 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     return handleApiError(error);
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: Params }) {
+  try {
+    await connectToDatabase();
+    const actor = await getActorContext();
+    assertRoleAccess(actor.role, { oneOf: permissionRules.manageUsers });
+
+    const { id } = await params;
+    const userId = objectIdSchema.parse(id);
+
+    if (actor.userId.toLowerCase() === userId.toLowerCase()) {
+      return fail("You cannot delete your own account.", 400);
+    }
+
+    const user = await UserModel.findOne({ _id: userId, role: { $in: LOGIN_ROLES } })
+      .select("_id role")
+      .lean();
+    if (!user) {
+      return fail("User not found.", 404);
+    }
+
+    if (user.role === "admin") {
+      const remainingAdmins = await UserModel.countDocuments({
+        role: "admin",
+        _id: { $ne: userId },
+      });
+      if (remainingAdmins === 0) {
+        return fail("Cannot delete the last admin account.", 409);
+      }
+    }
+
+    await UserModel.deleteOne({ _id: userId });
+
+    return ok({ id: userId, deleted: true });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

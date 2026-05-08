@@ -5,7 +5,7 @@ import { ProjectAssignmentBoard } from "@/components/projects/project-assignment
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRoleAccess } from "@/lib/auth/role-access";
-import { getDevelopers, getProjectsForActor } from "@/lib/dashboard/queries";
+import { getDevelopers, getProjectByIdForActor } from "@/lib/dashboard/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -97,16 +97,15 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
   const session = await requireRoleAccess(["admin", "developer"]);
   const { projectId } = await params;
 
-  const [projects, developers] = await Promise.all([
-    getProjectsForActor({
+  const [project, developers] = await Promise.all([
+    getProjectByIdForActor({
       role: session.role,
       userId: session.userId,
-    }),
+    }, projectId),
     session.role === "admin" ? getDevelopers() : Promise.resolve([]),
   ]);
 
-  const visibleProjects = projects as ProjectPageItem[];
-  const selectedProject = visibleProjects.find((project) => project._id === projectId);
+  const selectedProject = project as ProjectPageItem | null;
 
   if (!selectedProject) {
     notFound();
@@ -130,7 +129,7 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
     .slice(0, 5);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 sm:space-y-6">
       <DashboardHeader
         title={selectedProject.title}
         subtitle="Project details and task assignments."
@@ -145,16 +144,16 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
         <Link
           href="/projects"
-          className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+          className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft sm:w-auto"
         >
           Back To Projects
         </Link>
         <Link
           href="#task-assignment"
-          className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+          className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft sm:w-auto"
         >
           Jump To Task Assignment
         </Link>
@@ -226,7 +225,7 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
               <div className="rounded-lg border border-border bg-white p-3">
                 <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Todo</p>
                 <p className="mt-1 text-xl font-semibold text-foreground">{todoTasks}</p>

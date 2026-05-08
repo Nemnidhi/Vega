@@ -209,6 +209,7 @@ export function ProjectAssignmentBoard({
   const [healthFilter, setHealthFilter] = useState<ProjectHealthFilter>("all");
   const [sortBy, setSortBy] = useState<ProjectSortOption>("recent");
   const pendingAlertKeysRef = useRef<Set<string>>(new Set());
+  const projectsRefreshInFlightRef = useRef(false);
   const isCreateProjectRequested =
     canManage && searchParams.get("createProject") === "1";
   const isCreateProjectModalOpen =
@@ -377,8 +378,21 @@ export function ProjectAssignmentBoard({
     let disposed = false;
 
     async function refreshProjectsFromServer() {
+      if (disposed || projectsRefreshInFlightRef.current) {
+        return;
+      }
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
+      projectsRefreshInFlightRef.current = true;
       try {
-        const response = await fetch("/api/projects", {
+        const endpoint =
+          showInlineDetails && selectedProjectId
+            ? `/api/projects/${selectedProjectId}?includeHistory=1`
+            : "/api/projects?includeHistory=0";
+
+        const response = await fetch(endpoint, {
           method: "GET",
           cache: "no-store",
         });
@@ -387,7 +401,13 @@ export function ProjectAssignmentBoard({
           return;
         }
 
-        const nextProjects = data.data as ProjectItem[];
+        const nextProjects =
+          showInlineDetails && selectedProjectId
+            ? data.data
+              ? [data.data as ProjectItem]
+              : []
+            : ((data.data ?? []) as ProjectItem[]);
+
         const nextAlertKeys = getPendingAlertKeys(nextProjects);
         const previousAlertKeys = pendingAlertKeysRef.current;
 
@@ -411,16 +431,21 @@ export function ProjectAssignmentBoard({
         setProjects(dedupeProjectsById(nextProjects));
       } catch {
         // ignore polling errors and retry on next interval
+      } finally {
+        projectsRefreshInFlightRef.current = false;
       }
     }
 
-    refreshProjectsFromServer();
-    const interval = setInterval(refreshProjectsFromServer, 10000);
+    const pollIntervalMs = showInlineDetails ? 10000 : 15000;
+    void refreshProjectsFromServer();
+    const interval = setInterval(() => {
+      void refreshProjectsFromServer();
+    }, pollIntervalMs);
     return () => {
       disposed = true;
       clearInterval(interval);
     };
-  }, [canManage]);
+  }, [canManage, selectedProjectId, showInlineDetails]);
 
   useEffect(() => {
     if (!popupMessage) {
@@ -654,18 +679,14 @@ export function ProjectAssignmentBoard({
     const showDeveloperActionColumn = !canManage;
 
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="px-2 py-2">Task</th>
-              <th className="px-2 py-2">Assigned To</th>
-              <th className="px-2 py-2">Status</th>
-              {showDeveloperActionColumn ? <th className="px-2 py-2">Action</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {project.tasks.map((task) => {
+      <div className="space-y-3">
+        <div className="space-y-2 md:hidden">
+          {project.tasks.length === 0 ? (
+            <div className="rounded-lg border border-border/70 bg-surface-soft/70 px-3 py-5 text-center text-sm text-muted-foreground">
+              No tasks assigned yet.
+            </div>
+          ) : (
+            project.tasks.map((task) => {
               const assignedToCurrentDeveloper =
                 currentUserId && getUserId(task.assignedDeveloperId) === currentUserId;
               const canMarkCompleted =
@@ -674,32 +695,31 @@ export function ProjectAssignmentBoard({
               const isMarkingCompleted = completeTaskLoadingMap[loadingKey] ?? false;
 
               return (
-                <tr id={`task-${task._id}`} key={task._id} className="border-b border-border/70">
-                  <td className="px-2 py-3">
-                    <p className="font-semibold text-foreground">{task.title}</p>
-                    {task.description ? (
-                      <p className="text-xs text-muted-foreground">{task.description}</p>
-                    ) : null}
+                <div key={task._id} id={`task-${task._id}`} className="rounded-lg border border-border bg-white p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">{task.title}</p>
+                    <span className="rounded-md border border-border bg-surface-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+                      {formatStatus(task.status)}
+                    </span>
+                  </div>
+                  {task.description ? (
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{task.description}</p>
+                  ) : null}
+                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                    <p>Assigned to: {resolveUserLabel(task.assignedDeveloperId)}</p>
                     {task.status === "done" ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Completed at: {formatDate(task.completedAt)}
-                      </p>
+                      <p>Completed at: {formatDate(task.completedAt)}</p>
                     ) : null}
-                  </td>
-                  <td className="px-2 py-3">{resolveUserLabel(task.assignedDeveloperId)}</td>
-                  <td className="px-2 py-3">
-                    {formatStatus(task.status)}
                     {task.completionAlertPending ? (
-                      <p className="mt-1 text-xs font-medium text-danger">
-                        Completion alert pending
-                      </p>
+                      <p className="font-medium text-danger">Completion alert pending</p>
                     ) : null}
-                  </td>
+                  </div>
                   {showDeveloperActionColumn ? (
-                    <td className="px-2 py-3">
+                    <div className="mt-3">
                       {canMarkCompleted ? (
                         <Button
                           size="sm"
+                          className="w-full"
                           onClick={() => markTaskCompleted(project._id, task._id)}
                           disabled={isMarkingCompleted}
                         >
@@ -710,23 +730,88 @@ export function ProjectAssignmentBoard({
                           {task.status === "done" ? "Completed" : "No action"}
                         </span>
                       )}
-                    </td>
+                    </div>
                   ) : null}
-                </tr>
+                </div>
               );
-            })}
-            {project.tasks.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={showDeveloperActionColumn ? 4 : 3}
-                  className="px-2 py-5 text-center text-muted-foreground"
-                >
-                  No tasks assigned yet.
-                </td>
+            })
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th className="px-2 py-2">Task</th>
+                <th className="px-2 py-2">Assigned To</th>
+                <th className="px-2 py-2">Status</th>
+                {showDeveloperActionColumn ? <th className="px-2 py-2">Action</th> : null}
               </tr>
-            ) : null}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {project.tasks.map((task) => {
+                const assignedToCurrentDeveloper =
+                  currentUserId && getUserId(task.assignedDeveloperId) === currentUserId;
+                const canMarkCompleted =
+                  Boolean(assignedToCurrentDeveloper) && task.status !== "done";
+                const loadingKey = `${project._id}:${task._id}`;
+                const isMarkingCompleted = completeTaskLoadingMap[loadingKey] ?? false;
+
+                return (
+                  <tr id={`task-${task._id}`} key={task._id} className="border-b border-border/70">
+                    <td className="px-2 py-3">
+                      <p className="font-semibold text-foreground">{task.title}</p>
+                      {task.description ? (
+                        <p className="text-xs text-muted-foreground">{task.description}</p>
+                      ) : null}
+                      {task.status === "done" ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Completed at: {formatDate(task.completedAt)}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-2 py-3">{resolveUserLabel(task.assignedDeveloperId)}</td>
+                    <td className="px-2 py-3">
+                      {formatStatus(task.status)}
+                      {task.completionAlertPending ? (
+                        <p className="mt-1 text-xs font-medium text-danger">
+                          Completion alert pending
+                        </p>
+                      ) : null}
+                    </td>
+                    {showDeveloperActionColumn ? (
+                      <td className="px-2 py-3">
+                        {canMarkCompleted ? (
+                          <Button
+                            size="sm"
+                            onClick={() => markTaskCompleted(project._id, task._id)}
+                            disabled={isMarkingCompleted}
+                          >
+                            {isMarkingCompleted ? "Updating..." : "Mark Completed"}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {task.status === "done" ? "Completed" : "No action"}
+                          </span>
+                        )}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
+              {project.tasks.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={showDeveloperActionColumn ? 4 : 3}
+                    className="px-2 py-5 text-center text-muted-foreground"
+                  >
+                    No tasks assigned yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
@@ -740,17 +825,17 @@ export function ProjectAssignmentBoard({
 
     if (orderedTasks.length === 0) {
       return (
-        <div className="rounded-xl border border-dashed border-border bg-surface-soft/65 px-3 py-5 text-sm text-muted-foreground">
+        <div className="rounded-xl bg-surface-soft/65 px-3 py-5 text-sm text-muted-foreground">
           No tasks assigned yet. Flowchart will build automatically as soon as tasks are assigned.
         </div>
       );
     }
 
     function getStatusTone(status: TaskItem["status"]) {
-      if (status === "done") return "border-[#b8d7c3] bg-[#edf7f0] text-[#2f6a42]";
-      if (status === "blocked") return "border-danger/40 bg-danger/10 text-danger";
-      if (status === "in_progress") return "border-accent/40 bg-accent/10 text-accent-strong";
-      return "border-[#dec39d] bg-[#f8f1e4] text-[#8a5a1f]";
+      if (status === "done") return "bg-[#edf7f0] text-[#2f6a42]";
+      if (status === "blocked") return "bg-danger/10 text-danger";
+      if (status === "in_progress") return "bg-accent/10 text-accent-strong";
+      return "bg-[#f8f1e4] text-[#8a5a1f]";
     }
 
     function getTaskProgress(status: TaskItem["status"]) {
@@ -760,7 +845,7 @@ export function ProjectAssignmentBoard({
     }
 
     return (
-      <div className="space-y-4 rounded-xl border border-border bg-white p-4 shadow-sm">
+      <div className="space-y-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
         <div>
           <p className="text-sm font-semibold text-foreground">Task Flowchart</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -768,42 +853,41 @@ export function ProjectAssignmentBoard({
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-surface p-3">
+        <div className="rounded-xl bg-surface p-2.5 sm:p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Assignment Graph
           </p>
-          <div className="no-scrollbar mt-2 overflow-x-auto pb-2">
-            <div className="relative flex min-w-max items-center gap-3 px-1 py-2">
-              <span className="pointer-events-none absolute left-4 right-4 top-1/2 h-px bg-border" />
-              {orderedTasks.map((task, index) => {
-                const isLast = index === orderedTasks.length - 1;
-                return (
-                  <div key={`flow-${task._id}`} className="relative z-10 flex items-center gap-3">
-                    <div className="min-w-[190px] rounded-lg border border-border bg-white p-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-accent/30 bg-accent/10 px-1 text-[10px] font-semibold text-accent-strong">
-                          {index + 1}
-                        </span>
-                        <span
-                          className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getStatusTone(task.status)}`}
-                        >
-                          {formatStatus(task.status)}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs font-semibold text-foreground">{task.title}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {resolveUserLabel(task.assignedDeveloperId)}
-                      </p>
-                    </div>
-                    {!isLast ? (
-                      <span className="inline-flex rounded-full border border-border bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm">
-                        -&gt;
+          <div className="mt-2 space-y-2 px-1 py-1.5">
+            {orderedTasks.map((task, index) => {
+              const isLast = index === orderedTasks.length - 1;
+              return (
+                <div key={`flow-${task._id}`} className="space-y-2">
+                  <div className="rounded-lg bg-white p-2.5 shadow-sm sm:p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/10 px-1 text-[10px] font-semibold text-accent-strong">
+                        {index + 1}
                       </span>
-                    ) : null}
+                      <span
+                        className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getStatusTone(task.status)}`}
+                      >
+                        {formatStatus(task.status)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-foreground">{task.title}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {resolveUserLabel(task.assignedDeveloperId)}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
+                  {!isLast ? (
+                    <div className="flex justify-center">
+                      <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm">
+                        ↓
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -828,7 +912,7 @@ export function ProjectAssignmentBoard({
             const taskProgress = getTaskProgress(task.status);
 
             return (
-              <div key={task._id} className="rounded-xl border border-border bg-surface p-3">
+              <div key={task._id} className="rounded-xl bg-surface p-2.5 sm:p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-foreground">
@@ -839,7 +923,7 @@ export function ProjectAssignmentBoard({
                     </p>
                   </div>
                   <span
-                    className={`inline-flex rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${getStatusTone(task.status)}`}
+                    className={`inline-flex rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${getStatusTone(task.status)}`}
                   >
                     {formatStatus(task.status)}
                   </span>
@@ -858,34 +942,34 @@ export function ProjectAssignmentBoard({
                   </div>
                 </div>
 
-                <div className="mt-3 overflow-x-auto">
-                  <div className="flex min-w-max items-center gap-2">
-                    {taskStatusFlowOrder.map((stage, stageIndex) => {
-                      const isCurrent = task.status === stage;
-                      const isVisited = visitedStatuses.has(stage);
+                <div className="mt-3 space-y-1.5">
+                  {taskStatusFlowOrder.map((stage, stageIndex) => {
+                    const isCurrent = task.status === stage;
+                    const isVisited = visitedStatuses.has(stage);
 
-                      const stageClass = isCurrent
-                        ? getStatusTone(stage)
-                        : isVisited
-                          ? "border-border bg-white text-foreground"
-                          : "border-border/50 bg-surface-soft text-muted-foreground";
+                    const stageClass = isCurrent
+                      ? getStatusTone(stage)
+                      : isVisited
+                        ? "bg-white text-foreground"
+                        : "bg-surface-soft text-muted-foreground";
 
-                      return (
-                        <div key={`${task._id}-${stage}`} className="flex items-center gap-2 text-center">
-                          <span
-                            className={`inline-flex min-w-[110px] items-center justify-center rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${stageClass}`}
-                          >
-                            {formatStatus(stage)}
-                          </span>
-                          {stageIndex < taskStatusFlowOrder.length - 1 ? (
-                            <span className="inline-flex rounded-full border border-border bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                              -&gt;
+                    return (
+                      <div key={`${task._id}-${stage}`} className="space-y-1">
+                        <span
+                          className={`inline-flex w-full items-center justify-center rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wide sm:w-auto sm:min-w-[110px] ${stageClass}`}
+                        >
+                          {formatStatus(stage)}
+                        </span>
+                        {stageIndex < taskStatusFlowOrder.length - 1 ? (
+                          <div className="flex justify-center sm:justify-start">
+                            <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              ↓
                             </span>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
@@ -895,7 +979,7 @@ export function ProjectAssignmentBoard({
                 </div>
 
                 {canManage ? (
-                  <div className="mt-3 rounded-md border border-border bg-white p-2.5">
+                  <div className="mt-3 rounded-md bg-white p-2.5">
                     <p className="text-xs font-semibold text-foreground">Trace Log</p>
                     {history.length === 0 ? (
                       <p className="mt-1 text-xs text-muted-foreground">No trace entries yet.</p>
@@ -904,9 +988,9 @@ export function ProjectAssignmentBoard({
                         {history.map((entry, historyIndex) => (
                           <div
                             key={`${task._id}-history-${historyIndex}`}
-                            className="relative border-l border-border pl-3 text-xs text-muted-foreground"
+                            className="relative pl-4 text-xs text-muted-foreground"
                           >
-                            <span className="absolute -left-[5px] top-1 h-2 w-2 rounded-full bg-accent" />
+                            <span className="absolute left-0 top-1 h-2 w-2 rounded-full bg-accent" />
                             <p className="font-medium text-foreground">
                               {formatHistoryAction(entry.action)} | {formatDate(entry.changedAt)}
                             </p>
@@ -955,8 +1039,8 @@ export function ProjectAssignmentBoard({
         <Link key={project._id} href={detailsHref} className="block">
           <Card className="transition-colors hover:border-foreground/30 hover:bg-white">
             <CardHeader className="space-y-2 pb-1">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base md:text-base">{project.title}</CardTitle>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <CardTitle className="break-words text-base">{project.title}</CardTitle>
                 <span
                   className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${statusToneClass}`}
                 >
@@ -1008,7 +1092,7 @@ export function ProjectAssignmentBoard({
           }
         >
           <CardHeader className="space-y-2">
-            <CardTitle className="text-base md:text-base">{project.title}</CardTitle>
+            <CardTitle className="break-words text-base">{project.title}</CardTitle>
             <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
               Status: {formatStatus(project.status)}
             </p>
@@ -1034,22 +1118,30 @@ export function ProjectAssignmentBoard({
 
     return (
       <Card key={`details-${project._id}`}>
-        <CardHeader>
-          <CardTitle>{project.title}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Assigned to: {resolveUserLabel(project.assignedDeveloperId)} | Status:{" "}
-            {formatStatus(project.status)} | Last updated: {formatDate(project.updatedAt)}
-          </p>
+        <CardHeader className="space-y-3">
+          <CardTitle className="break-words text-lg sm:text-xl">{project.title}</CardTitle>
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3 sm:text-sm">
+            <p className="rounded-md border border-border bg-surface-soft px-2.5 py-1.5">
+              Assigned to: {resolveUserLabel(project.assignedDeveloperId)}
+            </p>
+            <p className="rounded-md border border-border bg-surface-soft px-2.5 py-1.5">
+              Status: {formatStatus(project.status)}
+            </p>
+            <p className="rounded-md border border-border bg-surface-soft px-2.5 py-1.5">
+              Last updated: {formatDate(project.updatedAt)}
+            </p>
+          </div>
           {project.description ? (
             <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
           ) : null}
         </CardHeader>
         <CardContent className="space-y-5">
           {canManage ? (
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <Button
                 type="button"
                 variant="secondary"
+                className="w-full sm:w-auto"
                 disabled={statusLoading}
                 onClick={() => {
                   if (isCompletedProject) {
@@ -1077,7 +1169,7 @@ export function ProjectAssignmentBoard({
           ) : null}
 
           {canManage && !isCompletedProject ? (
-            <form className="grid gap-3" onSubmit={(event) => createTask(project._id, event)}>
+            <form className="grid gap-3.5 sm:gap-4" onSubmit={(event) => createTask(project._id, event)}>
               <Input
                 placeholder="Task title"
                 value={taskForm.title}
@@ -1112,8 +1204,12 @@ export function ProjectAssignmentBoard({
                   </option>
                 ))}
               </select>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={taskLoading || developerOptions.length === 0}>
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={taskLoading || developerOptions.length === 0}
+                >
                   {taskLoading ? "Assigning..." : "Assign Task"}
                 </Button>
               </div>
@@ -1134,9 +1230,9 @@ export function ProjectAssignmentBoard({
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 sm:space-y-6">
       {canManage && popupMessage ? (
-        <div className="fixed right-4 top-4 z-50 w-full max-w-sm rounded-2xl border border-danger/30 bg-white p-4 shadow-[0_20px_44px_rgba(21,28,45,0.2)]">
+        <div className="fixed left-3 right-3 top-3 z-50 w-auto rounded-2xl border border-danger/30 bg-white p-4 shadow-[0_20px_44px_rgba(21,28,45,0.2)] sm:left-auto sm:right-4 sm:top-4 sm:w-full sm:max-w-sm">
           <p className="text-sm font-semibold text-foreground">Task Completion Alert</p>
           <p className="mt-1 text-sm text-muted-foreground">{popupMessage}</p>
           <div className="mt-3">
@@ -1149,13 +1245,14 @@ export function ProjectAssignmentBoard({
 
       {canManage && isCreateProjectModalOpen ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-border bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-white p-3 shadow-xl sm:p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <h3 className="text-lg font-semibold text-foreground">Create New Project</h3>
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={closeCreateProjectModal}
                 disabled={projectLoading}
               >
@@ -1199,13 +1296,18 @@ export function ProjectAssignmentBoard({
                   </option>
                 ))}
               </select>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={projectLoading || developerOptions.length === 0}>
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={projectLoading || developerOptions.length === 0}
+                >
                   {projectLoading ? "Creating..." : "Create Project"}
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
+                  className="w-full sm:w-auto"
                   onClick={closeCreateProjectModal}
                   disabled={projectLoading}
                 >

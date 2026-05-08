@@ -1,23 +1,35 @@
 import Link from "next/link";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { LeadIntakeForms } from "@/components/leads/lead-intake-forms";
-import { LeadStatusSelect } from "@/components/leads/lead-status-select";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getLeads } from "@/lib/dashboard/queries";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 
 export const dynamic = "force-dynamic";
 
+function statusLabel(value: string) {
+  return value.replaceAll("_", " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function statusVariant(status: string): "danger" | "warning" | "success" | "accent" | "neutral" {
+  if (status === "closed_lost") return "danger";
+  if (status === "closed_won") return "success";
+  if (status === "proposal_sent" || status === "negotiation") return "warning";
+  if (status === "qualified") return "accent";
+  return "neutral";
+}
+
 export default async function LeadsPage() {
   await requireRoleAccess(["admin", "sales"]);
 
-  const leads = (await getLeads()) as Array<{
+  const leads = (await getLeads({ limit: 200 })) as Array<{
     _id: string;
     title: string;
     contactName: string;
-    email: string;
     source: string;
     status: string;
+    updatedAt?: string;
   }>;
 
   return (
@@ -32,6 +44,9 @@ export default async function LeadsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lead List</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Showing latest 200 leads for faster loading. Open any lead for full actions.
+          </p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -52,10 +67,14 @@ export default async function LeadsPage() {
                   </td>
                   <td className="px-2 py-3">{lead.source.replaceAll("_", " ")}</td>
                   <td className="px-2 py-3">
-                    <LeadStatusSelect leadId={lead._id} currentStatus={lead.status} />
+                    <Badge variant={statusVariant(lead.status)}>{statusLabel(lead.status)}</Badge>
                   </td>
                   <td className="px-2 py-3">
-                    <Link href={`/leads/${lead._id}`} className="text-accent hover:underline">
+                    <Link
+                      href={`/leads/${lead._id}`}
+                      prefetch={false}
+                      className="text-accent hover:underline"
+                    >
                       Open
                     </Link>
                   </td>
