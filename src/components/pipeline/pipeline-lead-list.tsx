@@ -110,7 +110,36 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
           </select>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="space-y-3 md:hidden">
+          {filteredLeads.map((lead) => (
+            <article
+              key={lead._id}
+              className="rounded-xl border border-border bg-white p-3 shadow-sm"
+            >
+              <p className="text-sm font-semibold text-foreground break-words">{lead.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground break-words">{lead.contactName}</p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <Badge variant={priorityVariant(lead.priorityBand)}>
+                  {humanize(lead.priorityBand)}
+                </Badge>
+                <Link href={`/leads/${lead._id}`} className="text-sm font-medium text-accent hover:underline">
+                  Open
+                </Link>
+              </div>
+              <div className="mt-3">
+                <LeadStatusSelect leadId={lead._id} currentStatus={lead.stage} />
+              </div>
+            </article>
+          ))}
+
+          {filteredLeads.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-surface-soft/60 px-4 py-8 text-center text-sm text-muted-foreground">
+              No leads found for selected filters.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">

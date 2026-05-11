@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
+import { LeadFieldsEditor } from "@/components/leads/lead-fields-editor";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
@@ -329,6 +330,35 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Lead Fields</CardTitle>
+              <CardDescription>
+                Admin and sales can update core lead details from here.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LeadFieldsEditor
+                lead={{
+                  id: lead._id,
+                  title: lead.title,
+                  contactName: lead.contactName,
+                  email: lead.email,
+                  phone: lead.phone,
+                  source: lead.source,
+                  category: lead.category,
+                  urgency: lead.urgency,
+                  description: lead.description,
+                  budget: lead.budget,
+                  sourceDomain: lead.sourceDomain,
+                  sourcePath: lead.sourcePath,
+                  sourceReferrer: lead.sourceReferrer,
+                  tags: lead.tags,
+                }}
+              />
             </CardContent>
           </Card>
         </div>
