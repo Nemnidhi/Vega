@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/card";
 import type {
   AdminDailyAttendanceRecord,
+  AdminMonthlyAttendancePayload,
+  AttendanceDayStatus,
   AttendanceStaffUser,
 } from "@/lib/attendance/queries";
 
@@ -34,6 +36,8 @@ type AttendanceMarkStatus = "present" | "absent" | "half_day";
 interface AttendanceAdminDeskProps {
   initialDailyDateKey: string;
   initialDailyRecords: AdminDailyAttendanceRecord[];
+  initialMonthKey: string;
+  initialMonthlyData: AdminMonthlyAttendancePayload;
   staffUsers: AttendanceStaffUser[];
 }
 
@@ -55,6 +59,16 @@ function formatTime(value?: string | null) {
   return new Date(value).toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatMonthFromKey(monthKey?: string) {
+  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) {
+    return "--";
+  }
+  return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
   });
 }
 
@@ -80,13 +94,58 @@ function statusBadge(status: string) {
   return { label: status, variant: "accent" as const };
 }
 
+function getStatusSymbol(status?: AttendanceDayStatus) {
+  if (status === "present") return "P";
+  if (status === "absent") return "A";
+  if (status === "half_day") return "H";
+  return "-";
+}
+
+function getStatusSymbolClass(status?: AttendanceDayStatus) {
+  if (status === "present") {
+    return "bg-success/15 text-success";
+  }
+  if (status === "absent") {
+    return "bg-danger/15 text-danger";
+  }
+  if (status === "half_day") {
+    return "bg-warning/15 text-warning";
+  }
+  return "bg-muted text-muted-foreground";
+}
+
+function buildMonthDateKeys(monthKey: string) {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+    return [] as string[];
+  }
+
+  const [yearPart, monthPart] = monthKey.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    return [] as string[];
+  }
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  return Array.from({ length: daysInMonth }, (_, dayIndex) => {
+    const day = String(dayIndex + 1).padStart(2, "0");
+    return `${monthKey}-${day}`;
+  });
+}
+
 export function AttendanceAdminDesk({
   initialDailyDateKey,
   initialDailyRecords,
+  initialMonthKey,
+  initialMonthlyData,
   staffUsers,
 }: AttendanceAdminDeskProps) {
   const [dailyDateKey, setDailyDateKey] = useState(initialDailyDateKey);
   const [dailyRecords, setDailyRecords] = useState(initialDailyRecords);
+  const [monthKey, setMonthKey] = useState(initialMonthKey);
+  const [monthlyData, setMonthlyData] = useState(initialMonthlyData);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [markForm, setMarkForm] = useState({
@@ -113,6 +172,21 @@ export function AttendanceAdminDesk({
     setDailyRecords(parsed.records);
   }
 
+  async function loadMonthlyRecords(nextMonthKey: string) {
+    const response = await fetch(`/api/attendance/admin/month?month=${nextMonthKey}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    const payload = (await response.json()) as ApiResponse;
+    if (!response.ok || !payload.success || !payload.data) {
+      throw new Error(payload.error?.message ?? "Unable to load monthly attendance.");
+    }
+
+    const parsed = payload.data as AdminMonthlyAttendancePayload;
+    setMonthKey(parsed.monthKey);
+    setMonthlyData(parsed);
+  }
+
   async function runAction(
     key: string,
     path: string,
@@ -122,6 +196,8 @@ export function AttendanceAdminDesk({
       body?: Record<string, unknown>;
       refreshDaily?: boolean;
       refreshDateKey?: string;
+      refreshMonthly?: boolean;
+      refreshMonthKey?: string;
       onSuccess?: () => void;
     },
   ) {
@@ -141,6 +217,9 @@ export function AttendanceAdminDesk({
 
       if (options?.refreshDaily) {
         await loadDailyRecords(options.refreshDateKey ?? dailyDateKey);
+      }
+      if (options?.refreshMonthly) {
+        await loadMonthlyRecords(options.refreshMonthKey ?? monthKey);
       }
 
       options?.onSuccess?.();
@@ -171,12 +250,30 @@ export function AttendanceAdminDesk({
     }
   }
 
+  async function refreshMonthlyForSelectedMonth() {
+    setLoadingKey("month-refresh");
+    setNotice(null);
+    try {
+      await loadMonthlyRecords(monthKey);
+      setNotice({ tone: "success", text: "Monthly records refreshed." });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Unable to load monthly attendance.",
+      });
+    } finally {
+      setLoadingKey(null);
+    }
+  }
+
+  const monthDateKeys = useMemo(() => buildMonthDateKeys(monthlyData.monthKey), [monthlyData.monthKey]);
+
   return (
     <section className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Mark Attendance</CardTitle>
-          <CardDescription>Set present, absent, or half day for selected staff.</CardDescription>
+          <CardDescription>Admin can mark or update attendance manually for any date.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-4">
@@ -225,6 +322,8 @@ export function AttendanceAdminDesk({
                     body: markForm,
                     refreshDaily: true,
                     refreshDateKey: markForm.dateKey,
+                    refreshMonthly: true,
+                    refreshMonthKey: markForm.dateKey.slice(0, 7),
                   },
                 )
               }
@@ -304,6 +403,132 @@ export function AttendanceAdminDesk({
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Team Attendance</CardTitle>
+          <CardDescription>
+            View all staff attendance at one place for {formatMonthFromKey(monthlyData.monthKey)}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              type="month"
+              value={monthKey}
+              onChange={(event) => setMonthKey(event.target.value)}
+              className="max-w-[220px]"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => void refreshMonthlyForSelectedMonth()}
+              disabled={!monthKey || loadingKey !== null}
+            >
+              {loadingKey === "month-refresh" ? "Refreshing..." : "Load Month"}
+            </Button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+              <p className="text-xs text-muted-foreground">Total Staff</p>
+              <p className="text-lg font-semibold text-foreground">{monthlyData.totals.staffCount}</p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+              <p className="text-xs text-muted-foreground">Marked Days</p>
+              <p className="text-lg font-semibold text-foreground">
+                {monthlyData.totals.totalMarkedDays}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+              <p className="text-xs text-muted-foreground">Present / Absent / Half</p>
+              <p className="text-lg font-semibold text-foreground">
+                {monthlyData.totals.presentDays} / {monthlyData.totals.absentDays} /{" "}
+                {monthlyData.totals.halfDays}
+              </p>
+            </div>
+          </div>
+
+          {monthlyData.rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No attendance marked for this month yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded bg-success/15 px-2 py-1 text-success">
+                  <span className="font-semibold">P</span> Present
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-danger/15 px-2 py-1 text-danger">
+                  <span className="font-semibold">A</span> Absent
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-2 py-1 text-warning">
+                  <span className="font-semibold">H</span> Half Day
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-muted-foreground">
+                  <span className="font-semibold">-</span> Not Marked
+                </span>
+              </div>
+
+              {monthlyData.rows.map((row) => {
+                const recordByDateKey = new Map(
+                  row.records.map((record) => [record.dateKey, record.dayStatus] as const),
+                );
+
+                return (
+                  <div
+                    key={row.user._id}
+                    className="space-y-3 rounded-lg border border-border/70 bg-card px-3 py-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">{row.user.fullName}</p>
+                        <p className="break-all text-[11px] text-muted-foreground">
+                          {row.user.role} | {row.user.email}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 text-[11px]">
+                        <span className="rounded bg-success/15 px-2 py-1 font-semibold text-success">
+                          P {row.summary.presentDays}
+                        </span>
+                        <span className="rounded bg-danger/15 px-2 py-1 font-semibold text-danger">
+                          A {row.summary.absentDays}
+                        </span>
+                        <span className="rounded bg-warning/15 px-2 py-1 font-semibold text-warning">
+                          H {row.summary.halfDays}
+                        </span>
+                        <span className="rounded bg-muted px-2 py-1 font-semibold text-foreground">
+                          T {row.summary.totalMarkedDays}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      className="grid gap-1.5"
+                      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(38px, 1fr))" }}
+                    >
+                      {monthDateKeys.map((dateKey) => {
+                        const dayStatus = recordByDateKey.get(dateKey);
+                        return (
+                          <div
+                            key={`${row.user._id}-${dateKey}`}
+                            className={`rounded border border-border/50 px-1 py-1 text-center ${getStatusSymbolClass(dayStatus)}`}
+                            title={`${dateKey}: ${dayStatus ?? "not_marked"}`}
+                          >
+                            <p className="text-[10px] leading-none opacity-80">{dateKey.slice(-2)}</p>
+                            <p className="text-xs font-semibold leading-tight">
+                              {getStatusSymbol(dayStatus)}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

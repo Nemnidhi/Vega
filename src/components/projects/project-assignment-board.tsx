@@ -436,7 +436,8 @@ export function ProjectAssignmentBoard({
       }
     }
 
-    const pollIntervalMs = showInlineDetails ? 10000 : 15000;
+    // Keep live updates but reduce server and UI churn for smoother overall performance.
+    const pollIntervalMs = showInlineDetails ? 25000 : 35000;
     void refreshProjectsFromServer();
     const interval = setInterval(() => {
       void refreshProjectsFromServer();

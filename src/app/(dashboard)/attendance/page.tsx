@@ -7,9 +7,10 @@ import {
   attendanceDashboardRoles,
   attendanceMemberRoles,
 } from "@/lib/attendance/constants";
-import { getAttendanceDateKey } from "@/lib/attendance/date";
+import { getAttendanceDateKey, getAttendanceMonthKey } from "@/lib/attendance/date";
 import {
   getAdminDailyAttendance,
+  getAdminMonthlyAttendance,
   getAttendanceOverview,
   getAttendanceStaffUsers,
 } from "@/lib/attendance/queries";
@@ -21,22 +22,26 @@ export default async function AttendancePage() {
 
   if (attendanceAdminRoles.includes(session.role)) {
     const initialDailyDateKey = getAttendanceDateKey();
-    const [staffUsers, initialDailyRecords] = await Promise.all([
+    const initialMonthKey = getAttendanceMonthKey();
+    const [staffUsers, initialDailyRecords, initialMonthlyData] = await Promise.all([
       getAttendanceStaffUsers(),
       getAdminDailyAttendance(initialDailyDateKey),
+      getAdminMonthlyAttendance(initialMonthKey),
     ]);
 
     return (
       <section className="space-y-6">
         <DashboardHeader
           title="Attendance Command Center"
-          subtitle="Mark daily attendance for staff and review day-level logs."
+          subtitle="Mark attendance manually for any date and review day/month records."
           showLeadCta={false}
         />
         <AttendanceAdminDesk
           staffUsers={staffUsers}
           initialDailyDateKey={initialDailyDateKey}
           initialDailyRecords={initialDailyRecords}
+          initialMonthKey={initialMonthKey}
+          initialMonthlyData={initialMonthlyData}
         />
       </section>
     );

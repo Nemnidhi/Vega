@@ -8,14 +8,14 @@ type DashboardNavItem = {
 
 const dashboardNavItems: DashboardNavItem[] = [
   { label: "Home", href: "/dashboard", roles: ["admin", "sales"] },
-  { label: "Calendar", href: "/calendar", roles: ["admin", "sales", "developer"] },
-  { label: "Attendance", href: "/attendance", roles: ["admin", "sales", "developer"] },
   { label: "Projects", href: "/projects", roles: ["admin", "developer"] },
   { label: "Chat", href: "/chat", roles: ["admin", "developer", "sales"] },
   { label: "Leads", href: "/leads", roles: ["admin", "sales"] },
   { label: "Pipeline", href: "/pipeline", roles: ["admin", "sales"] },
   { label: "Clients", href: "/clients", roles: ["admin", "sales"] },
   { label: "Users", href: "/users", roles: ["admin"] },
+  { label: "Calendar", href: "/calendar", roles: ["admin", "sales", "developer"] },
+  { label: "Attendance", href: "/attendance", roles: ["admin", "sales", "developer"] },
 ];
 
 export function getDashboardNavItems(role: UserRole) {

@@ -23,7 +23,7 @@ const stageOrder = [
   "negotiation",
   "closed_won",
   "closed_lost",
-];
+] as const;
 
 function humanize(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -37,7 +37,7 @@ function priorityVariant(priorityBand: string): "danger" | "warning" | "accent" 
 }
 
 function stageSortIndex(stage: string) {
-  const index = stageOrder.indexOf(stage);
+  const index = stageOrder.findIndex((stageName) => stageName === stage);
   return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
@@ -45,6 +45,19 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<"all" | string>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | string>("all");
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: leads.length };
+    for (const stage of stageOrder) {
+      counts[stage] = 0;
+    }
+    for (const lead of leads) {
+      if (typeof counts[lead.stage] === "number") {
+        counts[lead.stage] += 1;
+      }
+    }
+    return counts;
+  }, [leads]);
 
   const stageOptions = useMemo(() => {
     const options = Array.from(new Set(leads.map((lead) => lead.stage)));
@@ -77,6 +90,28 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
         <CardTitle>Pipeline Lead List</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {(["all", ...stageOrder] as const).map((stage) => {
+            const isActive = stageFilter === stage;
+            const label = stage === "all" ? "All" : humanize(stage);
+            const count = stageCounts[stage] ?? 0;
+            return (
+              <button
+                key={stage}
+                type="button"
+                onClick={() => setStageFilter(stage)}
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                  isActive
+                    ? "border-accent bg-accent/10 text-accent-strong"
+                    : "border-border bg-white text-muted-foreground hover:border-accent/40"
+                }`}
+              >
+                {label} {count}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="grid gap-3 md:grid-cols-4">
           <Input
             value={searchQuery}

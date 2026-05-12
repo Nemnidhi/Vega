@@ -39,12 +39,15 @@ export async function POST() {
     if (existingEntry?.checkInAt) {
       return fail("You are already checked in for today.", 409);
     }
-    if (existingEntry && existingEntry.dayStatus === "present") {
+    if (existingEntry) {
+      existingEntry.dayStatus = "present";
       existingEntry.checkInAt = new Date();
       existingEntry.checkOutAt = null;
       existingEntry.workedMinutes = 0;
       existingEntry.totalBreakMinutes = 0;
       existingEntry.breakSessions = [];
+      existingEntry.markedByAdminId = null;
+      existingEntry.markedAt = null;
       await existingEntry.save();
       return ok(serializeForJson(existingEntry));
     }

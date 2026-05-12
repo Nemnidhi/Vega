@@ -26,8 +26,8 @@ export async function PATCH() {
     if (!entry) {
       return fail("No active attendance found. Please check in first.", 404);
     }
-    if (entry.dayStatus !== "present") {
-      return fail("Cannot check out when attendance is not marked present.", 409);
+    if (!entry.checkInAt) {
+      return fail("No active check-in found for today.", 409);
     }
     if (entry.checkOutAt) {
       return fail("You have already checked out for today.", 409);
@@ -48,6 +48,9 @@ export async function PATCH() {
       checkedOutAt,
       entry.totalBreakMinutes,
     );
+    entry.dayStatus = "present";
+    entry.markedByAdminId = null;
+    entry.markedAt = null;
     await entry.save();
 
     return ok(serializeForJson(entry));

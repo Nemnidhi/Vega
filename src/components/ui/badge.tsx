@@ -2,11 +2,11 @@ import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
 const badgeVariants = {
-  neutral: "border border-border bg-white text-foreground",
-  success: "border border-[#b8d7c3] bg-[#edf7f0] text-[#2f6a42]",
-  warning: "border border-[#dec39d] bg-[#f8f1e4] text-[#8a5a1f]",
-  danger: "border border-[#e2b3ae] bg-[#faecea] text-[#a43c35]",
-  accent: "border border-[#bac8d5] bg-[#ecf2f7] text-[#274d6f]",
+  neutral: "border border-border/90 bg-white/85 text-foreground",
+  success: "border border-success/35 bg-success/10 text-success",
+  warning: "border border-warning/35 bg-warning/10 text-warning",
+  danger: "border border-danger/35 bg-danger/10 text-danger",
+  accent: "border border-accent/35 bg-accent/10 text-accent-strong",
 } as const;
 
 type BadgeVariant = keyof typeof badgeVariants;

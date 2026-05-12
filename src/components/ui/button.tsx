@@ -3,13 +3,13 @@ import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = {
   primary:
-    "border border-accent bg-accent text-white hover:bg-accent-strong focus-visible:outline-accent",
+    "border border-accent/75 bg-gradient-to-r from-accent to-accent-strong text-white shadow-sm hover:brightness-[1.03] focus-visible:outline-accent",
   secondary:
-    "border border-border bg-white text-foreground hover:bg-surface-soft focus-visible:outline-accent",
+    "border border-border/90 bg-white/92 text-foreground shadow-sm hover:border-accent/35 hover:bg-white focus-visible:outline-accent",
   subtle:
-    "border border-border bg-surface-soft text-foreground hover:bg-[#e8e4db] focus-visible:outline-accent",
+    "border border-accent/20 bg-accent-soft text-accent-strong hover:border-accent/35 hover:brightness-[0.98] focus-visible:outline-accent",
   danger:
-    "border border-danger bg-danger text-white hover:brightness-95 focus-visible:outline-danger",
+    "border border-danger/80 bg-danger text-white shadow-sm hover:brightness-[1.02] focus-visible:outline-danger",
 } as const;
 
 const buttonSizes = {
@@ -34,7 +34,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          "inline-flex items-center justify-center rounded-lg font-semibold tracking-wide transition-colors duration-150",
+          "inline-flex items-center justify-center rounded-xl font-semibold tracking-wide transition-all duration-200",
           "disabled:cursor-not-allowed disabled:opacity-50",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
           buttonVariants[variant],

@@ -345,7 +345,7 @@ export function UniversalChat({
   }, [loadMessages, selectedUserId]);
 
   useEffect(() => {
-    const pollIntervalMs = 12000;
+    const pollIntervalMs = 20000;
     let disposed = false;
     const controller = new AbortController();
 
@@ -734,7 +734,7 @@ export function UniversalChat({
           <form
             onSubmit={sendMessage}
             className={cn(
-              "sticky bottom-0 z-10 mt-auto pt-2 backdrop-blur supports-[backdrop-filter]:bg-white/80",
+              "sticky bottom-0 z-10 mt-auto pt-2",
               whatsappMobileThread
                 ? "border-0 bg-surface px-2 pb-2"
                 : "border-t border-border bg-white/95",

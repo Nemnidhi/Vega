@@ -146,6 +146,48 @@ export type AdminDailyAttendanceRecord = {
   markedAt?: string | null;
 };
 
+export type AdminMonthlyAttendanceDayRecord = {
+  _id: string;
+  dateKey: string;
+  dayStatus: AttendanceDayStatus;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  workedMinutes?: number;
+  totalBreakMinutes?: number;
+};
+
+export type AdminMonthlyAttendanceRow = {
+  user: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: AttendanceStaffUser["role"] | string;
+  };
+  summary: {
+    presentDays: number;
+    absentDays: number;
+    halfDays: number;
+    totalMarkedDays: number;
+    workedMinutes: number;
+    breakMinutes: number;
+  };
+  records: AdminMonthlyAttendanceDayRecord[];
+};
+
+export type AdminMonthlyAttendancePayload = {
+  monthKey: string;
+  totals: {
+    staffCount: number;
+    presentDays: number;
+    absentDays: number;
+    halfDays: number;
+    totalMarkedDays: number;
+    workedMinutes: number;
+    breakMinutes: number;
+  };
+  rows: AdminMonthlyAttendanceRow[];
+};
+
 export async function getAttendanceOverview(userId: string) {
   await connectToDatabase();
 
@@ -355,4 +397,146 @@ export async function getAdminDailyAttendance(dateKey: string) {
     .lean();
 
   return serializeForJson(records) as AdminDailyAttendanceRecord[];
+}
+
+type AdminMonthlyAttendanceSourceRecord = {
+  _id: string;
+  userId?: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
+  dateKey: string;
+  dayStatus: AttendanceDayStatus;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  workedMinutes?: number;
+  totalBreakMinutes?: number;
+};
+
+export async function getAdminMonthlyAttendance(monthKey: string) {
+  await connectToDatabase();
+
+  const [staffUsers, rawRecords] = await Promise.all([
+    UserModel.find({
+      role: { $in: attendanceMemberRoles },
+    })
+      .sort({ role: 1, fullName: 1 })
+      .select("fullName email role status")
+      .lean(),
+    AttendanceModel.find({
+      dateKey: { $regex: `^${monthKey}` },
+    })
+      .sort({ dateKey: 1, updatedAt: -1 })
+      .populate("userId", "fullName email role")
+      .select("userId dateKey dayStatus checkInAt checkOutAt workedMinutes totalBreakMinutes")
+      .lean(),
+  ]);
+
+  const safeStaffUsers = serializeForJson(staffUsers) as AttendanceStaffUser[];
+  const safeRecords = serializeForJson(rawRecords) as AdminMonthlyAttendanceSourceRecord[];
+  const rowMap = new Map<string, AdminMonthlyAttendanceRow>();
+
+  for (const user of safeStaffUsers) {
+    rowMap.set(user._id, {
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      },
+      summary: {
+        presentDays: 0,
+        absentDays: 0,
+        halfDays: 0,
+        totalMarkedDays: 0,
+        workedMinutes: 0,
+        breakMinutes: 0,
+      },
+      records: [],
+    });
+  }
+
+  for (const record of safeRecords) {
+    const populatedUser = record.userId;
+    if (!populatedUser?._id) {
+      continue;
+    }
+
+    const row =
+      rowMap.get(populatedUser._id) ??
+      ({
+        user: {
+          _id: populatedUser._id,
+          fullName: populatedUser.fullName,
+          email: populatedUser.email,
+          role: populatedUser.role,
+        },
+        summary: {
+          presentDays: 0,
+          absentDays: 0,
+          halfDays: 0,
+          totalMarkedDays: 0,
+          workedMinutes: 0,
+          breakMinutes: 0,
+        },
+        records: [],
+      } satisfies AdminMonthlyAttendanceRow);
+
+    row.records.push({
+      _id: record._id,
+      dateKey: record.dateKey,
+      dayStatus: record.dayStatus,
+      checkInAt: record.checkInAt ?? null,
+      checkOutAt: record.checkOutAt ?? null,
+      workedMinutes: record.workedMinutes ?? 0,
+      totalBreakMinutes: record.totalBreakMinutes ?? 0,
+    });
+
+    if (record.dayStatus === "present") {
+      row.summary.presentDays += 1;
+    } else if (record.dayStatus === "absent") {
+      row.summary.absentDays += 1;
+    } else if (record.dayStatus === "half_day") {
+      row.summary.halfDays += 1;
+    }
+
+    row.summary.totalMarkedDays += 1;
+    row.summary.workedMinutes += record.workedMinutes ?? 0;
+    row.summary.breakMinutes += record.totalBreakMinutes ?? 0;
+
+    rowMap.set(populatedUser._id, row);
+  }
+
+  const rows = Array.from(rowMap.values()).sort((left, right) =>
+    left.user.fullName.localeCompare(right.user.fullName, "en", { sensitivity: "base" }),
+  );
+
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.presentDays += row.summary.presentDays;
+      acc.absentDays += row.summary.absentDays;
+      acc.halfDays += row.summary.halfDays;
+      acc.totalMarkedDays += row.summary.totalMarkedDays;
+      acc.workedMinutes += row.summary.workedMinutes;
+      acc.breakMinutes += row.summary.breakMinutes;
+      return acc;
+    },
+    {
+      staffCount: rows.length,
+      presentDays: 0,
+      absentDays: 0,
+      halfDays: 0,
+      totalMarkedDays: 0,
+      workedMinutes: 0,
+      breakMinutes: 0,
+    },
+  );
+
+  return {
+    monthKey,
+    totals,
+    rows,
+  } as AdminMonthlyAttendancePayload;
 }

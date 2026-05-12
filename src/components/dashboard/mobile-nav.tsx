@@ -19,7 +19,7 @@ export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
 
   return (
     <div className="mb-4 lg:hidden">
-      <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-lg border border-border bg-white p-2">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-xl border border-white/70 bg-white/90 p-2 shadow-sm">
         {navItems.map((item) => {
           const isActive = isDashboardNavItemActive(pathname, item.href);
 
@@ -29,9 +29,9 @@ export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "whitespace-nowrap rounded-md border px-3 py-2 text-xs font-semibold transition-colors",
+                "whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold transition-all duration-150",
                 isActive
-                  ? "border-accent/40 bg-accent/10 text-accent-strong"
+                  ? "border-accent/45 bg-accent/14 text-accent-strong"
                   : "border-transparent bg-white text-muted-foreground hover:border-border hover:bg-surface-soft hover:text-foreground",
               )}
             >
