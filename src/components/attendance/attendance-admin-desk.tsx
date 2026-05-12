@@ -32,6 +32,7 @@ type Notice = {
 };
 
 type AttendanceMarkStatus = "present" | "absent" | "half_day";
+type AttendanceGridDisplayStatus = AttendanceDayStatus | "weekend_off";
 
 interface AttendanceAdminDeskProps {
   initialDailyDateKey: string;
@@ -94,14 +95,20 @@ function statusBadge(status: string) {
   return { label: status, variant: "accent" as const };
 }
 
-function getStatusSymbol(status?: AttendanceDayStatus) {
+function isWeekendDateKey(dateKey: string) {
+  const dayOfWeek = new Date(`${dateKey}T00:00:00`).getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
+function getStatusSymbol(status?: AttendanceGridDisplayStatus) {
   if (status === "present") return "P";
   if (status === "absent") return "A";
   if (status === "half_day") return "H";
+  if (status === "weekend_off") return "W";
   return "-";
 }
 
-function getStatusSymbolClass(status?: AttendanceDayStatus) {
+function getStatusSymbolClass(status?: AttendanceGridDisplayStatus) {
   if (status === "present") {
     return "bg-success/15 text-success";
   }
@@ -110,6 +117,9 @@ function getStatusSymbolClass(status?: AttendanceDayStatus) {
   }
   if (status === "half_day") {
     return "bg-warning/15 text-warning";
+  }
+  if (status === "weekend_off") {
+    return "bg-primary/10 text-primary";
   }
   return "bg-muted text-muted-foreground";
 }
@@ -468,6 +478,9 @@ export function AttendanceAdminDesk({
                 <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-2 py-1 text-warning">
                   <span className="font-semibold">H</span> Half Day
                 </span>
+                <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-primary">
+                  <span className="font-semibold">W</span> Weekend Off
+                </span>
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-muted-foreground">
                   <span className="font-semibold">-</span> Not Marked
                 </span>
@@ -477,6 +490,13 @@ export function AttendanceAdminDesk({
                 const recordByDateKey = new Map(
                   row.records.map((record) => [record.dateKey, record.dayStatus] as const),
                 );
+                const weekendOffDays = monthDateKeys.reduce((count, dateKey) => {
+                  const hasMarkedAttendance = recordByDateKey.has(dateKey);
+                  if (hasMarkedAttendance || !isWeekendDateKey(dateKey)) {
+                    return count;
+                  }
+                  return count + 1;
+                }, 0);
 
                 return (
                   <div
@@ -500,6 +520,9 @@ export function AttendanceAdminDesk({
                         <span className="rounded bg-warning/15 px-2 py-1 font-semibold text-warning">
                           H {row.summary.halfDays}
                         </span>
+                        <span className="rounded bg-primary/10 px-2 py-1 font-semibold text-primary">
+                          W {weekendOffDays}
+                        </span>
                         <span className="rounded bg-muted px-2 py-1 font-semibold text-foreground">
                           T {row.summary.totalMarkedDays}
                         </span>
@@ -511,7 +534,9 @@ export function AttendanceAdminDesk({
                       style={{ gridTemplateColumns: "repeat(auto-fill, minmax(38px, 1fr))" }}
                     >
                       {monthDateKeys.map((dateKey) => {
-                        const dayStatus = recordByDateKey.get(dateKey);
+                        const rawDayStatus = recordByDateKey.get(dateKey);
+                        const dayStatus: AttendanceGridDisplayStatus | undefined =
+                          rawDayStatus ?? (isWeekendDateKey(dateKey) ? "weekend_off" : undefined);
                         return (
                           <div
                             key={`${row.user._id}-${dateKey}`}
