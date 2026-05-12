@@ -83,7 +83,7 @@ export default async function DashboardPage() {
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="bg-gradient-to-r from-[#f5f9ff] via-white to-[#eef5ff] p-5 md:p-6">
+          <div className="bg-surface-soft p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">

@@ -6,10 +6,10 @@ interface ClientAuthLayoutProps {
 
 export default function ClientAuthLayout({ children }: ClientAuthLayoutProps) {
   return (
-    <main className="grid min-h-screen place-items-start bg-[radial-gradient(circle_at_10%_-10%,rgba(18,109,166,0.1),transparent_35%),radial-gradient(circle_at_88%_0%,rgba(31,138,84,0.08),transparent_31%)] px-3 py-4 sm:px-4 sm:py-8 lg:place-items-center">
+    <main className="grid min-h-screen place-items-start bg-background px-3 py-4 sm:px-4 sm:py-8 lg:place-items-center">
       <div className="w-full max-w-[980px] rounded-xl border border-white/75 bg-white/92 p-3 shadow-sm sm:rounded-2xl sm:p-4 md:p-6">
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <section className="order-2 rounded-xl border border-accent/16 bg-[linear-gradient(135deg,rgba(18,109,166,0.12),rgba(221,240,255,0.55))] p-4 sm:p-6 md:p-7 lg:order-1">
+          <section className="order-2 rounded-xl border border-accent/16 bg-surface-soft p-4 sm:p-6 md:p-7 lg:order-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
               Client Portal
             </p>

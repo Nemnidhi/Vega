@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = {
   primary:
-    "border border-accent/75 bg-gradient-to-r from-accent to-accent-strong text-white shadow-sm hover:brightness-[1.03] focus-visible:outline-accent",
+    "border border-accent/75 bg-accent text-white shadow-sm hover:brightness-[1.03] focus-visible:outline-accent",
   secondary:
     "border border-border/90 bg-white/92 text-foreground shadow-sm hover:border-accent/35 hover:bg-white focus-visible:outline-accent",
   subtle:

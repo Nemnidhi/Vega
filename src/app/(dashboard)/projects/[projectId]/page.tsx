@@ -116,13 +116,13 @@ function resolveUserLabel(value: ProjectPageUserRef | string | null | undefined)
 
 function getFlowNodeContainerClasses(state: FlowNodeState) {
   if (state === "done") {
-    return "border-success/35 bg-gradient-to-br from-success/15 to-white shadow-sm";
+    return "border-success/35 bg-success/10 shadow-sm";
   }
   if (state === "active") {
-    return "border-accent/40 bg-gradient-to-br from-accent/15 to-white shadow-sm";
+    return "border-accent/40 bg-accent/10 shadow-sm";
   }
   if (state === "alert") {
-    return "border-danger/45 bg-gradient-to-br from-danger/15 to-white shadow-sm";
+    return "border-danger/45 bg-danger/10 shadow-sm";
   }
   return "border-border/80 bg-white shadow-sm";
 }
@@ -436,7 +436,7 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-3 overflow-hidden border-border/80">
-          <CardHeader className="space-y-2 border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(20,97,143,0.1),transparent_48%),radial-gradient(circle_at_bottom_right,rgba(13,132,96,0.08),transparent_46%)]">
+          <CardHeader className="space-y-2 border-b border-border/60 bg-surface-soft">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="space-y-1">
                 <CardTitle>Execution Flowchart Graph</CardTitle>
@@ -494,7 +494,7 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
                   viewBox="0 0 1040 390"
                   role="img"
                   aria-label="Project execution flowchart"
-                  className="h-auto w-full rounded-xl border border-border/70 bg-[radial-gradient(circle_at_top,rgba(20,97,143,0.06),transparent_48%)]"
+                  className="h-auto w-full rounded-xl border border-border/70 bg-white"
                 >
                   <defs>
                     <marker

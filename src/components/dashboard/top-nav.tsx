@@ -60,7 +60,7 @@ export function DashboardTopNav({ role, userLabel }: DashboardTopNavProps) {
               className={cn(
                 "whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all duration-150",
                 isActive
-                  ? "border-accent/45 bg-gradient-to-r from-accent/16 to-accent-soft text-accent-strong shadow-sm"
+                  ? "border-accent/45 bg-accent-soft text-accent-strong shadow-sm"
                   : "border-transparent bg-white/72 text-muted-foreground hover:border-border hover:bg-white hover:text-foreground",
               )}
             >

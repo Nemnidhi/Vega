@@ -6,10 +6,10 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_12%_0%,rgba(18,109,166,0.1),transparent_36%),radial-gradient(circle_at_86%_4%,rgba(31,138,84,0.08),transparent_30%)] px-4 py-8">
+    <main className="grid min-h-screen place-items-center bg-background px-4 py-8">
       <div className="w-full max-w-[980px] rounded-2xl border border-white/75 bg-white/92 p-4 shadow-sm md:p-6">
         <div className="grid items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-xl border border-accent/16 bg-[linear-gradient(135deg,rgba(18,109,166,0.12),rgba(221,240,255,0.55))] p-6 md:p-7">
+          <section className="rounded-xl border border-accent/16 bg-surface-soft p-6 md:p-7">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Vega</p>
             <h1 className="mt-3 text-3xl font-semibold leading-tight text-foreground md:text-4xl">
               Command Your Workflow

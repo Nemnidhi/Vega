@@ -41,10 +41,7 @@
 body {
   min-height: 100vh;
   color: var(--color-foreground);
-  background:
-    radial-gradient(circle at 8% -18%, rgba(18, 109, 166, 0.09), transparent 34%),
-    radial-gradient(circle at 88% 0%, rgba(31, 138, 84, 0.08), transparent 30%),
-    linear-gradient(180deg, #f7fafe 0%, #f2f7fd 48%, #edf3fa 100%);
+  background: var(--color-background);
   font-feature-settings: "ss01" 1, "cv05" 1;
   line-height: 1.45;
   letter-spacing: 0.01em;
