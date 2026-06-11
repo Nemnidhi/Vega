@@ -3,6 +3,10 @@ import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { assertRoleAccess, getActorContext } from "@/lib/auth/permissions";
 import { attendanceMemberRoles } from "@/lib/attendance/constants";
 import { calculateWorkedMinutes, getAttendanceDateKey } from "@/lib/attendance/date";
+import {
+  assertInsideAttendanceGeofence,
+  attendanceLocationSchema,
+} from "@/lib/attendance/geofence";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { AttendanceModel } from "@/models";
 
@@ -11,11 +15,13 @@ type BreakSessionItem = {
   minutes?: number;
 };
 
-export async function PATCH() {
+export async function PATCH(request: Request) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: attendanceMemberRoles });
+    const location = attendanceLocationSchema.parse(await request.json());
+    const geofenceResult = assertInsideAttendanceGeofence(location);
 
     const todayDateKey = getAttendanceDateKey();
     const entry = await AttendanceModel.findOne({
@@ -43,6 +49,10 @@ export async function PATCH() {
       0,
     );
     entry.checkOutAt = checkedOutAt;
+    entry.checkOutLocation = {
+      ...location,
+      distanceMeters: geofenceResult.distanceMeters,
+    };
     entry.workedMinutes = calculateWorkedMinutes(
       entry.checkInAt,
       checkedOutAt,

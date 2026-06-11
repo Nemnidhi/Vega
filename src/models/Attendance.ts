@@ -19,6 +19,34 @@ const breakSessionSchema = new Schema(
   { _id: false },
 );
 
+const attendanceLocationSchema = new Schema(
+  {
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90,
+      required: true,
+    },
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180,
+      required: true,
+    },
+    accuracy: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    distanceMeters: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+  },
+  { _id: false },
+);
+
 const attendanceSchema = new Schema(
   {
     userId: {
@@ -44,8 +72,16 @@ const attendanceSchema = new Schema(
       type: Date,
       default: null,
     },
+    checkInLocation: {
+      type: attendanceLocationSchema,
+      default: null,
+    },
     checkOutAt: {
       type: Date,
+      default: null,
+    },
+    checkOutLocation: {
+      type: attendanceLocationSchema,
       default: null,
     },
     workedMinutes: {

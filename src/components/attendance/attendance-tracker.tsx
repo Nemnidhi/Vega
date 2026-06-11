@@ -29,6 +29,12 @@ type Notice = {
   text: string;
 };
 
+type AttendanceLocationPayload = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+};
+
 function formatDateFromKey(dateKey?: string) {
   if (!dateKey) {
     return "--";
@@ -82,6 +88,33 @@ function getActiveBreak(breakSessions: BreakSessionRecord[]) {
   return breakSessions.find((entry) => !entry.endAt) ?? null;
 }
 
+function getCurrentAttendanceLocation() {
+  return new Promise<AttendanceLocationPayload>((resolve, reject) => {
+    if (!("geolocation" in navigator)) {
+      reject(new Error("Location access is not available in this browser."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+      },
+      () => {
+        reject(new Error("Please allow location access to mark attendance."));
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 15000,
+      },
+    );
+  });
+}
+
 interface AttendanceTrackerProps {
   initialData: AttendancePayload;
 }
@@ -129,12 +162,18 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
     path: string,
     method: "POST" | "PATCH",
     successText: string,
+    options?: { requiresLocation?: boolean },
   ) {
     setActionLoading(actionKey);
     setNotice(null);
 
     try {
-      const response = await fetch(path, { method });
+      const location = options?.requiresLocation ? await getCurrentAttendanceLocation() : null;
+      const response = await fetch(path, {
+        method,
+        headers: location ? { "Content-Type": "application/json" } : undefined,
+        body: location ? JSON.stringify(location) : undefined,
+      });
       const payload = (await response.json()) as ApiResponse;
       if (!response.ok || !payload.success) {
         throw new Error(payload.error?.message ?? "Unable to complete this action.");
@@ -167,6 +206,7 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
       "/api/attendance/checkout",
       "PATCH",
       "Check-out marked successfully.",
+      { requiresLocation: true },
     );
   }
 
@@ -295,6 +335,7 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
                   "/api/attendance",
                   "POST",
                   "Check-in marked successfully.",
+                  { requiresLocation: true },
                 )
               }
               disabled={loading || actionLoading !== null || !canCheckIn}

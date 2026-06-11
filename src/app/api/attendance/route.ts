@@ -3,6 +3,10 @@ import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { assertRoleAccess, getActorContext } from "@/lib/auth/permissions";
 import { attendanceMemberRoles } from "@/lib/attendance/constants";
 import { getAttendanceDateKey } from "@/lib/attendance/date";
+import {
+  assertInsideAttendanceGeofence,
+  attendanceLocationSchema,
+} from "@/lib/attendance/geofence";
 import { getAttendanceOverview } from "@/lib/attendance/queries";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { AttendanceModel } from "@/models";
@@ -18,11 +22,17 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: attendanceMemberRoles });
+    const location = attendanceLocationSchema.parse(await request.json());
+    const geofenceResult = assertInsideAttendanceGeofence(location);
+    const checkInLocation = {
+      ...location,
+      distanceMeters: geofenceResult.distanceMeters,
+    };
 
     const todayDateKey = getAttendanceDateKey();
     const existingEntry = await AttendanceModel.findOne({
@@ -42,7 +52,9 @@ export async function POST() {
     if (existingEntry) {
       existingEntry.dayStatus = existingEntry.dayStatus === "late_coming" ? "late_coming" : "present";
       existingEntry.checkInAt = new Date();
+      existingEntry.checkInLocation = checkInLocation;
       existingEntry.checkOutAt = null;
+      existingEntry.checkOutLocation = null;
       existingEntry.workedMinutes = 0;
       existingEntry.totalBreakMinutes = 0;
       existingEntry.breakSessions = [];
@@ -57,6 +69,7 @@ export async function POST() {
       dateKey: todayDateKey,
       dayStatus: "present",
       checkInAt: new Date(),
+      checkInLocation,
     });
 
     return ok(serializeForJson(entry), { status: 201 });
