@@ -55,6 +55,8 @@ const proposalSchema = new Schema(
 );
 
 proposalSchema.index({ leadId: 1, version: -1 }, { unique: true });
+proposalSchema.index({ clientId: 1, updatedAt: -1 });
+proposalSchema.index({ status: 1, updatedAt: -1 });
 
 export type ProposalDocument = InferSchemaType<typeof proposalSchema>;
 

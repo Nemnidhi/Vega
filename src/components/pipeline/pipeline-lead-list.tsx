@@ -23,6 +23,7 @@ const stageOrder = [
   "negotiation",
   "closed_won",
   "closed_lost",
+  "invalid",
 ] as const;
 
 function humanize(value: string) {
@@ -162,7 +163,11 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
                 </Link>
               </div>
               <div className="mt-3">
-                <LeadStatusSelect leadId={lead._id} currentStatus={lead.stage} />
+                <LeadStatusSelect
+                  key={`${lead._id}-${lead.stage}`}
+                  leadId={lead._id}
+                  currentStatus={lead.stage}
+                />
               </div>
             </article>
           ))}
@@ -192,7 +197,11 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
                     <p className="text-xs text-muted-foreground">{lead.contactName}</p>
                   </td>
                   <td className="px-2 py-3">
-                    <LeadStatusSelect leadId={lead._id} currentStatus={lead.stage} />
+                    <LeadStatusSelect
+                      key={`${lead._id}-${lead.stage}`}
+                      leadId={lead._id}
+                      currentStatus={lead.stage}
+                    />
                   </td>
                   <td className="px-2 py-3">
                     <Badge variant={priorityVariant(lead.priorityBand)}>

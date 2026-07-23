@@ -16,7 +16,8 @@ export type LeadStatus =
   | "proposal_sent"
   | "negotiation"
   | "closed_won"
-  | "closed_lost";
+  | "closed_lost"
+  | "invalid";
 
 export type LeadCategory =
   | "software_request"

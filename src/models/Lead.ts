@@ -42,7 +42,16 @@ const leadSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["new", "contacted", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost"],
+      enum: [
+        "new",
+        "contacted",
+        "qualified",
+        "proposal_sent",
+        "negotiation",
+        "closed_won",
+        "closed_lost",
+        "invalid",
+      ],
       default: "new",
       required: true,
       index: true,
@@ -93,5 +102,17 @@ leadSchema.index({ priorityBand: 1, score: -1 });
 leadSchema.index({ sourceDomain: 1, createdAt: -1 });
 
 export type LeadDocument = InferSchemaType<typeof leadSchema>;
+
+const existingLeadModel = models.Lead;
+const existingLeadStatusEnum = existingLeadModel?.schema.path("status")?.options?.enum;
+
+// In dev HMR, an older cached model can keep the previous status enum.
+if (
+  existingLeadModel &&
+  Array.isArray(existingLeadStatusEnum) &&
+  !existingLeadStatusEnum.includes("invalid")
+) {
+  delete models.Lead;
+}
 
 export const LeadModel = models.Lead || model("Lead", leadSchema);

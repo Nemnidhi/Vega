@@ -16,6 +16,7 @@ export default async function PipelinePage() {
       _id: string;
       title: string;
       contactName: string;
+      status: string;
       priorityBand: string;
       score: number;
     }>;
@@ -24,7 +25,7 @@ export default async function PipelinePage() {
   const pipelineLeads = stages.flatMap((stage) =>
     stage.leads.map((lead) => ({
       ...lead,
-      stage: stage.stage,
+      stage: lead.status ?? stage.stage,
     })),
   );
 

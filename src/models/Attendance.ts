@@ -115,6 +115,8 @@ const attendanceSchema = new Schema(
 
 attendanceSchema.index({ userId: 1, dateKey: 1 }, { unique: true });
 attendanceSchema.index({ dateKey: -1, userId: 1 });
+attendanceSchema.index({ userId: 1, dateKey: -1 });
+attendanceSchema.index({ dateKey: 1, dayStatus: 1 });
 
 export type AttendanceDocument = InferSchemaType<typeof attendanceSchema>;
 

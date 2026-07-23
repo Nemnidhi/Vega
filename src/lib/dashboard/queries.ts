@@ -16,22 +16,45 @@ import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { serializeForJson } from "@/lib/utils/serialize";
 import type { UserRole } from "@/types/user";
 
+const leadPipelineStages = [
+  "new",
+  "contacted",
+  "qualified",
+  "proposal_sent",
+  "negotiation",
+  "closed_won",
+  "closed_lost",
+  "invalid",
+] as const;
+
+function clampLimit(value: number | undefined, fallback: number, max: number) {
+  return Math.min(Math.max(value ?? fallback, 1), max);
+}
+
 export async function getDashboardMetrics() {
   await connectToDatabase();
 
-  const [
-    totalLeads,
-    heavyArtilleryLeads,
-    standardPipelineLeads,
-    volumePipelineLeads,
-    closedWonLeads,
-    recentActivity,
-  ] = await Promise.all([
-    LeadModel.countDocuments(),
-    LeadModel.countDocuments({ priorityBand: "heavy_artillery" }),
-    LeadModel.countDocuments({ priorityBand: "standard_sales" }),
-    LeadModel.countDocuments({ priorityBand: "volume_pipeline" }),
-    LeadModel.countDocuments({ status: "closed_won" }),
+  const [leadMetricRows, recentActivity] = await Promise.all([
+    LeadModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalLeads: { $sum: 1 },
+          heavyArtilleryLeads: {
+            $sum: { $cond: [{ $eq: ["$priorityBand", "heavy_artillery"] }, 1, 0] },
+          },
+          standardPipelineLeads: {
+            $sum: { $cond: [{ $eq: ["$priorityBand", "standard_sales"] }, 1, 0] },
+          },
+          volumePipelineLeads: {
+            $sum: { $cond: [{ $eq: ["$priorityBand", "volume_pipeline"] }, 1, 0] },
+          },
+          closedWonLeads: {
+            $sum: { $cond: [{ $eq: ["$status", "closed_won"] }, 1, 0] },
+          },
+        },
+      },
+    ]),
     ActivityLogModel.find({})
       .sort({ createdAt: -1 })
       .limit(10)
@@ -39,19 +62,21 @@ export async function getDashboardMetrics() {
       .lean(),
   ]);
 
+  const leadMetrics = leadMetricRows[0] ?? {};
+
   return serializeForJson({
-    totalLeads,
-    heavyArtilleryLeads,
-    standardPipelineLeads,
-    volumePipelineLeads,
-    closedWonLeads,
+    totalLeads: leadMetrics.totalLeads ?? 0,
+    heavyArtilleryLeads: leadMetrics.heavyArtilleryLeads ?? 0,
+    standardPipelineLeads: leadMetrics.standardPipelineLeads ?? 0,
+    volumePipelineLeads: leadMetrics.volumePipelineLeads ?? 0,
+    closedWonLeads: leadMetrics.closedWonLeads ?? 0,
     recentActivity,
   });
 }
 
 export async function getLeads(options?: { limit?: number }) {
   await connectToDatabase();
-  const limit = Math.min(Math.max(options?.limit ?? 200, 1), 500);
+  const limit = clampLimit(options?.limit, 200, 500);
   const leads = await LeadModel.find({})
     .sort({ updatedAt: -1 })
     .limit(limit)
@@ -70,30 +95,26 @@ export async function getLeadById(id: string) {
 
 export async function getPipelineBoard(options?: { limitPerStage?: number }) {
   await connectToDatabase();
-  const limitPerStage = Math.min(Math.max(options?.limitPerStage ?? 60, 1), 200);
-  const stages = [
-    "new",
-    "contacted",
-    "qualified",
-    "proposal_sent",
-    "negotiation",
-    "closed_won",
-    "closed_lost",
-  ];
+  const limitPerStage = clampLimit(options?.limitPerStage, 60, 200);
+  const [stageLeadGroups = {}] = await LeadModel.aggregate([
+    {
+      $facet: Object.fromEntries(
+        leadPipelineStages.map((stage) => [
+          stage,
+          [
+            { $match: { status: stage } },
+            { $sort: { updatedAt: -1 } },
+            { $limit: limitPerStage },
+            { $project: { status: 1, title: 1, contactName: 1, priorityBand: 1, score: 1 } },
+          ],
+        ]),
+      ),
+    },
+  ]);
 
-  const stageLeadGroups = await Promise.all(
-    stages.map((stage) =>
-      LeadModel.find({ status: stage })
-        .sort({ updatedAt: -1 })
-        .limit(limitPerStage)
-        .select("status title contactName priorityBand score")
-        .lean(),
-    ),
-  );
-
-  const items = stages.map((stage, index) => ({
+  const items = leadPipelineStages.map((stage) => ({
     stage,
-    leads: stageLeadGroups[index] ?? [],
+    leads: stageLeadGroups[stage] ?? [],
   }));
   return serializeForJson(items);
 }

@@ -24,6 +24,10 @@ const changeOrderSchema = new Schema(
   { timestamps: true },
 );
 
+changeOrderSchema.index({ updatedAt: -1 });
+changeOrderSchema.index({ clientId: 1, updatedAt: -1 });
+changeOrderSchema.index({ leadId: 1, updatedAt: -1 });
+
 export type ChangeOrderDocument = InferSchemaType<typeof changeOrderSchema>;
 
 export const ChangeOrderModel = models.ChangeOrder || model("ChangeOrder", changeOrderSchema);

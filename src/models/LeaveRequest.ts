@@ -67,6 +67,8 @@ const leaveRequestSchema = new Schema(
 
 leaveRequestSchema.index({ userId: 1, createdAt: -1 });
 leaveRequestSchema.index({ userId: 1, startDateKey: 1, endDateKey: 1 });
+leaveRequestSchema.index({ status: 1, createdAt: -1 });
+leaveRequestSchema.index({ startDateKey: 1, endDateKey: 1, status: 1 });
 
 export type LeaveRequestDocument = InferSchemaType<typeof leaveRequestSchema>;
 

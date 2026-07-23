@@ -62,6 +62,9 @@ const clientSchema = new Schema(
   { timestamps: true },
 );
 
+clientSchema.index({ updatedAt: -1 });
+clientSchema.index({ onboardingStatus: 1, updatedAt: -1 });
+
 export type ClientDocument = InferSchemaType<typeof clientSchema>;
 
 export const ClientModel = models.Client || model("Client", clientSchema);

@@ -18,6 +18,7 @@ export const leadStatusValues = [
   "negotiation",
   "closed_won",
   "closed_lost",
+  "invalid",
 ] as const;
 
 export const leadCategoryValues = [

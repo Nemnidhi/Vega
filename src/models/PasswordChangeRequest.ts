@@ -49,6 +49,7 @@ passwordChangeRequestSchema.index(
     partialFilterExpression: { status: "pending" },
   },
 );
+passwordChangeRequestSchema.index({ status: 1, createdAt: -1 });
 
 export type PasswordChangeRequestDocument = InferSchemaType<
   typeof passwordChangeRequestSchema

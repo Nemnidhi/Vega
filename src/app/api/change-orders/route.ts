@@ -7,14 +7,20 @@ import { detectOutOfScopeFeature } from "@/lib/workflows/change-order";
 import { logActivity } from "@/lib/activity/logging";
 import { serializeForJson } from "@/lib/utils/serialize";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: permissionRules.createChangeOrders });
 
+    const { searchParams } = new URL(request.url);
+    const requestedLimit = Number(searchParams.get("limit") ?? 200);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 500)
+      : 200;
     const changeOrders = await ChangeOrderModel.find({})
       .sort({ updatedAt: -1 })
+      .limit(limit)
       .populate("leadId", "title status")
       .populate("clientId", "legalName")
       .lean();

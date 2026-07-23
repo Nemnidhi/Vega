@@ -41,6 +41,9 @@ scopeManifestSchema.path("confirmedDeliverables").validate({
   message: "At least one deliverable is required",
 });
 
+scopeManifestSchema.index({ clientId: 1, updatedAt: -1 });
+scopeManifestSchema.index({ isCompleted: 1, signedAt: 1 });
+
 export type ScopeManifestDocument = InferSchemaType<typeof scopeManifestSchema>;
 
 export const ScopeManifestModel =

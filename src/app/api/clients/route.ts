@@ -22,13 +22,21 @@ const createClientSchema = z.object({
   accountManagerId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { atLeast: "sales" });
 
-    const clients = await ClientModel.find({}).sort({ updatedAt: -1 }).lean();
+    const { searchParams } = new URL(request.url);
+    const requestedLimit = Number(searchParams.get("limit") ?? 200);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 500)
+      : 200;
+    const clients = await ClientModel.find({})
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean();
     return ok(serializeForJson(clients));
   } catch (error) {
     return handleApiError(error);

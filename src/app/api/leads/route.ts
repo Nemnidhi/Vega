@@ -17,13 +17,17 @@ export async function GET(request: Request) {
     const status = searchParams.get("status");
     const priorityBand = searchParams.get("priorityBand");
     const category = searchParams.get("category");
+    const requestedLimit = Number(searchParams.get("limit") ?? 300);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 500)
+      : 300;
 
     const query: Record<string, string> = {};
     if (status) query.status = status;
     if (priorityBand) query.priorityBand = priorityBand;
     if (category) query.category = category;
 
-    const leads = await LeadModel.find(query).sort({ updatedAt: -1 }).lean();
+    const leads = await LeadModel.find(query).sort({ updatedAt: -1 }).limit(limit).lean();
     return ok(serializeForJson(leads));
   } catch (error) {
     return handleApiError(error);

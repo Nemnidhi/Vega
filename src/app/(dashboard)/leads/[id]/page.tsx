@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
+import { LeadDairy } from "@/components/leads/lead-dairy";
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { LeadFieldsEditor } from "@/components/leads/lead-fields-editor";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { ClientModel, LeadModel } from "@/models";
+import { ClientModel, LeadModel, LeadNoteModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 
@@ -161,6 +162,20 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     updatedAt?: string;
   };
 
+  const noteDocs = await LeadNoteModel.find({ leadId: leadDoc._id })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .select("note createdById createdAt")
+    .populate("createdById", "fullName email role")
+    .lean();
+
+  const leadNotes = serializeForJson(noteDocs) as Array<{
+    _id: string;
+    note: string;
+    createdById?: string | { fullName?: string; email?: string; role?: string } | null;
+    createdAt?: string;
+  }>;
+
   const fallbackClient = !lead.phone
     ? await ClientModel.findOne({ primaryContactEmail: lead.email.toLowerCase().trim() })
         .select("primaryContactPhone")
@@ -265,6 +280,16 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   Add phone number in lead record to enable direct call and message actions.
                 </p>
               ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Lead Dairy</CardTitle>
+              <CardDescription>Add and review lead notes from one place.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LeadDairy leadId={lead._id} notes={leadNotes} />
             </CardContent>
           </Card>
 
@@ -387,7 +412,11 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Change Status</p>
-                <LeadStatusSelect leadId={lead._id} currentStatus={lead.status} />
+                <LeadStatusSelect
+                  key={`${lead._id}-${lead.status}`}
+                  leadId={lead._id}
+                  currentStatus={lead.status}
+                />
               </div>
             </CardContent>
           </Card>

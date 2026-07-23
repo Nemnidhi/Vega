@@ -11,6 +11,7 @@ const statusOptions = [
   "negotiation",
   "closed_won",
   "closed_lost",
+  "invalid",
 ] as const;
 
 function statusLabel(value: string) {

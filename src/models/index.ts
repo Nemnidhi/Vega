@@ -6,6 +6,7 @@ export { ClientModel } from "@/models/Client";
 export { ClientOnboardingModel } from "@/models/ClientOnboarding";
 export { ClientQueryModel } from "@/models/ClientQuery";
 export { LeadModel } from "@/models/Lead";
+export { LeadNoteModel } from "@/models/LeadNote";
 export { LeaveBalanceModel } from "@/models/LeaveBalance";
 export { LeaveRequestModel } from "@/models/LeaveRequest";
 export { PasswordChangeRequestModel } from "@/models/PasswordChangeRequest";

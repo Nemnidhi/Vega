@@ -12,6 +12,7 @@ const stages = [
   "negotiation",
   "closed_won",
   "closed_lost",
+  "invalid",
 ] as const;
 
 export async function GET() {
@@ -20,16 +21,41 @@ export async function GET() {
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
-    const grouped = await Promise.all(
-      stages.map(async (stage) => {
-        const leads = await LeadModel.find({ status: stage })
-          .sort({ updatedAt: -1 })
-          .limit(40)
-          .lean();
+    const limitPerStage = 40;
+    const [groupedByStage = {}] = await LeadModel.aggregate([
+      {
+        $facet: Object.fromEntries(
+          stages.map((stage) => [
+            stage,
+            [
+              { $match: { status: stage } },
+              { $sort: { updatedAt: -1 } },
+              { $limit: limitPerStage },
+              {
+                $project: {
+                  title: 1,
+                  contactName: 1,
+                  email: 1,
+                  phone: 1,
+                  source: 1,
+                  category: 1,
+                  urgency: 1,
+                  status: 1,
+                  priorityBand: 1,
+                  score: 1,
+                  updatedAt: 1,
+                },
+              },
+            ],
+          ]),
+        ),
+      },
+    ]);
 
-        return { stage, leads: serializeForJson(leads) };
-      }),
-    );
+    const grouped = stages.map((stage) => ({
+      stage,
+      leads: serializeForJson(groupedByStage[stage] ?? []),
+    }));
 
     return ok(grouped);
   } catch (error) {
