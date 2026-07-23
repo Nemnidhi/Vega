@@ -18,6 +18,7 @@ async function getActiveDeveloper(userId: string) {
 }
 
 type ProjectPopulationQuery<TSelf> = {
+  select(fields: string): TSelf;
   populate(path: string, select: string): TSelf;
 };
 
@@ -26,6 +27,7 @@ function applyProjectPopulation<T extends ProjectPopulationQuery<T>>(
   includeHistory: boolean,
 ) {
   let populated = query
+    .select("title description status assignedDeveloperId createdBy tasks updatedAt")
     .populate("assignedDeveloperId", "fullName email role status")
     .populate("createdBy", "fullName email role")
     .populate("tasks.assignedDeveloperId", "fullName email role status")
@@ -47,6 +49,10 @@ export async function GET(request: NextRequest) {
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: permissionRules.accessProjectAssignments });
     const includeHistory = request.nextUrl.searchParams.get("includeHistory") !== "0";
+    const limitParam = Number(request.nextUrl.searchParams.get("limit") ?? 150);
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(Math.trunc(limitParam), 1), 300)
+      : 150;
 
     const query =
       actor.role === "developer"
@@ -59,7 +65,7 @@ export async function GET(request: NextRequest) {
         : {};
 
     const projects = await applyProjectPopulation(
-      ProjectModel.find(query).sort({ updatedAt: -1 }),
+      ProjectModel.find(query).sort({ updatedAt: -1 }).limit(limit),
       includeHistory,
     ).lean();
 

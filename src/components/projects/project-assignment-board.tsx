@@ -1,12 +1,13 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { listenForTaskAssignmentOpen } from "@/components/projects/task-queue-launcher-trigger";
 
 type UserRef = {
   _id: string;
@@ -199,6 +200,9 @@ export function ProjectAssignmentBoard({
   );
   const [alertLoadingMap, setAlertLoadingMap] = useState<Record<string, boolean>>({});
   const [showCreateProjectForm, setShowCreateProjectForm] = useState(false);
+  const [taskAssignmentModalProjectId, setTaskAssignmentModalProjectId] = useState<string | null>(
+    null,
+  );
   const [message, setMessage] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -212,6 +216,8 @@ export function ProjectAssignmentBoard({
   const projectsRefreshInFlightRef = useRef(false);
   const isCreateProjectRequested =
     canManage && searchParams.get("createProject") === "1";
+  const isTaskAssignmentRequested =
+    canManage && showInlineDetails && searchParams.get("assignTask") === "1";
   const isCreateProjectModalOpen =
     showCreateProjectForm || isCreateProjectRequested;
 
@@ -230,6 +236,22 @@ export function ProjectAssignmentBoard({
     setShowCreateProjectForm(false);
     clearCreateProjectModalQuery();
   }
+
+  const clearTaskAssignmentModalQuery = useCallback(() => {
+    if (!isTaskAssignmentRequested) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("assignTask");
+    const nextUrl = nextParams.size > 0 ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [isTaskAssignmentRequested, pathname, router, searchParams]);
+
+  const closeTaskAssignmentModal = useCallback(() => {
+    setTaskAssignmentModalProjectId(null);
+    clearTaskAssignmentModalQuery();
+  }, [clearTaskAssignmentModalQuery]);
 
   const defaultDeveloperId = useMemo(
     () => developerOptions[0]?._id ?? "",
@@ -253,6 +275,15 @@ export function ProjectAssignmentBoard({
     }
     return orderedProjects.find((project) => project._id === selectedProjectId) ?? null;
   }, [orderedProjects, selectedProjectId, showInlineDetails]);
+  const taskAssignmentModalProject = useMemo(() => {
+    const modalProjectId =
+      taskAssignmentModalProjectId ??
+      (isTaskAssignmentRequested ? selectedProjectId : null);
+    if (!modalProjectId) {
+      return null;
+    }
+    return orderedProjects.find((project) => project._id === modalProjectId) ?? null;
+  }, [isTaskAssignmentRequested, orderedProjects, selectedProjectId, taskAssignmentModalProjectId]);
   const filteredProjects = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -407,7 +438,6 @@ export function ProjectAssignmentBoard({
               ? [data.data as ProjectItem]
               : []
             : ((data.data ?? []) as ProjectItem[]);
-
         const nextAlertKeys = getPendingAlertKeys(nextProjects);
         const previousAlertKeys = pendingAlertKeysRef.current;
 
@@ -437,7 +467,7 @@ export function ProjectAssignmentBoard({
     }
 
     // Keep live updates but reduce server and UI churn for smoother overall performance.
-    const pollIntervalMs = showInlineDetails ? 25000 : 35000;
+    const pollIntervalMs = showInlineDetails ? 45000 : 60000;
     void refreshProjectsFromServer();
     const interval = setInterval(() => {
       void refreshProjectsFromServer();
@@ -446,7 +476,7 @@ export function ProjectAssignmentBoard({
       disposed = true;
       clearInterval(interval);
     };
-  }, [canManage, selectedProjectId, showInlineDetails]);
+    }, [canManage, selectedProjectId, showInlineDetails]);
 
   useEffect(() => {
     if (!popupMessage) {
@@ -461,11 +491,26 @@ export function ProjectAssignmentBoard({
   }, [popupMessage]);
 
   useEffect(() => {
-    if (!isCreateProjectModalOpen) {
+    if (!canManage) {
+      return;
+    }
+
+    return listenForTaskAssignmentOpen((projectId) => {
+      setTaskAssignmentModalProjectId(projectId);
+    });
+  }, [canManage]);
+
+  useEffect(() => {
+    if (!isCreateProjectModalOpen && !taskAssignmentModalProject) {
       return;
     }
 
     function onEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && taskAssignmentModalProject) {
+        closeTaskAssignmentModal();
+        return;
+      }
+
       if (event.key === "Escape" && !projectLoading) {
         setShowCreateProjectForm(false);
 
@@ -481,12 +526,14 @@ export function ProjectAssignmentBoard({
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
   }, [
+    closeTaskAssignmentModal,
     isCreateProjectModalOpen,
     isCreateProjectRequested,
     pathname,
     projectLoading,
     router,
     searchParams,
+    taskAssignmentModalProject,
   ]);
 
   function resolveUserLabel(value: UserRef | string | null | undefined) {
@@ -589,6 +636,9 @@ export function ProjectAssignmentBoard({
         },
       }));
       setMessage("Task assigned successfully.");
+      if (taskAssignmentModalProjectId === projectId || isTaskAssignmentRequested) {
+        closeTaskAssignmentModal();
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to assign task");
     } finally {
@@ -845,25 +895,32 @@ export function ProjectAssignmentBoard({
       return Math.round((statusIndex / (taskStatusFlowOrder.length - 1)) * 100);
     }
 
+    function getProgressTone(status: TaskItem["status"]) {
+      if (status === "done") return "bg-success";
+      if (status === "blocked") return "bg-danger";
+      if (status === "in_progress") return "bg-accent";
+      return "bg-warning";
+    }
+
     return (
-      <div className="space-y-4 rounded-xl bg-white p-3 shadow-sm sm:p-4">
+      <div className="space-y-4 rounded-xl border border-border/70 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] p-3 shadow-sm sm:p-4">
         <div>
-          <p className="text-sm font-semibold text-foreground">Task Flowchart</p>
+          <p className="text-sm font-semibold text-foreground">Task Node Trace</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            As tasks get assigned, this flow builds step-by-step. Admin can trace each transition.
+            Every node keeps its own status journey and admin trace log.
           </p>
         </div>
 
-        <div className="rounded-xl bg-surface p-2.5 sm:p-3">
+        <div className="rounded-xl border border-border/70 bg-white p-2.5 sm:p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Assignment Graph
+            Assignment Sequence
           </p>
           <div className="mt-2 space-y-2 px-1 py-1.5">
             {orderedTasks.map((task, index) => {
               const isLast = index === orderedTasks.length - 1;
               return (
                 <div key={`flow-${task._id}`} className="space-y-2">
-                  <div className="rounded-lg bg-white p-2.5 shadow-sm sm:p-3">
+                  <div className="rounded-lg border border-border/70 bg-surface-soft/80 p-2.5 shadow-sm sm:p-3">
                     <div className="flex items-start justify-between gap-2">
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/10 px-1 text-[10px] font-semibold text-accent-strong">
                         {index + 1}
@@ -881,7 +938,10 @@ export function ProjectAssignmentBoard({
                   </div>
                   {!isLast ? (
                     <div className="flex justify-center">
-                      <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm">
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-transparent shadow-sm before:text-muted-foreground before:content-['v']"
+                      >
                         ↓
                       </span>
                     </div>
@@ -913,7 +973,7 @@ export function ProjectAssignmentBoard({
             const taskProgress = getTaskProgress(task.status);
 
             return (
-              <div key={task._id} className="rounded-xl bg-surface p-2.5 sm:p-3">
+              <div key={task._id} className="rounded-xl border border-border/70 bg-white p-2.5 shadow-sm sm:p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-foreground">
@@ -937,7 +997,7 @@ export function ProjectAssignmentBoard({
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-white">
                     <div
-                      className="h-full rounded-full bg-accent transition-all"
+                      className={`h-full rounded-full transition-all ${getProgressTone(task.status)}`}
                       style={{ width: `${taskProgress}%` }}
                     />
                   </div>
@@ -963,7 +1023,10 @@ export function ProjectAssignmentBoard({
                         </span>
                         {stageIndex < taskStatusFlowOrder.length - 1 ? (
                           <div className="flex justify-center sm:justify-start">
-                            <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                            <span
+                              aria-hidden="true"
+                              className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-transparent before:text-muted-foreground before:content-['v']"
+                            >
                               ↓
                             </span>
                           </div>
@@ -1118,9 +1181,19 @@ export function ProjectAssignmentBoard({
     const isCompletedProject = project.status === "completed";
 
     return (
-      <Card key={`details-${project._id}`}>
-        <CardHeader className="space-y-3">
-          <CardTitle className="break-words text-lg sm:text-xl">{project.title}</CardTitle>
+      <Card key={`details-${project._id}`} className="overflow-hidden border-border/80 shadow-sm">
+        <CardHeader className="space-y-3 border-b border-border/60 bg-[linear-gradient(135deg,#ffffff_0%,#f6fafc_100%)]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">
+                Task Assignment Console
+              </p>
+              <CardTitle className="mt-1 break-words text-lg sm:text-xl">{project.title}</CardTitle>
+            </div>
+            <span className="inline-flex w-fit rounded-lg border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-accent">
+              {project.tasks.length} Nodes
+            </span>
+          </div>
           <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3 sm:text-sm">
             <p className="rounded-md border border-border bg-surface-soft px-2.5 py-1.5">
               Assigned to: {resolveUserLabel(project.assignedDeveloperId)}
@@ -1136,9 +1209,15 @@ export function ProjectAssignmentBoard({
             <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
           ) : null}
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-5 pt-5">
           {canManage ? (
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+            <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Project controls</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Move the full project only after node work is reviewed.
+                </p>
+              </div>
               <Button
                 type="button"
                 variant="secondary"
@@ -1170,51 +1249,69 @@ export function ProjectAssignmentBoard({
           ) : null}
 
           {canManage && !isCompletedProject ? (
-            <form className="grid gap-3.5 sm:gap-4" onSubmit={(event) => createTask(project._id, event)}>
-              <Input
-                placeholder="Task title"
-                value={taskForm.title}
-                onChange={(event) =>
-                  updateTaskForm(project._id, { title: event.target.value })
-                }
-                required
-              />
-              <Textarea
-                placeholder="Task notes (optional)"
-                value={taskForm.description}
-                onChange={(event) =>
-                  updateTaskForm(project._id, { description: event.target.value })
-                }
-              />
-              <select
-                className="h-11 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
-                value={taskForm.assignedDeveloperId}
-                onChange={(event) =>
-                  updateTaskForm(project._id, {
-                    assignedDeveloperId: event.target.value,
-                  })
-                }
-                required
-              >
-                <option value="" disabled>
-                  Select developer
-                </option>
-                {developerOptions.map((developer) => (
-                  <option key={developer._id} value={developer._id}>
-                    {developer.fullName} ({developer.email})
-                  </option>
-                ))}
-              </select>
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto"
-                  disabled={taskLoading || developerOptions.length === 0}
-                >
-                  {taskLoading ? "Assigning..." : "Assign Task"}
-                </Button>
+            <div className="rounded-xl border border-accent/20 bg-accent/10 p-3 sm:p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Launch a developer task node</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    The node appears in the project graph as soon as assignment succeeds.
+                  </p>
+                </div>
+                <span className="w-fit rounded-lg border border-accent/20 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-accent">
+                  Live Graph Sync
+                </span>
               </div>
-            </form>
+
+              <form
+                className="mt-3 grid gap-3 lg:grid-cols-2"
+                onSubmit={(event) => createTask(project._id, event)}
+              >
+                <Input
+                  placeholder="Task title"
+                  value={taskForm.title}
+                  onChange={(event) =>
+                    updateTaskForm(project._id, { title: event.target.value })
+                  }
+                  required
+                />
+                <select
+                  className="h-11 w-full rounded-xl border border-border/70 bg-white px-3 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(17,33,56,0.05)] focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  value={taskForm.assignedDeveloperId}
+                  onChange={(event) =>
+                    updateTaskForm(project._id, {
+                      assignedDeveloperId: event.target.value,
+                    })
+                  }
+                  required
+                >
+                  <option value="" disabled>
+                    Select developer
+                  </option>
+                  {developerOptions.map((developer) => (
+                    <option key={developer._id} value={developer._id}>
+                      {developer.fullName} ({developer.email})
+                    </option>
+                  ))}
+                </select>
+                <Textarea
+                  className="lg:col-span-2"
+                  placeholder="Task notes (optional)"
+                  value={taskForm.description}
+                  onChange={(event) =>
+                    updateTaskForm(project._id, { description: event.target.value })
+                  }
+                />
+                <div className="flex flex-col gap-2.5 lg:col-span-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={taskLoading || developerOptions.length === 0}
+                  >
+                    {taskLoading ? "Creating Node..." : "Assign Task Node"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           ) : null}
 
           {canManage && isCompletedProject ? (
@@ -1240,6 +1337,115 @@ export function ProjectAssignmentBoard({
             <Button size="sm" variant="secondary" onClick={() => setPopupMessage("")}>
               Dismiss
             </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {canManage && taskAssignmentModalProject ? (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-white shadow-2xl">
+            <div className="border-b border-border/70 bg-[linear-gradient(135deg,#ffffff_0%,#eef7fd_100%)] p-4 sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">
+                    Task Queue Launcher
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold text-foreground">
+                    Assign a developer task node
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {taskAssignmentModalProject.title}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={closeTaskAssignmentModal}
+                  disabled={taskLoadingMap[taskAssignmentModalProject._id] ?? false}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-5">
+              {taskAssignmentModalProject.status === "completed" ? (
+                <p className="rounded-xl border border-border bg-surface-soft p-3 text-sm text-muted-foreground">
+                  Move this project to running before assigning a new task node.
+                </p>
+              ) : (
+                <form
+                  className="grid gap-3 lg:grid-cols-2"
+                  onSubmit={(event) => createTask(taskAssignmentModalProject._id, event)}
+                >
+                  <Input
+                    placeholder="Task title"
+                    value={readTaskForm(taskAssignmentModalProject._id).title}
+                    onChange={(event) =>
+                      updateTaskForm(taskAssignmentModalProject._id, {
+                        title: event.target.value,
+                      })
+                    }
+                    required
+                    autoFocus
+                  />
+                  <select
+                    className="h-11 w-full rounded-xl border border-border/70 bg-white px-3 text-sm text-foreground shadow-[inset_0_1px_2px_rgba(17,33,56,0.05)] focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    value={readTaskForm(taskAssignmentModalProject._id).assignedDeveloperId}
+                    onChange={(event) =>
+                      updateTaskForm(taskAssignmentModalProject._id, {
+                        assignedDeveloperId: event.target.value,
+                      })
+                    }
+                    required
+                  >
+                    <option value="" disabled>
+                      Select developer
+                    </option>
+                    {developerOptions.map((developer) => (
+                      <option key={developer._id} value={developer._id}>
+                        {developer.fullName} ({developer.email})
+                      </option>
+                    ))}
+                  </select>
+                  <Textarea
+                    className="lg:col-span-2"
+                    placeholder="Task notes (optional)"
+                    value={readTaskForm(taskAssignmentModalProject._id).description}
+                    onChange={(event) =>
+                      updateTaskForm(taskAssignmentModalProject._id, {
+                        description: event.target.value,
+                      })
+                    }
+                  />
+                  <div className="flex flex-col gap-2.5 lg:col-span-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <Button
+                      type="submit"
+                      className="w-full sm:w-auto"
+                      disabled={
+                        (taskLoadingMap[taskAssignmentModalProject._id] ?? false) ||
+                        developerOptions.length === 0
+                      }
+                    >
+                      {taskLoadingMap[taskAssignmentModalProject._id]
+                        ? "Creating Node..."
+                        : "Assign Task Node"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full sm:w-auto"
+                      onClick={closeTaskAssignmentModal}
+                      disabled={taskLoadingMap[taskAssignmentModalProject._id] ?? false}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       ) : null}

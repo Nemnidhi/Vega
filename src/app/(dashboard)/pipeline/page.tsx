@@ -10,7 +10,7 @@ export default async function PipelinePage() {
     redirectTo: "/projects",
   });
 
-  const stages = (await getPipelineBoard()) as Array<{
+  const stages = (await getPipelineBoard({ limitPerStage: 80 })) as Array<{
     stage: string;
     leads: Array<{
       _id: string;
@@ -32,7 +32,7 @@ export default async function PipelinePage() {
     <section className="space-y-6">
       <DashboardHeader
         title="Pipeline"
-        subtitle="Track lead stages from new to closed."
+        subtitle="Track lead stages from new to closed. Showing latest 80 leads per stage for faster loading."
       />
 
       <PipelineLeadList leads={pipelineLeads} />

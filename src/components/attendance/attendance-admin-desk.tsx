@@ -12,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type {
+  AdminLeavePayload,
+  AdminLeaveRequestRecord,
   AdminDailyAttendanceRecord,
   AdminMonthlyAttendancePayload,
   AttendanceDayStatus,
@@ -37,6 +39,7 @@ type AttendanceGridDisplayStatus = AttendanceDayStatus | "weekend_off";
 interface AttendanceAdminDeskProps {
   initialDailyDateKey: string;
   initialDailyRecords: AdminDailyAttendanceRecord[];
+  initialLeaveData: AdminLeavePayload;
   initialMonthKey: string;
   initialMonthlyData: AdminMonthlyAttendancePayload;
   staffUsers: AttendanceStaffUser[];
@@ -98,6 +101,23 @@ function statusBadge(status: string) {
   return { label: status, variant: "accent" as const };
 }
 
+function leaveStatusBadge(status: string) {
+  if (status === "approved") {
+    return { label: "Approved", variant: "success" as const };
+  }
+  if (status === "pending") {
+    return { label: "Pending", variant: "warning" as const };
+  }
+  if (status === "rejected") {
+    return { label: "Rejected", variant: "danger" as const };
+  }
+  return { label: "Cancelled", variant: "neutral" as const };
+}
+
+function formatLeaveType(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 function isWeekendDateKey(dateKey: string) {
   const dayOfWeek = new Date(`${dateKey}T00:00:00`).getDay();
   return dayOfWeek === 0 || dayOfWeek === 6;
@@ -155,16 +175,19 @@ function buildMonthDateKeys(monthKey: string) {
 export function AttendanceAdminDesk({
   initialDailyDateKey,
   initialDailyRecords,
+  initialLeaveData,
   initialMonthKey,
   initialMonthlyData,
   staffUsers,
 }: AttendanceAdminDeskProps) {
   const [dailyDateKey, setDailyDateKey] = useState(initialDailyDateKey);
   const [dailyRecords, setDailyRecords] = useState(initialDailyRecords);
+  const [leaveData, setLeaveData] = useState(initialLeaveData);
   const [monthKey, setMonthKey] = useState(initialMonthKey);
   const [monthlyData, setMonthlyData] = useState(initialMonthlyData);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [markForm, setMarkForm] = useState({
     userId: staffUsers[0]?._id ?? "",
     dateKey: initialDailyDateKey,
@@ -202,6 +225,19 @@ export function AttendanceAdminDesk({
     const parsed = payload.data as AdminMonthlyAttendancePayload;
     setMonthKey(parsed.monthKey);
     setMonthlyData(parsed);
+  }
+
+  async function loadLeaveRequests() {
+    const response = await fetch("/api/attendance/admin/leave", {
+      method: "GET",
+      cache: "no-store",
+    });
+    const payload = (await response.json()) as ApiResponse;
+    if (!response.ok || !payload.success || !payload.data) {
+      throw new Error(payload.error?.message ?? "Unable to load leave requests.");
+    }
+
+    setLeaveData(payload.data as AdminLeavePayload);
   }
 
   async function runAction(
@@ -251,6 +287,64 @@ export function AttendanceAdminDesk({
     }
   }
 
+  async function refreshLeaveRequests() {
+    setLoadingKey("leave-refresh");
+    setNotice(null);
+    try {
+      await loadLeaveRequests();
+      setNotice({ tone: "success", text: "Leave requests refreshed." });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Unable to load leave requests.",
+      });
+    } finally {
+      setLoadingKey(null);
+    }
+  }
+
+  async function reviewLeaveRequest(
+    request: AdminLeaveRequestRecord,
+    status: "approved" | "rejected",
+  ) {
+    const loadingKeyValue = `leave-${status}-${request._id}`;
+    setLoadingKey(loadingKeyValue);
+    setNotice(null);
+
+    try {
+      const response = await fetch(`/api/attendance/admin/leave/${request._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          reviewNote: reviewNotes[request._id] ?? "",
+        }),
+      });
+      const payload = (await response.json()) as ApiResponse;
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error?.message ?? "Unable to review leave request.");
+      }
+
+      await loadLeaveRequests();
+      setReviewNotes((previous) => {
+        const next = { ...previous };
+        delete next[request._id];
+        return next;
+      });
+      setNotice({
+        tone: "success",
+        text: status === "approved" ? "Leave request approved." : "Leave request rejected.",
+      });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Unable to review leave request.",
+      });
+    } finally {
+      setLoadingKey(null);
+    }
+  }
+
   async function refreshDailyForSelectedDate() {
     setLoadingKey("daily-refresh");
     setNotice(null);
@@ -284,9 +378,169 @@ export function AttendanceAdminDesk({
   }
 
   const monthDateKeys = useMemo(() => buildMonthDateKeys(monthlyData.monthKey), [monthlyData.monthKey]);
+  const pendingLeaveRequests = useMemo(
+    () => leaveData.requests.filter((request) => request.status === "pending"),
+    [leaveData.requests],
+  );
+  const reviewedLeaveRequests = useMemo(
+    () => leaveData.requests.filter((request) => request.status !== "pending").slice(0, 12),
+    [leaveData.requests],
+  );
 
   return (
     <section className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>Leave Requests</CardTitle>
+              <CardDescription>
+                Review pending team leave requests and recent decisions.
+              </CardDescription>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => void refreshLeaveRequests()}
+              disabled={loadingKey !== null}
+            >
+              {loadingKey === "leave-refresh" ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-lg font-semibold text-foreground">{leaveData.summary.pendingCount}</p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+              <p className="text-xs text-muted-foreground">Approved</p>
+              <p className="text-lg font-semibold text-foreground">{leaveData.summary.approvedCount}</p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+              <p className="text-xs text-muted-foreground">Rejected</p>
+              <p className="text-lg font-semibold text-foreground">{leaveData.summary.rejectedCount}</p>
+            </div>
+          </div>
+
+          {pendingLeaveRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending leave requests.</p>
+          ) : (
+            <div className="space-y-3">
+              {pendingLeaveRequests.map((request) => {
+                const staff = request.userId;
+                return (
+                  <div
+                    key={request._id}
+                    className="space-y-3 rounded-lg border border-border/70 bg-card px-3 py-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">
+                          {staff?.fullName ?? "Unknown staff"}
+                        </p>
+                        <p className="break-all text-[11px] text-muted-foreground">
+                          {staff ? `${staff.role} | ${staff.email}` : "User details unavailable"}
+                        </p>
+                      </div>
+                      <Badge variant="warning">Pending</Badge>
+                    </div>
+                    <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+                      <p>
+                        <span className="font-medium text-foreground">Type:</span>{" "}
+                        {formatLeaveType(request.leaveType)}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">Dates:</span>{" "}
+                        {request.startDateKey} to {request.endDateKey}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">Days:</span>{" "}
+                        {request.totalDays}
+                      </p>
+                    </div>
+                    {request.reason ? (
+                      <p className="rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-muted-foreground">
+                        {request.reason}
+                      </p>
+                    ) : null}
+                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                      <Input
+                        placeholder="Review note (optional)"
+                        value={reviewNotes[request._id] ?? ""}
+                        onChange={(event) =>
+                          setReviewNotes((previous) => ({
+                            ...previous,
+                            [request._id]: event.target.value,
+                          }))
+                        }
+                        disabled={loadingKey !== null}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => void reviewLeaveRequest(request, "approved")}
+                          disabled={loadingKey !== null}
+                        >
+                          {loadingKey === `leave-approved-${request._id}` ? "Approving..." : "Approve"}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => void reviewLeaveRequest(request, "rejected")}
+                          disabled={loadingKey !== null}
+                        >
+                          {loadingKey === `leave-rejected-${request._id}` ? "Rejecting..." : "Reject"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {reviewedLeaveRequests.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Recent reviewed requests
+              </p>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="px-2 py-2">Staff</th>
+                      <th className="px-2 py-2">Dates</th>
+                      <th className="px-2 py-2">Type</th>
+                      <th className="px-2 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviewedLeaveRequests.map((request) => {
+                      const badge = leaveStatusBadge(request.status);
+                      return (
+                        <tr key={request._id} className="border-b border-border/60">
+                          <td className="px-2 py-2 text-foreground">
+                            {request.userId?.fullName ?? "Unknown staff"}
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground">
+                            {request.startDateKey} to {request.endDateKey}
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground">
+                            {formatLeaveType(request.leaveType)}
+                          </td>
+                          <td className="px-2 py-2">
+                            <Badge variant={badge.variant}>{badge.label}</Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Mark Attendance</CardTitle>

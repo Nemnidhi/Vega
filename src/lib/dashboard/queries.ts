@@ -68,8 +68,9 @@ export async function getLeadById(id: string) {
   return serializeForJson(lead);
 }
 
-export async function getPipelineBoard() {
+export async function getPipelineBoard(options?: { limitPerStage?: number }) {
   await connectToDatabase();
+  const limitPerStage = Math.min(Math.max(options?.limitPerStage ?? 60, 1), 200);
   const stages = [
     "new",
     "contacted",
@@ -80,23 +81,19 @@ export async function getPipelineBoard() {
     "closed_lost",
   ];
 
-  const stageMap = new Map(stages.map((stage) => [stage, [] as unknown[]]));
-  const leads = await LeadModel.find({ status: { $in: stages } })
-    .sort({ updatedAt: -1 })
-    .select("status title contactName priorityBand score")
-    .lean();
+  const stageLeadGroups = await Promise.all(
+    stages.map((stage) =>
+      LeadModel.find({ status: stage })
+        .sort({ updatedAt: -1 })
+        .limit(limitPerStage)
+        .select("status title contactName priorityBand score")
+        .lean(),
+    ),
+  );
 
-  for (const lead of leads) {
-    const stage = String((lead as { status?: unknown }).status ?? "");
-    const bucket = stageMap.get(stage);
-    if (bucket) {
-      bucket.push(lead);
-    }
-  }
-
-  const items = stages.map((stage) => ({
+  const items = stages.map((stage, index) => ({
     stage,
-    leads: stageMap.get(stage) ?? [],
+    leads: stageLeadGroups[index] ?? [],
   }));
   return serializeForJson(items);
 }
@@ -178,6 +175,7 @@ export async function getClients() {
   await connectToDatabase();
   const clients = await ClientModel.find({})
     .sort({ updatedAt: -1 })
+    .limit(300)
     .select(
       "legalName primaryContactName primaryContactEmail primaryContactPhone preferredCommunication requirementSummary onboardingStatus onboardedAt",
     )
@@ -189,6 +187,7 @@ export async function getStaffUsers() {
   await connectToDatabase();
   const users = await UserModel.find({ role: { $in: LOGIN_ROLES } })
     .sort({ createdAt: -1 })
+    .limit(300)
     .select("fullName email role status lastLoginAt createdAt")
     .lean();
   return serializeForJson(users);
@@ -232,6 +231,7 @@ export async function getDevelopers() {
 }
 
 type ProjectPopulationQuery<TSelf> = {
+  select(fields: string): TSelf;
   populate(path: string, select: string): TSelf;
 };
 
@@ -240,6 +240,7 @@ function applyProjectPopulation<T extends ProjectPopulationQuery<T>>(
   includeHistory: boolean,
 ) {
   let populated = query
+    .select("title description status assignedDeveloperId createdBy tasks updatedAt")
     .populate("assignedDeveloperId", "fullName email role status")
     .populate("createdBy", "fullName email role")
     .populate("tasks.assignedDeveloperId", "fullName email role status")
@@ -270,14 +271,15 @@ function buildProjectAccessQuery(actor: { role: UserRole; userId: string }) {
 
 export async function getProjectsForActor(
   actor: { role: UserRole; userId: string },
-  options?: { includeHistory?: boolean },
+  options?: { includeHistory?: boolean; limit?: number },
 ) {
   await connectToDatabase();
   const includeHistory = options?.includeHistory ?? true;
+  const limit = Math.min(Math.max(options?.limit ?? 150, 1), 300);
   const query = buildProjectAccessQuery(actor);
 
   const projects = await applyProjectPopulation(
-    ProjectModel.find(query).sort({ updatedAt: -1 }),
+    ProjectModel.find(query).sort({ updatedAt: -1 }).limit(limit),
     includeHistory,
   ).lean();
 

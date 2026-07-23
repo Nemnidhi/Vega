@@ -151,6 +151,8 @@ export function UniversalChat({
   const [errorMessage, setErrorMessage] = useState("");
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const usersRefreshInFlightRef = useRef(false);
+  const messagesRefreshTargetRef = useRef<string | null>(null);
+  const messagesRequestSeqRef = useRef(0);
 
   const selectedUser = useMemo(
     () => users.find((item) => item._id === selectedUserId) ?? null,
@@ -289,13 +291,21 @@ export function UniversalChat({
       options?: { markRead?: boolean; suppressErrors?: boolean; signal?: AbortSignal },
     ) => {
       if (!targetUserId) {
+        messagesRequestSeqRef.current += 1;
+        messagesRefreshTargetRef.current = null;
         setMessages([]);
+        return;
+      }
+      if (messagesRefreshTargetRef.current === targetUserId) {
         return;
       }
 
       if (showLoader) {
         setLoadingMessages(true);
       }
+      messagesRefreshTargetRef.current = targetUserId;
+      const requestSeq = messagesRequestSeqRef.current + 1;
+      messagesRequestSeqRef.current = requestSeq;
 
       try {
         const markRead = options?.markRead === false ? "0" : "1";
@@ -310,6 +320,9 @@ export function UniversalChat({
         const data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data?.error?.message ?? "Failed to load messages.");
+        }
+        if (requestSeq !== messagesRequestSeqRef.current) {
+          return;
         }
 
         setMessages((data.data ?? []) as ChatMessageRecord[]);
@@ -330,6 +343,9 @@ export function UniversalChat({
         }
         setErrorMessage(error instanceof Error ? error.message : "Failed to load messages.");
       } finally {
+        if (messagesRefreshTargetRef.current === targetUserId) {
+          messagesRefreshTargetRef.current = null;
+        }
         if (showLoader) {
           setLoadingMessages(false);
         }
@@ -347,7 +363,7 @@ export function UniversalChat({
   }, [loadMessages, selectedUserId]);
 
   useEffect(() => {
-    const pollIntervalMs = 20000;
+    const pollIntervalMs = 35000;
     let disposed = false;
     const controller = new AbortController();
 

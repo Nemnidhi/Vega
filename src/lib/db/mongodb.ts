@@ -72,6 +72,9 @@ export async function connectToDatabase() {
             dbName: env.MONGODB_DB_NAME,
             autoIndex: process.env.NODE_ENV !== "production",
             family: 4,
+            maxPoolSize: 10,
+            minPoolSize: 0,
+            maxIdleTimeMS: 30_000,
             serverSelectionTimeoutMS: 15_000,
           });
         } catch (error) {

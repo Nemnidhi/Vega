@@ -10,6 +10,7 @@ import {
 import { getAttendanceDateKey, getAttendanceMonthKey } from "@/lib/attendance/date";
 import {
   getAdminDailyAttendance,
+  getAdminLeaveRequests,
   getAdminMonthlyAttendance,
   getAttendanceOverview,
   getAttendanceStaffUsers,
@@ -23,9 +24,10 @@ export default async function AttendancePage() {
   if (attendanceAdminRoles.includes(session.role)) {
     const initialDailyDateKey = getAttendanceDateKey();
     const initialMonthKey = getAttendanceMonthKey();
-    const [staffUsers, initialDailyRecords, initialMonthlyData] = await Promise.all([
+    const [staffUsers, initialDailyRecords, initialLeaveData, initialMonthlyData] = await Promise.all([
       getAttendanceStaffUsers(),
       getAdminDailyAttendance(initialDailyDateKey),
+      getAdminLeaveRequests(),
       getAdminMonthlyAttendance(initialMonthKey),
     ]);
 
@@ -40,6 +42,7 @@ export default async function AttendancePage() {
           staffUsers={staffUsers}
           initialDailyDateKey={initialDailyDateKey}
           initialDailyRecords={initialDailyRecords}
+          initialLeaveData={initialLeaveData}
           initialMonthKey={initialMonthKey}
           initialMonthlyData={initialMonthlyData}
         />
