@@ -1,5 +1,9 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { getAttendanceDateKey, getAttendanceMonthKey } from "@/lib/attendance/date";
+import {
+  calculateMinutesBetween,
+  getAttendanceDateKey,
+  getAttendanceMonthKey,
+} from "@/lib/attendance/date";
 import { attendanceMemberRoles } from "@/lib/attendance/constants";
 import {
   ensureLeaveBalanceForUser,
@@ -15,6 +19,11 @@ type AttendanceEntryForSummary = {
   checkOutAt?: Date | null;
   workedMinutes?: number;
   totalBreakMinutes?: number;
+  breakSessions?: Array<{
+    startAt?: Date | null;
+    endAt?: Date | null;
+    minutes?: number;
+  }>;
 };
 
 type LeaveRequestEntryForSummary = {
@@ -75,6 +84,34 @@ export type AttendancePayload = {
     breakMinutes: number;
   };
 };
+
+function calculateActiveBreakMinutes(
+  breakSessions: AttendanceEntryForSummary["breakSessions"] = [],
+  now = new Date(),
+) {
+  return breakSessions.reduce((total, session) => {
+    if (!session.startAt || session.endAt) {
+      return total;
+    }
+
+    return total + calculateMinutesBetween(session.startAt, now);
+  }, 0);
+}
+
+function getEffectiveWorkedMinutes(entry: AttendanceEntryForSummary, now = new Date()) {
+  if (!entry.checkInAt) {
+    return entry.workedMinutes ?? 0;
+  }
+
+  if (entry.checkOutAt) {
+    return entry.workedMinutes ?? 0;
+  }
+
+  const elapsedMinutes = calculateMinutesBetween(entry.checkInAt, now);
+  const completedBreakMinutes = entry.totalBreakMinutes ?? 0;
+  const activeBreakMinutes = calculateActiveBreakMinutes(entry.breakSessions, now);
+  return Math.max(0, elapsedMinutes - completedBreakMinutes - activeBreakMinutes);
+}
 
 export type LeaveRequestRecord = {
   _id: string;
@@ -197,6 +234,7 @@ export async function getAttendanceOverview(userId: string) {
   await connectToDatabase();
   await ensureLeaveBalanceForUser(userId);
 
+  const now = new Date();
   const todayDateKey = getAttendanceDateKey();
   const monthDateKey = getAttendanceMonthKey();
 
@@ -211,9 +249,21 @@ export async function getAttendanceOverview(userId: string) {
       userId,
       dateKey: { $regex: `^${monthDateKey}` },
     })
-      .select("dayStatus checkInAt checkOutAt workedMinutes totalBreakMinutes")
+      .select("dayStatus checkInAt checkOutAt workedMinutes totalBreakMinutes breakSessions")
       .lean(),
   ]);
+
+  const effectiveTodayEntry = todayEntry
+    ? {
+        ...todayEntry,
+        workedMinutes: getEffectiveWorkedMinutes(todayEntry, now),
+      }
+    : null;
+
+  const effectiveRecentEntries = (recentEntries as AttendanceEntryForSummary[]).map((entry) => ({
+    ...entry,
+    workedMinutes: getEffectiveWorkedMinutes(entry, now),
+  }));
 
   const monthSummary = (monthlyEntries as AttendanceEntryForSummary[]).reduce<{
     presentDays: number;
@@ -240,7 +290,7 @@ export async function getAttendanceOverview(userId: string) {
       if (entry.checkOutAt) {
         summary.completedDays += 1;
       }
-      summary.workedMinutes += entry.workedMinutes ?? 0;
+      summary.workedMinutes += getEffectiveWorkedMinutes(entry, now);
       summary.breakMinutes += entry.totalBreakMinutes ?? 0;
       return summary;
     },
@@ -256,8 +306,8 @@ export async function getAttendanceOverview(userId: string) {
   );
 
   return serializeForJson({
-    todayEntry,
-    recentEntries,
+    todayEntry: effectiveTodayEntry,
+    recentEntries: effectiveRecentEntries,
     monthSummary,
   }) as AttendancePayload;
 }

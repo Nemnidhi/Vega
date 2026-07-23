@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,6 +65,43 @@ function formatMinutesAsHours(minutes: number) {
   return `${wholeHours}h ${String(remainderMinutes).padStart(2, "0")}m`;
 }
 
+function calculateMinutesBetween(startAt: Date, endAt: Date) {
+  const minutes = Math.floor((endAt.getTime() - startAt.getTime()) / 60000);
+  return Math.max(0, minutes);
+}
+
+function calculateActiveBreakMinutes(
+  breakSessions: BreakSessionRecord[],
+  now: Date,
+) {
+  return breakSessions.reduce((total, session) => {
+    if (!session.startAt || session.endAt) {
+      return total;
+    }
+
+    return total + calculateMinutesBetween(new Date(session.startAt), now);
+  }, 0);
+}
+
+function getLiveWorkedMinutes(
+  entry: AttendanceRecord | null,
+  breakSessions: BreakSessionRecord[],
+  now: Date,
+) {
+  if (!entry?.checkInAt) {
+    return entry?.workedMinutes ?? 0;
+  }
+
+  if (entry.checkOutAt) {
+    return entry.workedMinutes ?? 0;
+  }
+
+  const elapsedMinutes = calculateMinutesBetween(new Date(entry.checkInAt), now);
+  const completedBreakMinutes = entry.totalBreakMinutes ?? 0;
+  const activeBreakMinutes = calculateActiveBreakMinutes(breakSessions, now);
+  return Math.max(0, elapsedMinutes - completedBreakMinutes - activeBreakMinutes);
+}
+
 function statusFromEntry(entry: AttendanceRecord | null) {
   if (!entry) {
     return { label: "Not Marked", variant: "warning" as const };
@@ -121,6 +158,7 @@ interface AttendanceTrackerProps {
 
 export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
   const [data, setData] = useState(initialData);
+  const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -136,6 +174,7 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
         throw new Error(payload.error?.message ?? "Unable to load attendance.");
       }
 
+      setNow(new Date());
       setData(payload.data as AttendancePayload);
     } catch (error) {
       throw error instanceof Error ? error : new Error("Unable to load attendance.");
@@ -214,11 +253,28 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
   const monthSummary = data.monthSummary;
   const todayBreakSessions = todayEntry?.breakSessions ?? [];
   const activeBreak = getActiveBreak(todayBreakSessions);
+  const liveTodayWorkedMinutes = getLiveWorkedMinutes(todayEntry, todayBreakSessions, now);
+  const liveMonthWorkedMinutes = useMemo(() => {
+    const storedTodayMinutes = todayEntry?.workedMinutes ?? 0;
+    return monthSummary.workedMinutes - storedTodayMinutes + liveTodayWorkedMinutes;
+  }, [liveTodayWorkedMinutes, monthSummary.workedMinutes, todayEntry?.workedMinutes]);
   const attendanceStatus = statusFromEntry(todayEntry);
   const canCheckIn = !todayEntry;
   const canCheckOut = Boolean(todayEntry?.checkInAt && !todayEntry?.checkOutAt && !activeBreak);
   const canStartBreak = Boolean(todayEntry?.checkInAt && !todayEntry?.checkOutAt && !activeBreak);
   const canEndBreak = Boolean(todayEntry?.checkInAt && !todayEntry?.checkOutAt && activeBreak);
+
+  useEffect(() => {
+    if (!todayEntry?.checkInAt || todayEntry.checkOutAt) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+
+    return () => window.clearInterval(timer);
+  }, [todayEntry?.checkInAt, todayEntry?.checkOutAt]);
 
   return (
     <section className="space-y-4">
@@ -237,7 +293,7 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-foreground">
-              {formatMinutesAsHours(monthSummary.workedMinutes)}
+              {formatMinutesAsHours(liveMonthWorkedMinutes)}
             </p>
           </CardContent>
         </Card>
@@ -316,7 +372,7 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
             <div className="rounded-lg border border-border bg-white p-3">
               <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Worked Time</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
-                {formatMinutesAsHours(todayEntry?.workedMinutes ?? 0)}
+                {formatMinutesAsHours(liveTodayWorkedMinutes)}
               </p>
             </div>
             <div className="rounded-lg border border-border bg-white p-3">
@@ -452,7 +508,11 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
                           {formatTime(entry.checkOutAt)}
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">
-                          {formatMinutesAsHours(entry.workedMinutes ?? 0)}
+                          {formatMinutesAsHours(
+                            entry._id === todayEntry?._id
+                              ? liveTodayWorkedMinutes
+                              : entry.workedMinutes ?? 0,
+                          )}
                         </td>
                         <td className="px-2 py-2">
                           <Badge variant={status.variant}>{status.label}</Badge>
