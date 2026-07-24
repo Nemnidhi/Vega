@@ -19,6 +19,7 @@ import type {
   AttendanceDayStatus,
   AttendanceStaffUser,
 } from "@/lib/attendance/queries";
+import type { AttendanceGeofenceSettingsPayload } from "@/lib/attendance/geofence";
 
 type ApiResponse = {
   success: boolean;
@@ -42,6 +43,7 @@ interface AttendanceAdminDeskProps {
   initialLeaveData: AdminLeavePayload;
   initialMonthKey: string;
   initialMonthlyData: AdminMonthlyAttendancePayload;
+  initialGeofenceSettings: AttendanceGeofenceSettingsPayload | null;
   staffUsers: AttendanceStaffUser[];
 }
 
@@ -178,6 +180,7 @@ export function AttendanceAdminDesk({
   initialLeaveData,
   initialMonthKey,
   initialMonthlyData,
+  initialGeofenceSettings,
   staffUsers,
 }: AttendanceAdminDeskProps) {
   const [dailyDateKey, setDailyDateKey] = useState(initialDailyDateKey);
@@ -188,6 +191,11 @@ export function AttendanceAdminDesk({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [geofenceForm, setGeofenceForm] = useState({
+    officeLatitude: initialGeofenceSettings?.officeLatitude?.toString() ?? "",
+    officeLongitude: initialGeofenceSettings?.officeLongitude?.toString() ?? "",
+    officeRadiusMeters: (initialGeofenceSettings?.officeRadiusMeters ?? 200).toString(),
+  });
   const [markForm, setMarkForm] = useState({
     userId: staffUsers[0]?._id ?? "",
     dateKey: initialDailyDateKey,
@@ -377,6 +385,35 @@ export function AttendanceAdminDesk({
     }
   }
 
+  async function saveGeofenceSettings() {
+    const officeLatitude = Number(geofenceForm.officeLatitude);
+    const officeLongitude = Number(geofenceForm.officeLongitude);
+    const officeRadiusMeters = Number(geofenceForm.officeRadiusMeters);
+
+    if (
+      !Number.isFinite(officeLatitude) ||
+      !Number.isFinite(officeLongitude) ||
+      !Number.isInteger(officeRadiusMeters)
+    ) {
+      setNotice({ tone: "error", text: "Enter valid latitude, longitude, and radius." });
+      return;
+    }
+
+    await runAction(
+      "geofence-save",
+      "/api/attendance/admin/settings",
+      "PATCH",
+      "Office location updated successfully.",
+      {
+        body: {
+          officeLatitude,
+          officeLongitude,
+          officeRadiusMeters,
+        },
+      },
+    );
+  }
+
   const monthDateKeys = useMemo(() => buildMonthDateKeys(monthlyData.monthKey), [monthlyData.monthKey]);
   const pendingLeaveRequests = useMemo(
     () => leaveData.requests.filter((request) => request.status === "pending"),
@@ -389,6 +426,57 @@ export function AttendanceAdminDesk({
 
   return (
     <section className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Office Location</CardTitle>
+          <CardDescription>
+            Check-in is allowed inside this office radius. Check-out does not use geofencing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
+            <Input
+              inputMode="decimal"
+              placeholder="Latitude"
+              value={geofenceForm.officeLatitude}
+              onChange={(event) =>
+                setGeofenceForm((prev) => ({ ...prev, officeLatitude: event.target.value }))
+              }
+              disabled={loadingKey !== null}
+            />
+            <Input
+              inputMode="decimal"
+              placeholder="Longitude"
+              value={geofenceForm.officeLongitude}
+              onChange={(event) =>
+                setGeofenceForm((prev) => ({ ...prev, officeLongitude: event.target.value }))
+              }
+              disabled={loadingKey !== null}
+            />
+            <Input
+              inputMode="numeric"
+              placeholder="Radius meters"
+              value={geofenceForm.officeRadiusMeters}
+              onChange={(event) =>
+                setGeofenceForm((prev) => ({ ...prev, officeRadiusMeters: event.target.value }))
+              }
+              disabled={loadingKey !== null}
+            />
+            <Button
+              onClick={() => void saveGeofenceSettings()}
+              disabled={
+                !geofenceForm.officeLatitude ||
+                !geofenceForm.officeLongitude ||
+                !geofenceForm.officeRadiusMeters ||
+                loadingKey !== null
+              }
+            >
+              {loadingKey === "geofence-save" ? "Saving..." : "Save Location"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">

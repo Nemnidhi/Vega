@@ -245,7 +245,6 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
       "/api/attendance/checkout",
       "PATCH",
       "Check-out marked successfully.",
-      { requiresLocation: true },
     );
   }
 

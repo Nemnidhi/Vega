@@ -8,6 +8,7 @@ import {
   attendanceMemberRoles,
 } from "@/lib/attendance/constants";
 import { getAttendanceDateKey, getAttendanceMonthKey } from "@/lib/attendance/date";
+import { getAttendanceGeofenceSettings } from "@/lib/attendance/geofence";
 import {
   getAdminDailyAttendance,
   getAdminLeaveRequests,
@@ -24,11 +25,18 @@ export default async function AttendancePage() {
   if (attendanceAdminRoles.includes(session.role)) {
     const initialDailyDateKey = getAttendanceDateKey();
     const initialMonthKey = getAttendanceMonthKey();
-    const [staffUsers, initialDailyRecords, initialLeaveData, initialMonthlyData] = await Promise.all([
+    const [
+      staffUsers,
+      initialDailyRecords,
+      initialLeaveData,
+      initialMonthlyData,
+      initialGeofenceSettings,
+    ] = await Promise.all([
       getAttendanceStaffUsers(),
       getAdminDailyAttendance(initialDailyDateKey),
       getAdminLeaveRequests(),
       getAdminMonthlyAttendance(initialMonthKey),
+      getAttendanceGeofenceSettings(),
     ]);
 
     return (
@@ -45,6 +53,7 @@ export default async function AttendancePage() {
           initialLeaveData={initialLeaveData}
           initialMonthKey={initialMonthKey}
           initialMonthlyData={initialMonthlyData}
+          initialGeofenceSettings={initialGeofenceSettings}
         />
       </section>
     );

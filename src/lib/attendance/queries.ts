@@ -1,4 +1,5 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
+import { autoCheckoutEligibleAttendance } from "@/lib/attendance/auto-checkout";
 import {
   calculateMinutesBetween,
   getAttendanceDateKey,
@@ -232,6 +233,7 @@ export type AdminMonthlyAttendancePayload = {
 
 export async function getAttendanceOverview(userId: string) {
   await connectToDatabase();
+  await autoCheckoutEligibleAttendance(userId);
   await ensureLeaveBalanceForUser(userId);
 
   const now = new Date();
@@ -452,6 +454,7 @@ export async function getAdminLeaveRequests() {
 
 export async function getAdminDailyAttendance(dateKey: string) {
   await connectToDatabase();
+  await autoCheckoutEligibleAttendance();
 
   const records = await AttendanceModel.find({
     dateKey,
@@ -482,6 +485,7 @@ type AdminMonthlyAttendanceSourceRecord = {
 
 export async function getAdminMonthlyAttendance(monthKey: string) {
   await connectToDatabase();
+  await autoCheckoutEligibleAttendance();
 
   const [staffUsers, rawRecords] = await Promise.all([
     UserModel.find({

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: attendanceMemberRoles });
     const location = attendanceLocationSchema.parse(await request.json());
-    const geofenceResult = assertInsideAttendanceGeofence(location);
+    const geofenceResult = await assertInsideAttendanceGeofence(location);
     const checkInLocation = {
       ...location,
       distanceMeters: geofenceResult.distanceMeters,
