@@ -30,29 +30,48 @@ their board change completely. Confirm with whoever uses it daily.
 
 ### Where the migration runs (self-hosted VPS)
 
-Vega's database is MongoDB on a VPS that also runs the app. That leaves two
-options, and which one applies depends on whether the MongoDB port is
-reachable from outside the VPS:
+**Confirmed on the box (`srv1132041`, Hostinger):**
 
-**A — Mongo is bound to localhost / firewalled (the correct setup).** You
-cannot connect from a laptop, and the migration has to run *on the VPS*:
-clone the repo there, `npm ci`, create `.env.local` with the local
-connection string (`mongodb://127.0.0.1:27017`), and run the same commands.
-Node 20+ is required for `--env-file`.
-
-**B — Mongo accepts connections from the internet.** The migration can be
-run remotely, but **this is a security problem worth fixing regardless of
-this migration**. An internet-exposed MongoDB is one of the most commonly
-compromised services there is, and a database that also holds HR and client
-records is not one to leave open. Bind it to localhost, or firewall the port
-to known addresses, and connect over an SSH tunnel instead:
-
-```bash
-ssh -L 27017:127.0.0.1:27017 user@vps    # then use mongodb://127.0.0.1:27017
+```
+LISTEN 127.0.0.1:27017   mongod (pid 747)
 ```
 
-An SSH tunnel is the right answer either way: it works in both cases and
-requires no exposed port.
+MongoDB is **bound to localhost only** — correctly closed off, and
+unreachable from any other machine. So the migration runs either *on the
+VPS* or through an SSH tunnel:
+
+```bash
+ssh -L 27017:127.0.0.1:27017 root@<vps-host>   # then MONGODB_URI=mongodb://127.0.0.1:27017
+```
+
+The tunnel is preferable: the scripts, their output and the backup files
+stay on a machine you control, and nothing new gets installed on the server.
+
+To run **on the VPS** instead, it needs Node 20+ (for `--env-file`), a clone
+of this repo, `npm ci`, and a `.env.local` containing the local
+`MONGODB_URI` / `MONGODB_DB_NAME` plus `SAMVID_MONGODB_URI` (Atlas, reachable
+outbound).
+
+> **UNRESOLVED — do not migrate until this is answered.** `/opt` contains
+> only `dashboard-whatsapp`, and PM2 runs a single process named
+> `nemnidhi-backend`. Vega is documented as living at `vega-rose.vercel.app`,
+> and **a Vercel-hosted app cannot reach a localhost-bound MongoDB** — so
+> either Vega has moved onto this VPS, or this database belongs to
+> Dashboard-WhatsApp and Vega's data is elsewhere. Confirm which database
+> actually backs Vega before writing to it. The check:
+>
+> ```bash
+> mongosh --quiet <dbname> --eval 'db.getCollectionNames().forEach(c=>print(c, db.getCollection(c).countDocuments()))'
+> ```
+>
+> Vega's database has `leads`, `clients`, `projects`, `proposals`, `users`,
+> `attendances`. If it looks like `messages` / `contacts` / `sessions`, it is
+> the WhatsApp system and the wrong target.
+
+**Note:** `mongosh` connects without credentials, so this MongoDB has **no
+authentication**. Survivable while it is localhost-only, but it means
+anything running on that box has unrestricted read/write to every database
+on it. Worth enabling auth independently of this migration.
 
 ---
 
