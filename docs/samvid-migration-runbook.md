@@ -68,10 +68,19 @@ outbound).
 > `attendances`. If it looks like `messages` / `contacts` / `sessions`, it is
 > the WhatsApp system and the wrong target.
 
-**Note:** `mongosh` connects without credentials, so this MongoDB has **no
-authentication**. Survivable while it is localhost-only, but it means
-anything running on that box has unrestricted read/write to every database
-on it. Worth enabling auth independently of this migration.
+**Authentication is enabled.** A bare `mongosh` call returns
+`MongoServerError: command listDatabases requires authentication`. Any
+connection therefore needs credentials — take them from the running app's
+own environment rather than guessing:
+
+```bash
+grep -i '^MONGO' /var/www/samvid-os/backend/.env | sed 's/:[^:@]*@/:****@/'
+```
+
+(The `sed` masks the password so it is safe to read aloud or paste.)
+
+Combined with the localhost-only bind, the database is properly protected —
+no changes needed there before migrating.
 
 ---
 
