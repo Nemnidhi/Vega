@@ -28,18 +28,43 @@ real clients, projects and HR records.
 overwhelmingly cold prospects. Anyone using Vega for inbound sales will see
 their board change completely. Confirm with whoever uses it daily.
 
+### Where the migration runs (self-hosted VPS)
+
+Vega's database is MongoDB on a VPS that also runs the app. That leaves two
+options, and which one applies depends on whether the MongoDB port is
+reachable from outside the VPS:
+
+**A — Mongo is bound to localhost / firewalled (the correct setup).** You
+cannot connect from a laptop, and the migration has to run *on the VPS*:
+clone the repo there, `npm ci`, create `.env.local` with the local
+connection string (`mongodb://127.0.0.1:27017`), and run the same commands.
+Node 20+ is required for `--env-file`.
+
+**B — Mongo accepts connections from the internet.** The migration can be
+run remotely, but **this is a security problem worth fixing regardless of
+this migration**. An internet-exposed MongoDB is one of the most commonly
+compromised services there is, and a database that also holds HR and client
+records is not one to leave open. Bind it to localhost, or firewall the port
+to known addresses, and connect over an SSH tunnel instead:
+
+```bash
+ssh -L 27017:127.0.0.1:27017 user@vps    # then use mongodb://127.0.0.1:27017
+```
+
+An SSH tunnel is the right answer either way: it works in both cases and
+requires no exposed port.
+
 ---
 
 ## 1. Back up the target database
 
-Take a backup **before** the first write. Two layers, because they cover
-different failures:
+> **Vega production is self-hosted MongoDB on a VPS**, not Atlas. There are
+> **no managed snapshots**, so the export below is likely the only backup
+> that exists. Treat it as mandatory, not belt-and-braces. If the VPS
+> provider offers volume/disk snapshots, take one of those too — that is the
+> only thing that captures indexes, users and validation rules.
 
-**a. An Atlas snapshot** — the real safety net. Confirm one exists in the
-Atlas UI and note its timestamp. This is the only thing that restores
-indexes, users and validation rules.
-
-**b. A document-level export** you can inspect and selectively restore:
+Take a backup **before** the first write:
 
 ```bash
 npm run backup:db -- --out ./backups/pre-migration
@@ -48,12 +73,7 @@ npm run backup:db -- --out ./backups/pre-migration
 `mongodump` is **not installed** on the machine this was built on, so this
 uses the MongoDB driver already in the project. Documents are written as
 newline-delimited Extended JSON, which preserves ObjectIds, Dates and the
-report PDF Buffers — plain JSON would silently destroy all three. Verified
-on a real 1,115-lead database: ObjectIds, nested `checkedAt` dates and a
-3,558-byte PDF all survived the round trip.
-
-It does **not** capture indexes, users or validation rules. That is what the
-Atlas snapshot is for.
+report PDF Buffers — plain JSON would silently destroy all three.
 
 To restore:
 
@@ -64,6 +84,14 @@ npm run backup:db -- --restore ./backups/pre-migration --apply
 
 Restore refuses to write into a non-empty collection unless `--force` is
 also passed, so it cannot silently double-insert.
+
+**The restore path has been proven, not assumed.** On a 1,115-lead database:
+every lead and the stored report were deleted, restored from a backup, and
+compared — counts matched, the tier distribution was unchanged, and the
+report PDF came back with an **identical SHA-256** (`053c50d5…`). The
+non-empty guard correctly skipped `users` and `activitylogs`.
+
+It does **not** capture indexes, users or validation rules — only documents.
 
 The rollback script in the last section is precise but only covers documents
 this migration created; the backup covers everything else.
