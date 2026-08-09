@@ -101,6 +101,18 @@ export interface LeadProspecting {
       activeCount?: number | null;
       checkedAt?: Date | null;
     };
+    technicalSeo?: {
+      checked?: boolean;
+      seoScore?: number | null;
+      performanceScore?: number | null;
+      isMobileFriendly?: boolean | null;
+      isIndexable?: boolean | null;
+      largestContentfulPaintMs?: number | null;
+      issues?: string[];
+      auditedUrl?: string | null;
+      reason?: string | null;
+      checkedAt?: Date | null;
+    };
   };
   classification?: {
     category?: ProspectingTier;

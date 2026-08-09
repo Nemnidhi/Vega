@@ -57,6 +57,20 @@ export function toEnrichmentSignals(lead: LeadLike): EnrichmentSignals {
       checkedAt: dp.metaAds.checkedAt ?? new Date(),
     };
   }
+  if (dp.technicalSeo) {
+    signals.technicalSeo = {
+      checked: Boolean(dp.technicalSeo.checked),
+      seoScore: dp.technicalSeo.seoScore ?? null,
+      performanceScore: dp.technicalSeo.performanceScore ?? null,
+      isMobileFriendly: dp.technicalSeo.isMobileFriendly,
+      isIndexable: dp.technicalSeo.isIndexable,
+      largestContentfulPaintMs: dp.technicalSeo.largestContentfulPaintMs ?? null,
+      issues: dp.technicalSeo.issues ?? [],
+      auditedUrl: dp.technicalSeo.auditedUrl ?? undefined,
+      reason: dp.technicalSeo.reason ?? undefined,
+      checkedAt: dp.technicalSeo.checkedAt ?? new Date(),
+    };
+  }
 
   return signals;
 }

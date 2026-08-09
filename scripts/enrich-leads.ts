@@ -24,6 +24,7 @@ import { ActivityLogModel } from "@/models/ActivityLog";
 import { checkWebsite } from "@/lib/prospecting/check-website";
 import { checkGoogleBusiness } from "@/lib/prospecting/check-google-business";
 import { checkMetaAds } from "@/lib/prospecting/check-meta-ads";
+import { checkTechnicalSeo } from "@/lib/prospecting/check-technical-seo";
 import type { Lead } from "@/types/lead";
 
 const args = process.argv.slice(2);
@@ -134,6 +135,17 @@ async function main() {
         })),
       ]);
 
+      // Only audit a site that exists. Running this for a business with no
+      // website and recording "not checked" would misrepresent the result -
+      // there is nothing there to check.
+      const technicalSeo = website.found && website.url
+        ? await checkTechnicalSeo(website.url).catch((error) => ({
+            checked: false,
+            reason: String(error),
+            checkedAt: new Date(),
+          }))
+        : null;
+
       await LeadModel.updateOne(
         { _id: lead._id },
         {
@@ -141,6 +153,7 @@ async function main() {
             "prospecting.digitalPresence.website": website,
             "prospecting.digitalPresence.googleBusiness": googleBusiness,
             "prospecting.digitalPresence.metaAds": metaAds,
+            "prospecting.digitalPresence.technicalSeo": technicalSeo,
             "prospecting.prospectingStatus": "enriched",
           },
         },

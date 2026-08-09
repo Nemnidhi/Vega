@@ -34,10 +34,32 @@ export interface MetaAdsSignal {
   checkedAt: Date;
 }
 
+/**
+ * Quality of an existing website, from PageSpeed Insights. Distinct from the
+ * presence signals above: this says how good the site is, not whether one
+ * exists, and is deliberately excluded from tier classification.
+ */
+export interface TechnicalSeoSignal {
+  checked: boolean;
+  /** 0-100, as Lighthouse reports them. */
+  seoScore?: number | null;
+  performanceScore?: number | null;
+  /** null means Lighthouse did not return that audit - not that it failed. */
+  isMobileFriendly?: boolean | null;
+  isIndexable?: boolean | null;
+  largestContentfulPaintMs?: number | null;
+  /** Plain-language findings, safe to show a business owner. */
+  issues?: string[];
+  auditedUrl?: string;
+  reason?: string;
+  checkedAt: Date;
+}
+
 export interface EnrichmentSignals {
   website?: WebsiteSignal;
   googleBusiness?: GoogleBusinessSignal;
   metaAds?: MetaAdsSignal;
+  technicalSeo?: TechnicalSeoSignal;
 }
 
 export interface ClassificationResult {

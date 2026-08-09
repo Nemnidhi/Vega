@@ -21,6 +21,14 @@ type Signal = {
   placeName?: string | null;
 };
 
+type SeoSignal = {
+  checked?: boolean;
+  seoScore?: number | null;
+  performanceScore?: number | null;
+  isMobileFriendly?: boolean;
+  issues?: string[];
+};
+
 export type AuditPanelProps = {
   leadId: string;
   hasEmail: boolean;
@@ -38,6 +46,7 @@ export type AuditPanelProps = {
       website?: Signal;
       googleBusiness?: Signal;
       metaAds?: Signal;
+      technicalSeo?: SeoSignal;
     };
     classification?: {
       category?: string;
@@ -210,6 +219,33 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
               <Badge variant={signalVariant(signal)}>{signalText(signal)}</Badge>
             </div>
           ))}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Technical SEO</span>
+            <Badge
+              variant={
+                !dp?.technicalSeo?.checked
+                  ? "neutral"
+                  : (dp.technicalSeo.seoScore ?? 0) >= 70
+                    ? "success"
+                    : "danger"
+              }
+            >
+              {dp?.technicalSeo?.checked
+                ? `${dp.technicalSeo.seoScore ?? "-"}/100`
+                : dp?.website?.found
+                  ? "Not yet checked"
+                  : "No site to audit"}
+            </Badge>
+          </div>
+        </div>
+        {dp?.technicalSeo?.checked && dp.technicalSeo.issues?.length ? (
+          <ul className="mt-3 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
+            {dp.technicalSeo.issues.map((issue) => (
+              <li key={issue}>- {issue}</li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="hidden">
         </div>
       </div>
 

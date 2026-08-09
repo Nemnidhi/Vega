@@ -520,12 +520,17 @@ export async function buildReportDocument({
 }: ReportInput) {
   const whatsappQrDataUrl = await QRCode.toDataURL(WHATSAPP_LINK, { margin: 1, width: 128 });
 
+  const seo = enrichment.technicalSeo;
   const rows: { label: string; value: string }[] = [
     { label: "Website", value: statusLabel({ checked: true, found: enrichment.website?.found }) },
-    // Technical SEO checker isn't built yet - always shown as "Not yet
-    // checked" rather than silently omitted, so the offering is visible in
-    // every report even before the enrichment step exists.
-    { label: "Technical SEO", value: statusLabel({ checked: false }) },
+    {
+      label: "Technical SEO",
+      value: !enrichment.website?.found
+        ? "No site to audit"
+        : seo?.checked
+          ? `Scored ${seo.seoScore ?? "-"}/100`
+          : "Not yet checked",
+    },
   ];
   if (enrichment.googleBusiness) {
     rows.push({ label: "Google Business profile", value: statusLabel(enrichment.googleBusiness) });
@@ -534,9 +539,16 @@ export async function buildReportDocument({
     rows.push({ label: "Meta ad activity", value: statusLabel(enrichment.metaAds) });
   }
 
-  const gapRows = rows.filter((r) => r.value === "Not found" && SOLUTION_MAP[r.label]);
+  // A site that exists but scores badly is still a gap we can fix - it just
+  // isn't an *absence*, so it must not inflate the "no active presence"
+  // count in the hook line below.
+  const isGap = (row: { label: string; value: string }) =>
+    row.value === "Not found" ||
+    (row.label === "Technical SEO" && Boolean(seo?.checked) && (seo?.seoScore ?? 100) < 70);
+
+  const gapRows = rows.filter((r) => isGap(r) && SOLUTION_MAP[r.label]);
   const missingTags = rows
-    .filter((r) => r.value === "Not found")
+    .filter(isGap)
     .map((r) => ROW_TO_GAP_TAG[r.label])
     .filter((t): t is string => Boolean(t));
   // Segment resolution hint: an explicit lead.segment always wins (manual
@@ -595,6 +607,39 @@ export async function buildReportDocument({
             </View>
           ))}
         </View>
+
+        {seo?.checked ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Website Health</Text>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Search engine optimisation</Text>
+              <Text style={styles.rowValue}>{seo.seoScore ?? "-"}/100</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Loading speed</Text>
+              <Text style={styles.rowValue}>{seo.performanceScore ?? "-"}/100</Text>
+            </View>
+            {typeof seo.isMobileFriendly === "boolean" ? (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Works properly on mobile</Text>
+                <Text style={styles.rowValue}>{seo.isMobileFriendly ? "Yes" : "No"}</Text>
+              </View>
+            ) : null}
+            {seo.issues && seo.issues.length > 0 ? (
+              <>
+                <Text style={styles.leakIntro}>
+                  What we found on your site, measured with Google&apos;s own tooling:
+                </Text>
+                {seo.issues.map((issue, i) => (
+                  <View style={styles.leakRow} key={i}>
+                    <Text style={styles.leakBullet}>{"-"}</Text>
+                    <Text style={styles.leakText}>{issue}</Text>
+                  </View>
+                ))}
+              </>
+            ) : null}
+          </View>
+        ) : null}
 
         {searchScreenshotUrl ? (
           <View style={styles.section}>

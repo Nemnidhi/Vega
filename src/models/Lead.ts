@@ -48,6 +48,24 @@ const metaAdsSignalSchema = new Schema(
   { _id: false },
 );
 
+// Quality of an existing site, not presence. Kept out of the classifier on
+// purpose - see check-technical-seo.ts.
+const technicalSeoSignalSchema = new Schema(
+  {
+    checked: { type: Boolean, default: false },
+    seoScore: { type: Number, default: null },
+    performanceScore: { type: Number, default: null },
+    isMobileFriendly: { type: Boolean, default: null },
+    isIndexable: { type: Boolean, default: null },
+    largestContentfulPaintMs: { type: Number, default: null },
+    issues: [{ type: String, trim: true, maxlength: 200 }],
+    auditedUrl: { type: String, trim: true, maxlength: 500, default: null },
+    reason: { type: String, trim: true, maxlength: 300, default: null },
+    checkedAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
 const prospectingClassificationSchema = new Schema(
   {
     category: { type: String, enum: ["A", "B", "C", "D"], default: null },
@@ -97,6 +115,7 @@ const prospectingSchema = new Schema(
       website: { type: websiteSignalSchema, default: null },
       googleBusiness: { type: googleBusinessSignalSchema, default: null },
       metaAds: { type: metaAdsSignalSchema, default: null },
+      technicalSeo: { type: technicalSeoSignalSchema, default: null },
     },
     classification: { type: prospectingClassificationSchema, default: null },
   },
