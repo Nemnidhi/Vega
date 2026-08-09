@@ -7,5 +7,6 @@ export * from "@/types/lead";
 export * from "@/types/project";
 export * from "@/types/pricing-component";
 export * from "@/types/proposal";
+export * from "@/types/report";
 export * from "@/types/scope-manifest";
 export * from "@/types/user";

@@ -80,7 +80,11 @@ export async function getLeads(options?: { limit?: number }) {
   const leads = await LeadModel.find({})
     .sort({ updatedAt: -1 })
     .limit(limit)
-    .select("title contactName source status updatedAt")
+    // prospecting.* is projected narrowly on purpose - the list only needs
+    // the tier and industry, not the enrichment payload.
+    .select(
+      "title contactName source status updatedAt prospecting.industry prospecting.segment prospecting.prospectingStatus prospecting.classification.category",
+    )
     .lean();
   return serializeForJson(leads);
 }

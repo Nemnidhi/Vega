@@ -3,12 +3,14 @@ import { DashboardHeader } from "@/components/dashboard/header";
 import { LeadDairy } from "@/components/leads/lead-dairy";
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { LeadFieldsEditor } from "@/components/leads/lead-fields-editor";
+import { AuditReportPanel } from "@/components/leads/audit-report-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { ClientModel, LeadModel, LeadNoteModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { requireRoleAccess } from "@/lib/auth/role-access";
+import type { LeadProspecting } from "@/types/lead";
 
 export const dynamic = "force-dynamic";
 
@@ -131,7 +133,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
   const leadDoc = await LeadModel.findById(id)
     .select(
-      "title contactName email phone source sourceDomain sourcePath sourceReferrer category urgency score priorityBand priorityFlag status description budget tags createdAt updatedAt",
+      "title contactName email phone source sourceDomain sourcePath sourceReferrer category urgency score priorityBand priorityFlag status description budget tags prospecting createdAt updatedAt",
     )
     .lean();
 
@@ -139,25 +141,29 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     notFound();
   }
 
+  // contactName / email / category / urgency / description are optional on
+  // cold_outreach leads - a prospect scraped from a public registry has a
+  // business name and little else. Everything below has to tolerate that.
   const lead = serializeForJson(leadDoc) as {
     _id: string;
     title: string;
-    contactName: string;
-    email: string;
+    contactName?: string;
+    email?: string;
     phone?: string;
     source: string;
     sourceDomain?: string;
     sourcePath?: string;
     sourceReferrer?: string;
-    category: string;
-    urgency: string;
+    category?: string;
+    urgency?: string;
     score: number;
     priorityBand: string;
     priorityFlag: boolean;
     status: string;
-    description: string;
+    description?: string;
     budget?: { min: number; max: number; currency: string };
     tags?: string[];
+    prospecting?: LeadProspecting;
     createdAt?: string;
     updatedAt?: string;
   };
@@ -176,28 +182,31 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     createdAt?: string;
   }>;
 
-  const fallbackClient = !lead.phone
-    ? await ClientModel.findOne({ primaryContactEmail: lead.email.toLowerCase().trim() })
-        .select("primaryContactPhone")
-        .lean()
-    : null;
+  // Guarded: a cold prospect may have no email at all.
+  const fallbackClient =
+    !lead.phone && lead.email
+      ? await ClientModel.findOne({ primaryContactEmail: lead.email.toLowerCase().trim() })
+          .select("primaryContactPhone")
+          .lean()
+      : null;
   const descriptionPhone = !lead.phone ? extractPhoneFromDescription(lead.description) : "";
   const resolvedPhone = lead.phone || fallbackClient?.primaryContactPhone || descriptionPhone;
 
+  const greetingName = lead.contactName || lead.title;
   const phoneForCall = normalizePhoneForCall(resolvedPhone);
   const phoneForWhatsApp = normalizePhoneForWhatsApp(resolvedPhone);
   const callHref = phoneForCall ? `tel:${phoneForCall}` : "";
   const messageText = encodeURIComponent(
-    `Hi ${lead.contactName}, this is Nemnidhi team regarding "${lead.title}". Please let us know a good time to connect.`,
+    `Hi ${greetingName}, this is Nemnidhi team regarding "${lead.title}". Please let us know a good time to connect.`,
   );
   const messageHref = phoneForWhatsApp
     ? `https://wa.me/${phoneForWhatsApp}?text=${messageText}`
     : "";
   const mailSubject = encodeURIComponent(`Regarding ${lead.title}`);
   const mailBody = encodeURIComponent(
-    `Hi ${lead.contactName},\n\nThis is a follow-up regarding: ${lead.title}.\n\nRegards,\nNemnidhi Team`,
+    `Hi ${greetingName},\n\nThis is a follow-up regarding: ${lead.title}.\n\nRegards,\nNemnidhi Team`,
   );
-  const mailHref = `mailto:${lead.email}?subject=${mailSubject}&body=${mailBody}`;
+  const mailHref = lead.email ? `mailto:${lead.email}?subject=${mailSubject}&body=${mailBody}` : "";
 
   return (
     <section className="space-y-6">
@@ -219,11 +228,15 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-lg border border-border bg-surface-soft p-3">
                   <p className="text-xs text-muted-foreground">Contact Name</p>
-                  <p className="mt-1 font-semibold text-foreground">{lead.contactName}</p>
+                  <p className="mt-1 font-semibold text-foreground">
+                    {lead.contactName || "Not sourced"}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-border bg-surface-soft p-3">
                   <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="mt-1 font-semibold text-foreground break-all">{lead.email}</p>
+                  <p className="mt-1 font-semibold text-foreground break-all">
+                    {lead.email || "Not sourced"}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-border bg-surface-soft p-3 md:col-span-2">
                   <p className="text-xs text-muted-foreground">Phone</p>
@@ -266,22 +279,53 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   </span>
                 )}
 
-                <a
-                  href={mailHref}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
-                >
-                  <MailIcon />
-                  Mail
-                </a>
+                {mailHref ? (
+                  <a
+                    href={mailHref}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+                  >
+                    <MailIcon />
+                    Mail
+                  </a>
+                ) : (
+                  <span className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-surface-soft px-4 text-sm font-semibold tracking-wide text-muted-foreground">
+                    Mail Unavailable
+                  </span>
+                )}
               </div>
 
-              {!resolvedPhone ? (
+              {!resolvedPhone || !lead.email ? (
                 <p className="text-xs text-muted-foreground">
-                  Add phone number in lead record to enable direct call and message actions.
+                  {lead.source === "cold_outreach"
+                    ? "Cold prospects are sourced from public records and often carry no contact details. Source a phone or email before any outreach."
+                    : "Add phone number in lead record to enable direct call and message actions."}
                 </p>
               ) : null}
             </CardContent>
           </Card>
+
+          {lead.prospecting ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Digital Presence Audit</CardTitle>
+                <CardDescription>
+                  Cold-prospect audit: what their online presence looks like, and the report we can
+                  send them about it.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AuditReportPanel
+                  leadId={lead._id}
+                  hasEmail={Boolean(lead.email)}
+                  prospecting={
+                    lead.prospecting as unknown as React.ComponentProps<
+                      typeof AuditReportPanel
+                    >["prospecting"]
+                  }
+                />
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>
@@ -306,7 +350,9 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 </div>
                 <div className="rounded-lg border border-border bg-white p-3">
                   <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="mt-1 font-semibold text-foreground">{humanize(lead.category)}</p>
+                  <p className="mt-1 font-semibold text-foreground">
+                    {lead.category ? humanize(lead.category) : "Not qualified yet"}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-border bg-white p-3">
                   <p className="text-xs text-muted-foreground">Budget</p>
@@ -320,7 +366,9 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
               <div className="rounded-lg border border-border bg-surface-soft p-3">
                 <p className="text-xs text-muted-foreground">Requirement Description</p>
-                <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">{lead.description}</p>
+                <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">
+                  {lead.description || "No requirement captured - this lead has not spoken to us yet."}
+                </p>
               </div>
 
               {lead.tags?.length ? (
@@ -370,13 +418,13 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 lead={{
                   id: lead._id,
                   title: lead.title,
-                  contactName: lead.contactName,
-                  email: lead.email,
+                  contactName: lead.contactName ?? "",
+                  email: lead.email ?? "",
                   phone: lead.phone,
                   source: lead.source,
-                  category: lead.category,
-                  urgency: lead.urgency,
-                  description: lead.description,
+                  category: lead.category ?? "",
+                  urgency: lead.urgency ?? "",
+                  description: lead.description ?? "",
                   budget: lead.budget,
                   sourceDomain: lead.sourceDomain,
                   sourcePath: lead.sourcePath,
@@ -405,7 +453,11 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 <div className="rounded-lg border border-border bg-white p-3">
                   <p className="text-xs text-muted-foreground">Urgency</p>
                   <div className="mt-1">
-                    <Badge variant={urgencyVariant(lead.urgency)}>{humanize(lead.urgency)}</Badge>
+                    {lead.urgency ? (
+                      <Badge variant={urgencyVariant(lead.urgency)}>{humanize(lead.urgency)}</Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Not set</span>
+                    )}
                   </div>
                 </div>
               </div>

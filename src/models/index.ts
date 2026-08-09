@@ -14,5 +14,6 @@ export { PasswordChangeRequestModel } from "@/models/PasswordChangeRequest";
 export { ProjectModel } from "@/models/Project";
 export { PricingComponentModel } from "@/models/PricingComponent";
 export { ProposalModel } from "@/models/Proposal";
+export { ReportModel } from "@/models/Report";
 export { ScopeManifestModel } from "@/models/ScopeManifest";
 export { UserModel } from "@/models/User";
