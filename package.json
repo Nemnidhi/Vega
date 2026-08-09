@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "backup:db": "tsx --env-file=.env.local scripts/backup-database.ts",
     "preflight:migration": "tsx --env-file=.env.local scripts/preflight-migration.ts",
     "migrate:samvid": "tsx --env-file=.env.local scripts/migrate-samvid.ts",
     "verify:migration": "tsx --env-file=.env.local scripts/verify-migration.ts",

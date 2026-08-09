@@ -32,15 +32,41 @@ their board change completely. Confirm with whoever uses it daily.
 
 ## 1. Back up the target database
 
-Nothing here replaces a real backup. Take one **before** the first write:
+Take a backup **before** the first write. Two layers, because they cover
+different failures:
+
+**a. An Atlas snapshot** — the real safety net. Confirm one exists in the
+Atlas UI and note its timestamp. This is the only thing that restores
+indexes, users and validation rules.
+
+**b. A document-level export** you can inspect and selectively restore:
 
 ```bash
-mongodump --uri "<VEGA_PRODUCTION_URI>" --db <VEGA_DB> --out ./backup-$(date +%F)
+npm run backup:db -- --out ./backups/pre-migration
 ```
 
-MongoDB Atlas also keeps automatic snapshots — confirm one exists and note
-its timestamp. The rollback script below is precise but only covers documents
-this migration created; a backup covers everything else.
+`mongodump` is **not installed** on the machine this was built on, so this
+uses the MongoDB driver already in the project. Documents are written as
+newline-delimited Extended JSON, which preserves ObjectIds, Dates and the
+report PDF Buffers — plain JSON would silently destroy all three. Verified
+on a real 1,115-lead database: ObjectIds, nested `checkedAt` dates and a
+3,558-byte PDF all survived the round trip.
+
+It does **not** capture indexes, users or validation rules. That is what the
+Atlas snapshot is for.
+
+To restore:
+
+```bash
+npm run backup:db -- --restore ./backups/pre-migration          # dry run
+npm run backup:db -- --restore ./backups/pre-migration --apply
+```
+
+Restore refuses to write into a non-empty collection unless `--force` is
+also passed, so it cannot silently double-insert.
+
+The rollback script in the last section is precise but only covers documents
+this migration created; the backup covers everything else.
 
 ---
 
