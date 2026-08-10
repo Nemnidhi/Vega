@@ -85,25 +85,57 @@ export async function checkTechnicalSeo(
   url.searchParams.set("strategy", "mobile");
   url.searchParams.set("key", apiKey);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // PageSpeed is genuinely flaky: the same URL returned "Lighthouse returned
+  // error: Something went wrong", then an HTML error page, then a clean
+  // 100/100 - three failures and a success for a site that is completely
+  // healthy. One retry turns most of that noise into a result.
+  let data: PsiResponse = {};
+  let status = 0;
+  let transportError = "";
 
-  let response: Response;
-  try {
-    response = await fetch(url.toString(), { signal: controller.signal });
-  } catch (error) {
-    return notChecked(`PageSpeed request failed: ${(error as Error).message}`);
-  } finally {
-    clearTimeout(timer);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 3000));
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    try {
+      const response = await fetch(url.toString(), { signal: controller.signal });
+      status = response.status;
+      // A failing PSI call can answer with an HTML error page, so a parse
+      // failure is expected rather than exceptional.
+      data = (await response.json().catch(() => ({}))) as PsiResponse;
+      transportError = "";
+    } catch (error) {
+      timedOut = controller.signal.aborted;
+      transportError = timedOut ? `timed out after ${timeoutMs / 1000}s` : (error as Error).message;
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!transportError && status >= 200 && status < 300 && data.lighthouseResult) break;
+
+    // Don't retry what won't change: a key or URL problem is permanent, and
+    // retrying a timeout just spends another full timeout. One site took 243s
+    // that way, which is enough to threaten the enrichment cron's budget.
+    if (status === 403 || status === 400 || timedOut) break;
   }
 
-  const data = (await response.json().catch(() => ({}))) as PsiResponse;
-
-  if (!response.ok) {
+  if (transportError) {
+    return notChecked(`PageSpeed request failed: ${transportError}`);
+  }
+  if (status < 200 || status >= 300) {
     // 403 here almost always means the API is not enabled on the project, or
     // the key's API restrictions exclude PageSpeed Insights.
     return notChecked(
-      `PageSpeed HTTP ${response.status}${data.error?.message ? `: ${data.error.message}` : ""}`,
+      `PageSpeed HTTP ${status}${data.error?.message ? `: ${data.error.message}` : ""}`,
+    );
+  }
+  // A 200 with no lighthouseResult still means we learned nothing. Returning
+  // checked:true with null scores here would claim an audit we never got.
+  if (!data.lighthouseResult) {
+    return notChecked(
+      data.error?.message ? `PageSpeed: ${data.error.message}` : "PageSpeed returned no result",
     );
   }
 
