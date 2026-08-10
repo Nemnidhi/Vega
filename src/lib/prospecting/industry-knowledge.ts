@@ -1199,6 +1199,19 @@ export function getIndustryProfile(industryKey?: string | null, hint?: SegmentHi
 // Presence Audit), and returns a short paragraph - not the full
 // knowledge-bank entry. Falls back to the first two pain points if nothing
 // tagged matches, so the section is never empty for a known industry.
+/**
+ * Same matching the report uses, exposed for the blueprint's recommendation
+ * engine so a suggested component can cite a researched pain point rather
+ * than an invented reason.
+ */
+export function getMatchedPainPointsForBlueprint(
+  industryKey?: string | null,
+  missingTags?: string[] | null,
+  hint?: SegmentHint | null,
+): PainPoint[] {
+  return getMatchedPainPoints(industryKey, missingTags, hint);
+}
+
 function getMatchedPainPoints(industryKey?: string | null, missingTags?: string[] | null, hint?: SegmentHint | null): PainPoint[] {
   const profile = getIndustryProfile(industryKey, hint);
   if (!profile || !profile.painPoints) return [];

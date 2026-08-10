@@ -1,4 +1,5 @@
 export { ActivityLogModel } from "@/models/ActivityLog";
+export { BlueprintModel } from "@/models/Blueprint";
 export { AttendanceModel } from "@/models/Attendance";
 export { AttendanceSettingsModel } from "@/models/AttendanceSettings";
 export { ChatMessageModel } from "@/models/ChatMessage";

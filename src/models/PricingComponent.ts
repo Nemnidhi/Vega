@@ -1,5 +1,20 @@
 import { model, models, Schema, type InferSchemaType } from "mongoose";
 
+// A choice made on the discovery call, not a separate thing to sell.
+// `priceImpact` is applied before margin, so a feature cannot drag a quote
+// below the protected floor either.
+const componentFeatureSchema = new Schema(
+  {
+    code: { type: String, required: true, trim: true, uppercase: true, maxlength: 60 },
+    label: { type: String, required: true, trim: true, maxlength: 160 },
+    description: { type: String, trim: true, maxlength: 500 },
+    priceImpact: { type: Number, required: true, default: 0 },
+    isDefault: { type: Boolean, default: false },
+    requires: [{ type: String, trim: true, uppercase: true, maxlength: 60 }],
+  },
+  { _id: false },
+);
+
 const pricingComponentSchema = new Schema(
   {
     code: {
@@ -15,7 +30,17 @@ const pricingComponentSchema = new Schema(
     description: { type: String, required: true, trim: true, maxlength: 2000 },
     category: {
       type: String,
-      enum: ["intake", "crm", "automation", "integration", "analytics", "ai", "operations"],
+      enum: [
+        "website",
+        "mobile",
+        "intake",
+        "crm",
+        "automation",
+        "integration",
+        "analytics",
+        "ai",
+        "operations",
+      ],
       required: true,
       index: true,
     },
@@ -24,6 +49,21 @@ const pricingComponentSchema = new Schema(
     marginPercentage: { type: Number, required: true, min: 0, max: 300, default: 30 },
     finalPrice: { type: Number, required: true, min: 0 },
     isActive: { type: Boolean, default: true, index: true },
+    features: { type: [componentFeatureSchema], default: [] },
+    // Empty means "suits every industry". Populated only where a component
+    // genuinely does not apply elsewhere.
+    appliesToIndustries: [{ type: String, trim: true, maxlength: 60 }],
+    // Ties the catalog back to the audit: a lead missing a website has the
+    // "website" gap tag, and this is what answers it.
+    answersGapTags: [{ type: String, trim: true, maxlength: 40 }],
+    // Which size of business this is priced for. A blueprint drawing from the
+    // wrong tier would quote an order-of-magnitude error, so it is explicit.
+    scaleTiers: [{ type: String, enum: ["smb", "midmarket", "enterprise"] }],
+    /** Where the price came from. Kept on the record so guesses stay visible. */
+    priceBasis: { type: String, trim: true, maxlength: 300, default: "" },
+    deliveryWeeksMin: { type: Number, default: 1, min: 0 },
+    deliveryWeeksMax: { type: Number, default: 2, min: 0 },
+    monthlyPrice: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true },
 );
