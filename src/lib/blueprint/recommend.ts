@@ -21,10 +21,17 @@ export interface RecommendationInput {
   scaleTier: ScaleTier;
   /** Gap tags from the audit - which channels came back missing. */
   missingGapTags: string[];
-  /** Component codes the executive explicitly asked for on the call. */
+  /** Component codes the call established a need for. */
   requestedCodes?: string[];
   /** Component codes the client ruled out. */
   declinedCodes?: string[];
+  /**
+   * Per-component reason from the questionnaire, keyed by code. Without this
+   * every answer-driven component reads "asked for during the discovery
+   * call", which is untrue - the client said they keep enquiries in a
+   * notebook; the executive drew the conclusion.
+   */
+  answerRationales?: Record<string, string>;
 }
 
 export interface RecommendedComponent {
@@ -126,7 +133,7 @@ export function recommendComponents(
     if (!wasRequested && (!inScale || !inIndustry || !answersAGap)) continue;
 
     const rationale = wasRequested
-      ? "Asked for during the discovery call."
+      ? (input.answerRationales?.[component.code] ?? "Asked for during the discovery call.")
       : buildRationale(component, gaps, profile?.label);
 
     const priced = priceWithDefaults(component);
