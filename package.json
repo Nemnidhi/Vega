@@ -6,27 +6,44 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backup:db": "tsx --env-file=.env.local scripts/backup-database.ts",
+    "preflight:migration": "tsx --env-file=.env.local scripts/preflight-migration.ts",
+    "migrate:samvid": "tsx --env-file=.env.local scripts/migrate-samvid.ts",
+    "verify:migration": "tsx --env-file=.env.local scripts/verify-migration.ts",
+    "rollback:samvid": "tsx --env-file=.env.local scripts/rollback-samvid-migration.ts",
+    "import:sectors": "tsx --env-file=.env.local scripts/import-sector-workbook.ts",
+    "backfill:industry": "tsx --env-file=.env.local scripts/backfill-industry.ts",
+    "recheck:google": "tsx --env-file=.env.local scripts/recheck-google-names.ts",
+    "enrich:leads": "tsx --env-file=.env.local scripts/enrich-leads.ts",
+    "classify:leads": "tsx --env-file=.env.local scripts/classify-leads.ts",
+    "enrich:leads:ci": "tsx scripts/enrich-leads.ts",
+    "classify:leads:ci": "tsx scripts/classify-leads.ts"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.6.0",
     "clsx": "^2.1.1",
     "mongoose": "^9.6.1",
     "next": "16.2.4",
     "nodemailer": "^8.0.7",
+    "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.11",
     "typescript": "^5"
   }
 }

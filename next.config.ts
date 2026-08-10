@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     turbopackFileSystemCacheForDev: false,
   },
   devIndicators: false,
+  // @react-pdf/renderer is ESM-only and breaks bundling if webpack tries to
+  // process it - it has to stay external and be required at runtime.
+  serverExternalPackages: ["@react-pdf/renderer"],
 };
 
 export default nextConfig;

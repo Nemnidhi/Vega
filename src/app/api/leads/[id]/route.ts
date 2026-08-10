@@ -1,6 +1,6 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { LeadModel } from "@/models";
-import { createLeadSchema } from "@/lib/validation/lead";
+import { leadBaseSchema } from "@/lib/validation/lead";
 import { scoreLead } from "@/lib/leads/scoring";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
@@ -8,7 +8,10 @@ import { serializeForJson } from "@/lib/utils/serialize";
 
 type Params = Promise<{ id: string }>;
 
-const updateLeadSchema = createLeadSchema.partial().omit({ status: true });
+// Built from the unrefined base: a PATCH sends a subset of fields, so the
+// "inbound leads need email/category/urgency/description" rule can't apply
+// here - it's enforced on create, and by the Lead schema on save.
+const updateLeadSchema = leadBaseSchema.partial().omit({ status: true });
 
 export async function GET(_: Request, { params }: { params: Params }) {
   try {

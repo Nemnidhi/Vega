@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { createMailTransport, readMailConfig } from "@/lib/notifications/mailer";
 
 type ProjectAssignmentEmailInput = {
   developerEmail: string;
@@ -39,48 +39,6 @@ type TaskCompletionAlertEmailInput = {
   requestOrigin?: string;
   requestHeaders?: Headers;
 };
-
-type MailConfig = {
-  host: string;
-  port: number;
-  secure: boolean;
-  auth?: {
-    user: string;
-    pass: string;
-  };
-  from: string;
-  fromName: string;
-};
-
-function readMailConfig(): MailConfig | null {
-  const host = process.env.SMTP_HOST?.trim();
-  const rawPort = process.env.SMTP_PORT?.trim();
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASS?.trim();
-  const fromEmail = process.env.SMTP_FROM_EMAIL?.trim() || user;
-  const fromName =
-    process.env.SMTP_FROM_NAME?.trim() ||
-    process.env.NEXT_PUBLIC_APP_NAME?.trim() ||
-    "HRMS Command Center";
-
-  if (!host || !fromEmail) {
-    return null;
-  }
-
-  const parsedPort = rawPort ? Number(rawPort) : 587;
-  if (!Number.isFinite(parsedPort) || parsedPort <= 0) {
-    return null;
-  }
-
-  return {
-    host,
-    port: parsedPort,
-    secure: parsedPort === 465,
-    auth: user && pass ? { user, pass } : undefined,
-    from: fromEmail,
-    fromName,
-  };
-}
 
 function normalizeBaseUrl(value?: string | null) {
   if (!value) {
@@ -200,12 +158,7 @@ async function sendAssignmentEmail(input: {
     return { sent: false as const, reason: "missing_smtp_config" as const };
   }
 
-  const transporter = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    auth: config.auth,
-  });
+  const transporter = createMailTransport(config);
 
   await transporter.sendMail({
     from: `"${config.fromName}" <${config.from}>`,

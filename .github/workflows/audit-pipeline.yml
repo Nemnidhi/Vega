@@ -1,0 +1,62 @@
+name: Audit pipeline
+
+# Runs unattended every 15 minutes against the live database, processing
+# cold prospects whose prospecting.prospectingStatus is still "new" (a no-op
+# query when there is nothing to do). Enrichment and classification run in
+# the same job, in that order, so a lead picked up this cycle is enriched
+# AND tiered before the run ends.
+#
+# Ported from Samvid's .github/workflows/enrich-leads.yml, which ran the same
+# 15-minute cadence. Two differences worth knowing:
+#   - scripts are TypeScript, run through tsx (no build step needed)
+#   - the *:ci npm scripts are used because the local ones pass
+#     --env-file=.env.local, and Node errors if that file is absent
+#
+# META_AD_LIBRARY_ACCESS_TOKEN is still blocked on Meta App Review, so
+# metaAds checks keep returning checked:false until that lands - which the
+# classifier treats as "not checked", never "not found".
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "Number of un-enriched leads to process"
+        required: false
+        default: "10"
+      reclassify:
+        description: "Re-run classification over already-classified leads"
+        type: boolean
+        required: false
+        default: false
+
+# A slow run must never overlap the next tick and double-process a lead.
+concurrency:
+  group: audit-pipeline
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+      GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+      META_AD_LIBRARY_ACCESS_TOKEN: ${{ secrets.META_AD_LIBRARY_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Enrich new leads
+        run: npm run enrich:leads:ci -- "${{ inputs.batch_size || '10' }}"
+
+      - name: Classify enriched leads
+        run: >-
+          npm run classify:leads:ci --
+          "${{ inputs.batch_size || '50' }}"
+          ${{ inputs.reclassify && '--reclassify' || '' }}

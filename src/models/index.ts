@@ -1,4 +1,5 @@
 export { ActivityLogModel } from "@/models/ActivityLog";
+export { BlueprintModel } from "@/models/Blueprint";
 export { AttendanceModel } from "@/models/Attendance";
 export { AttendanceSettingsModel } from "@/models/AttendanceSettings";
 export { ChatMessageModel } from "@/models/ChatMessage";
@@ -14,5 +15,6 @@ export { PasswordChangeRequestModel } from "@/models/PasswordChangeRequest";
 export { ProjectModel } from "@/models/Project";
 export { PricingComponentModel } from "@/models/PricingComponent";
 export { ProposalModel } from "@/models/Proposal";
+export { ReportModel } from "@/models/Report";
 export { ScopeManifestModel } from "@/models/ScopeManifest";
 export { UserModel } from "@/models/User";

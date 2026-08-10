@@ -46,14 +46,17 @@ export function deriveLeadPriorityBand(score: number): LeadPriorityBand {
 
 export function scoreLead(input: {
   source: LeadSource;
-  category: LeadCategory;
-  urgency: LeadUrgency;
+  // Optional for cold_outreach prospects, which carry neither. They fall back
+  // to the lowest weights, landing in the volume pipeline - which is exactly
+  // where an unqualified cold prospect belongs.
+  category?: LeadCategory;
+  urgency?: LeadUrgency;
   budget?: { min: number; max: number };
 }) {
   const score =
     sourceWeight[input.source] +
-    categoryWeight[input.category] +
-    urgencyWeight[input.urgency] +
+    categoryWeight[input.category ?? "other"] +
+    urgencyWeight[input.urgency ?? "low"] +
     budgetWeight(input.budget?.min, input.budget?.max);
 
   const normalizedScore = Math.min(100, Math.max(0, score));

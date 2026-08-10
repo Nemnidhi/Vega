@@ -8,6 +8,7 @@ import {
   leadUrgencyValues,
 } from "@/lib/validation/lead";
 import { scoreLead } from "@/lib/leads/scoring";
+import { resolveProspectIndustry } from "@/lib/prospecting/resolve-industry";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, fail, ok } from "@/lib/api/responses";
 import { serializeForJson } from "@/lib/utils/serialize";
@@ -284,10 +285,51 @@ export async function POST(request: Request) {
           budget: leadData.budget,
         });
 
+        // Resolve the knowledge-bank industry at import time. Sector-per-file
+        // exports carry an "Industry" column; scraped rows usually carry a
+        // business-category field instead. Either way it is decided once,
+        // here, rather than being missing forever.
+        const businessCategory = readField(row, ["businesscategory", "category2", "sectorcategory"]);
+        const productsServices = readField(row, ["productsservices", "products", "services"]);
+        const industryLabel = readField(row, ["industry", "sector"]);
+        const registrationNo = readField(row, ["registrationno", "rerano", "reranumber", "registrationnumber"]);
+
+        const resolved = resolveProspectIndustry({
+          industryLabel,
+          businessCategory,
+          productsServices,
+          registrationNo,
+          name: title,
+          description,
+        });
+
+        const hasProspectingData =
+          resolved.industry ||
+          resolved.unmappedLabel ||
+          businessCategory ||
+          registrationNo ||
+          leadData.source === "cold_outreach";
+
         preparedRows.push({
           ...leadData,
           ...scoring,
           ownerId: actor.userId,
+          ...(hasProspectingData
+            ? {
+                prospecting: {
+                  industry: resolved.industry ?? undefined,
+                  segment: resolved.segment ?? undefined,
+                  industryConfidence: resolved.confidence,
+                  industryMatchedOn: resolved.matchedOn,
+                  unmappedIndustryLabel: resolved.unmappedLabel ?? null,
+                  businessCategory: businessCategory || productsServices || undefined,
+                  registrationNo: registrationNo || undefined,
+                  state: readField(row, ["state"]) || undefined,
+                  district: readField(row, ["district", "city"]) || undefined,
+                  prospectingStatus: "new",
+                },
+              }
+            : {}),
         });
       } catch (rowError) {
         failedRows.push({
