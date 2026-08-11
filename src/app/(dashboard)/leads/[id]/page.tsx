@@ -8,7 +8,16 @@ import { ClientInvitePanel, type ClientInvitePanelProps } from "@/components/lea
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { BlueprintModel, ClientModel, ClientInviteModel, LeadModel, LeadNoteModel, UserModel } from "@/models";
+import {
+  BlueprintModel,
+  ClientModel,
+  ClientInviteModel,
+  LeadModel,
+  LeadNoteModel,
+  ProposalModel,
+  ScopeManifestModel,
+  UserModel,
+} from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import type { LeadProspecting } from "@/types/lead";
@@ -221,6 +230,14 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     .select("version status")
     .lean();
 
+  const hasSignedScope = Boolean(
+    await ScopeManifestModel.exists({ leadId: leadDoc._id, isCompleted: true, signedAt: { $ne: null } }),
+  );
+  const latestProposal = await ProposalModel.findOne({ leadId: leadDoc._id })
+    .sort({ version: -1 })
+    .select("version status approvalStatus")
+    .lean();
+
   const greetingName = lead.contactName || lead.title;
   const phoneForCall = normalizePhoneForCall(resolvedPhone);
   const phoneForWhatsApp = normalizePhoneForWhatsApp(resolvedPhone);
@@ -394,6 +411,32 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
               >
                 {latestBlueprint ? "Open Blueprint" : "Start Blueprint"}
+              </a>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Proposal</CardTitle>
+              <CardDescription>
+                Formal scope, pricing, and signature - generated from the signed Scope Manifest.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-3">
+              {latestProposal ? (
+                <Badge variant={latestProposal.status === "signed" ? "success" : "neutral"}>
+                  v{latestProposal.version} - {latestProposal.status}
+                </Badge>
+              ) : hasSignedScope ? (
+                <span className="text-sm text-muted-foreground">No proposal generated yet.</span>
+              ) : (
+                <span className="text-sm text-muted-foreground">Lock scope first.</span>
+              )}
+              <a
+                href={`/proposals/${lead._id}`}
+                className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+              >
+                {latestProposal ? "Open Proposal" : "Start Proposal"}
               </a>
             </CardContent>
           </Card>

@@ -48,3 +48,8 @@ export const createProposalSchema = z.object({
 export const updateProposalStatusSchema = z.object({
   status: z.enum(proposalStatusValues),
 });
+
+export const respondProposalSchema = z.object({
+  decision: z.enum(["sign", "reject"]),
+  reason: z.string().trim().min(5).max(1000).optional(),
+});
