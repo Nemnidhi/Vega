@@ -50,6 +50,14 @@ const proposalSchema = new Schema(
       required: true,
       index: true,
     },
+
+    /** Evidence, mirroring Blueprint's approval/rejection fields. */
+    viewedAt: { type: Date, default: null },
+    signedAt: { type: Date, default: null },
+    signedByName: { type: String, trim: true, maxlength: 160, default: null },
+    signedFromIp: { type: String, trim: true, maxlength: 60, default: null },
+    rejectedAt: { type: Date, default: null },
+    rejectionReason: { type: String, trim: true, maxlength: 1000, default: null },
   },
   { timestamps: true },
 );

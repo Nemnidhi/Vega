@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ClientAuditSummary } from "@/components/client/client-audit-summary";
 import { ClientBlueprintView } from "@/components/client/client-blueprint-view";
+import { ClientProposalView } from "@/components/client/client-proposal-view";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { BlueprintModel, LeadModel } from "@/models";
+import { BlueprintModel, LeadModel, ProposalModel } from "@/models";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { resolveClientLeadId } from "@/lib/auth/client-lead";
 import { serializeForJson } from "@/lib/utils/serialize";
@@ -35,6 +36,8 @@ export default async function ClientLeadHomePage() {
     .sort({ version: -1 })
     .lean();
 
+  const proposalDoc = await ProposalModel.findOne({ leadId }).sort({ version: -1 }).lean();
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-7 lg:p-8">
       <Card>
@@ -64,6 +67,10 @@ export default async function ClientLeadHomePage() {
       <ClientBlueprintView
         leadId={leadId}
         initialBlueprint={blueprintDoc ? serializeForJson(blueprintDoc) : null}
+      />
+
+      <ClientProposalView
+        initialProposal={proposalDoc ? serializeForJson(proposalDoc) : null}
       />
     </main>
   );

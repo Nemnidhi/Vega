@@ -7,9 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type ProposalForm = {
-  leadId: string;
-  clientId: string;
-  scopeManifestId: string;
   projectSummary: string;
   scopeOfWork: string;
   exclusions: string;
@@ -20,10 +17,7 @@ type ProposalForm = {
   signatureBlock: string;
 };
 
-const initialForm: ProposalForm = {
-  leadId: "",
-  clientId: "",
-  scopeManifestId: "",
+const defaultForm: ProposalForm = {
   projectSummary: "",
   scopeOfWork: "",
   exclusions: "",
@@ -35,6 +29,11 @@ const initialForm: ProposalForm = {
   signatureBlock: "Authorized Signatory",
 };
 
+function fromArray(input: unknown) {
+  if (!Array.isArray(input)) return "";
+  return input.join(", ");
+}
+
 function csvToArray(value: string) {
   return value
     .split(",")
@@ -42,8 +41,42 @@ function csvToArray(value: string) {
     .filter(Boolean);
 }
 
-export function ProposalGeneratorForm() {
-  const [form, setForm] = useState<ProposalForm>(initialForm);
+type PricingLine = { label?: string; amount?: number; quantity?: number };
+type PaymentLine = { label?: string; amount?: number };
+
+function pricingToText(input: unknown) {
+  if (!Array.isArray(input)) return "";
+  return (input as PricingLine[])
+    .map((line) => `${line.label ?? ""}:${line.amount ?? 0}:${line.quantity ?? 1}`)
+    .join(" | ");
+}
+
+function paymentToText(input: unknown) {
+  if (!Array.isArray(input)) return "";
+  return (input as PaymentLine[]).map((line) => `${line.label ?? ""}:${line.amount ?? 0}`).join(" | ");
+}
+
+export function ProposalGeneratorForm({
+  leadId,
+  clientId,
+  scopeManifestId,
+  initialData,
+}: {
+  leadId: string;
+  clientId: string;
+  scopeManifestId: string;
+  initialData?: Record<string, unknown> | null;
+}) {
+  const [form, setForm] = useState<ProposalForm>({
+    ...defaultForm,
+    projectSummary: String(initialData?.projectSummary ?? ""),
+    scopeOfWork: fromArray(initialData?.scopeOfWork),
+    exclusions: fromArray(initialData?.exclusions),
+    timeline: String(initialData?.timeline ?? ""),
+    pricing: pricingToText(initialData?.pricing),
+    paymentSchedule: paymentToText(initialData?.paymentSchedule),
+    changeOrderClause: String(initialData?.changeOrderClause ?? defaultForm.changeOrderClause),
+  });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -84,9 +117,9 @@ export function ProposalGeneratorForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leadId: form.leadId,
-          clientId: form.clientId,
-          scopeManifestId: form.scopeManifestId,
+          leadId,
+          clientId,
+          scopeManifestId,
           projectSummary: form.projectSummary,
           scopeOfWork: csvToArray(form.scopeOfWork),
           exclusions: csvToArray(form.exclusions),
@@ -104,7 +137,6 @@ export function ProposalGeneratorForm() {
       }
 
       setMessage("Proposal generated and stored.");
-      setForm(initialForm);
       window.location.reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to generate proposal");
@@ -116,32 +148,10 @@ export function ProposalGeneratorForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Mandate Engine — Proposal Generator</CardTitle>
+        <CardTitle>Generate Proposal</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="grid gap-3" onSubmit={submitProposal}>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Input
-              placeholder="Lead ID"
-              value={form.leadId}
-              onChange={(event) => setForm((prev) => ({ ...prev, leadId: event.target.value }))}
-              required
-            />
-            <Input
-              placeholder="Client ID"
-              value={form.clientId}
-              onChange={(event) => setForm((prev) => ({ ...prev, clientId: event.target.value }))}
-              required
-            />
-            <Input
-              placeholder="Scope Manifest ID"
-              value={form.scopeManifestId}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, scopeManifestId: event.target.value }))
-              }
-              required
-            />
-          </div>
           <Textarea
             placeholder="Project summary"
             value={form.projectSummary}

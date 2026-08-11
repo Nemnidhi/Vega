@@ -9,6 +9,8 @@ const activityLogSchema = new Schema(
         "proposal_generated",
         "proposal_sent",
         "proposal_signed",
+        "proposal_viewed",
+        "proposal_rejected",
         "scope_manifest_edited",
         "change_order_created",
         "pricing_changed",
@@ -49,13 +51,14 @@ export type ActivityLogDocument = InferSchemaType<typeof activityLogSchema>;
 const existingActivityLogModel = models.ActivityLog;
 const existingActionEnum = existingActivityLogModel?.schema.path("action")?.options?.enum;
 
-// In dev HMR, an older cached model can predate the audit_*/blueprint_*
-// actions.
+// In dev HMR, an older cached model can predate the audit_*/blueprint_*/
+// proposal_viewed/proposal_rejected actions.
 if (
   existingActivityLogModel &&
   Array.isArray(existingActionEnum) &&
   (!existingActionEnum.includes("audit_report_generated") ||
-    !existingActionEnum.includes("blueprint_shared"))
+    !existingActionEnum.includes("blueprint_shared") ||
+    !existingActionEnum.includes("proposal_viewed"))
 ) {
   delete models.ActivityLog;
 }
