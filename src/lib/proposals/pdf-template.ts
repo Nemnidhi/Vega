@@ -11,6 +11,19 @@ function currency(amount: number, code: "INR" | "USD") {
   }).format(amount);
 }
 
+// This document is served as text/html and rendered directly by a browser
+// (unlike the audit report, which is a react-pdf binary) - every interpolated
+// string has to be escaped or a field like a pricing label becomes a stored
+// XSS path.
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 export function buildProposalHtml(input: {
   proposal: Proposal;
   client: Client;
@@ -21,7 +34,7 @@ export function buildProposalHtml(input: {
   const pricingRows = proposal.pricing
     .map(
       (line) =>
-        `<tr><td>${line.label}</td><td>${line.quantity}</td><td>${currency(
+        `<tr><td>${escapeHtml(line.label)}</td><td>${line.quantity}</td><td>${currency(
           line.amount,
           line.currency,
         )}</td><td>${currency(line.amount * line.quantity, line.currency)}</td></tr>`,
@@ -33,7 +46,7 @@ export function buildProposalHtml(input: {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Proposal ${proposal._id}</title>
+    <title>Proposal ${escapeHtml(proposal._id)}</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 28px; color: #0f172a; }
       h1, h2, h3 { margin-bottom: 6px; }
@@ -49,39 +62,39 @@ export function buildProposalHtml(input: {
   <body>
     <div class="block">
       <h1>Project Proposal</h1>
-      <p class="muted">Status: ${proposal.status} | Version: ${proposal.version}</p>
+      <p class="muted">Status: ${escapeHtml(proposal.status)} | Version: ${proposal.version}</p>
     </div>
 
     <div class="block">
       <h2>Client Details</h2>
-      <p><strong>${client.legalName}</strong></p>
-      <p>${client.primaryContactName} (${client.primaryContactEmail})</p>
-      <p class="muted">Lead: ${lead.title}</p>
+      <p><strong>${escapeHtml(client.legalName)}</strong></p>
+      <p>${escapeHtml(client.primaryContactName)} (${escapeHtml(client.primaryContactEmail)})</p>
+      <p class="muted">Lead: ${escapeHtml(lead.title)}</p>
     </div>
 
     <div class="block">
       <h2>Project Summary</h2>
-      <p>${proposal.projectSummary}</p>
+      <p>${escapeHtml(proposal.projectSummary)}</p>
     </div>
 
     <div class="block">
       <h2>Scope of Work</h2>
-      <ul>${proposal.scopeOfWork.map((item) => `<li>${item}</li>`).join("")}</ul>
+      <ul>${proposal.scopeOfWork.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     </div>
 
     <div class="block">
       <h2>Deliverable Manifest</h2>
-      <ul>${scopeManifest.confirmedDeliverables.map((item) => `<li>${item}</li>`).join("")}</ul>
+      <ul>${scopeManifest.confirmedDeliverables.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     </div>
 
     <div class="block">
       <h2>Exclusions</h2>
-      <ul>${proposal.exclusions.map((item) => `<li>${item}</li>`).join("")}</ul>
+      <ul>${proposal.exclusions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     </div>
 
     <div class="block">
       <h2>Timeline</h2>
-      <p>${proposal.timeline}</p>
+      <p>${escapeHtml(proposal.timeline)}</p>
     </div>
 
     <div class="block">
@@ -100,7 +113,7 @@ export function buildProposalHtml(input: {
         ${proposal.paymentSchedule
           .map(
             (item) =>
-              `<li>${item.label}: ${currency(item.amount, item.currency)}${
+              `<li>${escapeHtml(item.label)}: ${currency(item.amount, item.currency)}${
                 item.dueBy ? ` (Due ${new Date(item.dueBy).toLocaleDateString("en-IN")})` : ""
               }</li>`,
           )
@@ -110,12 +123,12 @@ export function buildProposalHtml(input: {
 
     <div class="block">
       <h2>Change Order Clause</h2>
-      <p>${proposal.changeOrderClause}</p>
+      <p>${escapeHtml(proposal.changeOrderClause)}</p>
     </div>
 
     <div class="signature">
       <h3>Signature Block</h3>
-      <p>${proposal.signatureBlock}</p>
+      <p>${escapeHtml(proposal.signatureBlock)}</p>
     </div>
   </body>
 </html>

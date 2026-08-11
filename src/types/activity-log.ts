@@ -5,6 +5,8 @@ export type ActivityAction =
   | "proposal_generated"
   | "proposal_sent"
   | "proposal_signed"
+  | "proposal_viewed"
+  | "proposal_rejected"
   | "scope_manifest_edited"
   | "change_order_created"
   | "pricing_changed"
