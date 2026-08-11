@@ -4,10 +4,11 @@ import { LeadDairy } from "@/components/leads/lead-dairy";
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { LeadFieldsEditor } from "@/components/leads/lead-fields-editor";
 import { AuditReportPanel } from "@/components/leads/audit-report-panel";
+import { ClientInvitePanel, type ClientInvitePanelProps } from "@/components/leads/client-invite-panel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { ClientModel, LeadModel, LeadNoteModel } from "@/models";
+import { BlueprintModel, ClientModel, ClientInviteModel, LeadModel, LeadNoteModel, UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import type { LeadProspecting } from "@/types/lead";
@@ -192,6 +193,34 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
   const descriptionPhone = !lead.phone ? extractPhoneFromDescription(lead.description) : "";
   const resolvedPhone = lead.phone || fallbackClient?.primaryContactPhone || descriptionPhone;
 
+  const inviteDoc = await ClientInviteModel.findOne({ leadId: leadDoc._id })
+    .sort({ createdAt: -1 })
+    .select("status email createdAt acceptedAt createdClientUserId")
+    .lean();
+  const linkedClientUserDoc =
+    inviteDoc?.status === "accepted" && inviteDoc.createdClientUserId
+      ? await UserModel.findById(inviteDoc.createdClientUserId).select("fullName email status").lean()
+      : null;
+  const invite = inviteDoc
+    ? (serializeForJson({
+        status: inviteDoc.status,
+        email: inviteDoc.email,
+        createdAt: inviteDoc.createdAt,
+        acceptedAt: inviteDoc.acceptedAt,
+      }) as ClientInvitePanelProps["invite"])
+    : null;
+  const linkedClientUser = linkedClientUserDoc
+    ? (serializeForJson(linkedClientUserDoc) as ClientInvitePanelProps["linkedClientUser"])
+    : null;
+
+  const latestBlueprint = await BlueprintModel.findOne({
+    leadId: leadDoc._id,
+    status: { $ne: "superseded" },
+  })
+    .sort({ version: -1 })
+    .select("version status")
+    .lean();
+
   const greetingName = lead.contactName || lead.title;
   const phoneForCall = normalizePhoneForCall(resolvedPhone);
   const phoneForWhatsApp = normalizePhoneForWhatsApp(resolvedPhone);
@@ -326,6 +355,48 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               </CardContent>
             </Card>
           ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Client Portal Access</CardTitle>
+              <CardDescription>
+                Invite this lead&apos;s contact to log in and review their audit and requirements
+                directly.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ClientInvitePanel
+                leadId={lead._id}
+                hasEmail={Boolean(lead.email)}
+                invite={invite}
+                linkedClientUser={linkedClientUser}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Requirements Blueprint</CardTitle>
+              <CardDescription>
+                Discovery-call questionnaire, recommended components, and estimate range.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-3">
+              {latestBlueprint ? (
+                <Badge variant={latestBlueprint.status === "approved" ? "success" : "neutral"}>
+                  v{latestBlueprint.version} - {latestBlueprint.status}
+                </Badge>
+              ) : (
+                <span className="text-sm text-muted-foreground">No blueprint created yet.</span>
+              )}
+              <a
+                href={`/blueprint/${lead._id}`}
+                className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+              >
+                {latestBlueprint ? "Open Blueprint" : "Start Blueprint"}
+              </a>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

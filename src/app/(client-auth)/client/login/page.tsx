@@ -5,7 +5,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 export default async function ClientLoginPage() {
   const session = await getCurrentSession();
   if (session?.role === "client") {
-    redirect("/client/queries");
+    redirect("/client");
   }
   if (session) {
     redirect("/dashboard");
