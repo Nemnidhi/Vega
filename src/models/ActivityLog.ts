@@ -16,6 +16,11 @@ const activityLogSchema = new Schema(
         "audit_classification_completed",
         "audit_report_generated",
         "audit_report_sent",
+        "client_portal_invited",
+        "client_portal_activated",
+        "blueprint_shared",
+        "blueprint_approved",
+        "blueprint_rejected",
       ],
       required: true,
       index: true,
@@ -25,7 +30,7 @@ const activityLogSchema = new Schema(
     actorId: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
     entityType: {
       type: String,
-      enum: ["lead", "proposal", "scope_manifest", "change_order", "pricing_component"],
+      enum: ["lead", "proposal", "scope_manifest", "change_order", "pricing_component", "blueprint"],
       required: true,
       index: true,
     },
@@ -44,11 +49,13 @@ export type ActivityLogDocument = InferSchemaType<typeof activityLogSchema>;
 const existingActivityLogModel = models.ActivityLog;
 const existingActionEnum = existingActivityLogModel?.schema.path("action")?.options?.enum;
 
-// In dev HMR, an older cached model can predate the audit_* actions.
+// In dev HMR, an older cached model can predate the audit_*/blueprint_*
+// actions.
 if (
   existingActivityLogModel &&
   Array.isArray(existingActionEnum) &&
-  !existingActionEnum.includes("audit_report_generated")
+  (!existingActionEnum.includes("audit_report_generated") ||
+    !existingActionEnum.includes("blueprint_shared"))
 ) {
   delete models.ActivityLog;
 }

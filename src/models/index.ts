@@ -5,6 +5,7 @@ export { AttendanceSettingsModel } from "@/models/AttendanceSettings";
 export { ChatMessageModel } from "@/models/ChatMessage";
 export { ChangeOrderModel } from "@/models/ChangeOrder";
 export { ClientModel } from "@/models/Client";
+export { ClientInviteModel } from "@/models/ClientInvite";
 export { ClientOnboardingModel } from "@/models/ClientOnboarding";
 export { ClientQueryModel } from "@/models/ClientQuery";
 export { LeadModel } from "@/models/Lead";

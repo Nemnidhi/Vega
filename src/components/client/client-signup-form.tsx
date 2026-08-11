@@ -56,7 +56,7 @@ export function ClientSignupForm() {
         throw new Error(data?.error?.message ?? "Client signup failed");
       }
 
-      router.push("/client/queries");
+      router.push("/client");
       router.refresh();
     } catch (value) {
       setError(value instanceof Error ? value.message : "Client signup failed");

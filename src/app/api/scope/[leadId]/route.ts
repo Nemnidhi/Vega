@@ -1,7 +1,7 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
-import { ScopeManifestModel } from "@/models";
+import { BlueprintModel, ScopeManifestModel } from "@/models";
 import { upsertScopeManifestSchema } from "@/lib/validation/scope-manifest";
 import { logActivity } from "@/lib/activity/logging";
 import { serializeForJson } from "@/lib/utils/serialize";
@@ -54,6 +54,16 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       entityId: String(scopeManifest._id),
       details: { leadId, isCompleted: scopeManifest.isCompleted },
     });
+
+    // Closes the loop described in Blueprint's own schema comment: once a
+    // scope manifest is completed, the approved blueprint it came from
+    // points at it. Only ever claims a blueprint with no manifest yet.
+    if (scopeManifest.isCompleted) {
+      await BlueprintModel.updateOne(
+        { leadId, status: "approved", scopeManifestId: null },
+        { $set: { scopeManifestId: scopeManifest._id } },
+      );
+    }
 
     return ok(serializeForJson(scopeManifest));
   } catch (error) {

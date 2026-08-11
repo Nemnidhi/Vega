@@ -14,6 +14,8 @@ import { connectToDatabase } from "@/lib/db/mongodb";
 import { LeadModel, ReportModel } from "@/models";
 import { handleApiError, fail, ok } from "@/lib/api/responses";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
+import { getCurrentSession } from "@/lib/auth/session";
+import { resolveClientLeadId } from "@/lib/auth/client-lead";
 import { logActivity } from "@/lib/activity/logging";
 import { buildReportDocument } from "@/lib/prospecting/report-template";
 import { generateParagraph } from "@/lib/prospecting/generate-paragraph";
@@ -113,10 +115,18 @@ export async function POST(_: Request, { params }: { params: Params }) {
 export async function GET(_: Request, { params }: { params: Params }) {
   try {
     await connectToDatabase();
-    const actor = await getActorContext();
-    assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
-
     const { id } = await params;
+
+    // Staff can download any lead's report; a client may only download
+    // their own - same ownership check the blueprint routes use.
+    const session = await getCurrentSession();
+    if (!session) throw new Error("Unauthorized");
+    if (session.role === "client") {
+      const clientLeadId = await resolveClientLeadId(session);
+      if (!clientLeadId || clientLeadId !== id) throw new Error("Forbidden");
+    } else {
+      assertRoleAccess(session.role, { oneOf: permissionRules.manageLeads });
+    }
     // Hydrated, not .lean() - a lean read returns the pdf as a BSON Binary
     // rather than a Buffer.
     const report = await ReportModel.findOne({ leadId: id }).sort({ generatedAt: -1 });

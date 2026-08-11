@@ -11,13 +11,18 @@ export type ActivityAction =
   | "audit_enrichment_completed"
   | "audit_classification_completed"
   | "audit_report_generated"
-  | "audit_report_sent";
+  | "audit_report_sent"
+  | "client_portal_invited"
+  | "client_portal_activated"
+  | "blueprint_shared"
+  | "blueprint_approved"
+  | "blueprint_rejected";
 
 export interface ActivityLog extends BaseDocument {
   action: ActivityAction;
   /** Null for cron-triggered audit actions, which have no human actor. */
   actorId: ObjectId | null;
-  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component";
+  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component" | "blueprint";
   entityId: ObjectId;
   details: Record<string, unknown>;
   ipAddress?: string;

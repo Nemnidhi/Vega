@@ -31,7 +31,7 @@ export function ClientLoginForm() {
         throw new Error(data?.error?.message ?? "Client login failed");
       }
 
-      router.push("/client/queries");
+      router.push("/client");
       router.refresh();
     } catch (value) {
       setError(value instanceof Error ? value.message : "Client login failed");

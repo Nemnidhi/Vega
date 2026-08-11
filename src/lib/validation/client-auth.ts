@@ -16,3 +16,13 @@ export const clientLoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(72),
 });
+
+export const inviteClientSchema = z.object({
+  email: z.string().email().optional(),
+});
+
+export const activateClientInviteSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(8).max(72),
+  fullName: z.string().trim().min(2).max(120).optional(),
+});
