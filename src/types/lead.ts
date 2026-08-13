@@ -101,6 +101,16 @@ export interface LeadProspecting {
       activeCount?: number | null;
       checkedAt?: Date | null;
     };
+    metaPresence?: {
+      checked?: boolean;
+      facebookFound?: boolean | null;
+      facebookFollowers?: number | null;
+      facebookPlaceName?: string | null;
+      instagramFound?: boolean | null;
+      instagramFollowers?: number | null;
+      reason?: string | null;
+      checkedAt?: Date | null;
+    };
     technicalSeo?: {
       checked?: boolean;
       seoScore?: number | null;

@@ -48,6 +48,23 @@ const metaAdsSignalSchema = new Schema(
   { _id: false },
 );
 
+// Presence + follower counts, distinct from metaAds (running ads).
+// Deliberately excluded from tier classification - see classify.ts and
+// technicalSeoSignalSchema below for the same precedent.
+const metaPresenceSignalSchema = new Schema(
+  {
+    checked: { type: Boolean, default: false },
+    facebookFound: { type: Boolean, default: null },
+    facebookFollowers: { type: Number, default: null },
+    facebookPlaceName: { type: String, trim: true, maxlength: 200, default: null },
+    instagramFound: { type: Boolean, default: null },
+    instagramFollowers: { type: Number, default: null },
+    reason: { type: String, trim: true, maxlength: 300, default: null },
+    checkedAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
 // Quality of an existing site, not presence. Kept out of the classifier on
 // purpose - see check-technical-seo.ts.
 const technicalSeoSignalSchema = new Schema(
@@ -115,6 +132,7 @@ const prospectingSchema = new Schema(
       website: { type: websiteSignalSchema, default: null },
       googleBusiness: { type: googleBusinessSignalSchema, default: null },
       metaAds: { type: metaAdsSignalSchema, default: null },
+      metaPresence: { type: metaPresenceSignalSchema, default: null },
       technicalSeo: { type: technicalSeoSignalSchema, default: null },
     },
     classification: { type: prospectingClassificationSchema, default: null },

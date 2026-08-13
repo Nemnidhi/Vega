@@ -24,6 +24,7 @@ import { ActivityLogModel } from "@/models/ActivityLog";
 import { checkWebsite } from "@/lib/prospecting/check-website";
 import { checkGoogleBusiness } from "@/lib/prospecting/check-google-business";
 import { checkMetaAds } from "@/lib/prospecting/check-meta-ads";
+import { checkMetaPresence } from "@/lib/prospecting/check-meta-presence";
 import { checkTechnicalSeo } from "@/lib/prospecting/check-technical-seo";
 import type { Lead } from "@/types/lead";
 
@@ -109,7 +110,7 @@ async function main() {
   for (const lead of batch) {
     try {
       // One failing checker must not lose the other two results.
-      const [website, googleBusiness, metaAds] = await Promise.all([
+      const [website, googleBusiness, metaAds, metaPresence] = await Promise.all([
         checkWebsite(lead.title).catch((error) => ({
           found: false,
           url: null,
@@ -133,6 +134,15 @@ async function main() {
           reason: String(error),
           checkedAt: new Date(),
         })),
+        checkMetaPresence(lead.title).catch((error) => ({
+          checked: false,
+          facebookFound: null,
+          facebookFollowers: null,
+          instagramFound: null,
+          instagramFollowers: null,
+          reason: String(error),
+          checkedAt: new Date(),
+        })),
       ]);
 
       // Only audit a site that exists. Running this for a business with no
@@ -153,6 +163,7 @@ async function main() {
             "prospecting.digitalPresence.website": website,
             "prospecting.digitalPresence.googleBusiness": googleBusiness,
             "prospecting.digitalPresence.metaAds": metaAds,
+            "prospecting.digitalPresence.metaPresence": metaPresence,
             "prospecting.digitalPresence.technicalSeo": technicalSeo,
             "prospecting.prospectingStatus": "enriched",
           },
@@ -168,6 +179,7 @@ async function main() {
           website: website.found,
           googleBusiness: googleBusiness.checked ? googleBusiness.found : "not_checked",
           metaAds: metaAds.checked ? metaAds.found : "not_checked",
+          metaPresence: metaPresence.checked ? metaPresence.facebookFound : "not_checked",
         },
       });
 

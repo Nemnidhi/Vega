@@ -57,6 +57,18 @@ export function toEnrichmentSignals(lead: LeadLike): EnrichmentSignals {
       checkedAt: dp.metaAds.checkedAt ?? new Date(),
     };
   }
+  if (dp.metaPresence) {
+    signals.metaPresence = {
+      checked: Boolean(dp.metaPresence.checked),
+      facebookFound: dp.metaPresence.facebookFound ?? null,
+      facebookFollowers: dp.metaPresence.facebookFollowers ?? null,
+      facebookPlaceName: dp.metaPresence.facebookPlaceName ?? null,
+      instagramFound: dp.metaPresence.instagramFound ?? null,
+      instagramFollowers: dp.metaPresence.instagramFollowers ?? null,
+      reason: dp.metaPresence.reason ?? undefined,
+      checkedAt: dp.metaPresence.checkedAt ?? new Date(),
+    };
+  }
   if (dp.technicalSeo) {
     signals.technicalSeo = {
       checked: Boolean(dp.technicalSeo.checked),

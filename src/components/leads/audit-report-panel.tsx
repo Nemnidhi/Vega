@@ -29,6 +29,12 @@ type SeoSignal = {
   issues?: string[];
 };
 
+type MetaPresenceSignal = {
+  checked?: boolean;
+  facebookFound?: boolean | null;
+  facebookFollowers?: number | null;
+};
+
 export type AuditPanelProps = {
   leadId: string;
   hasEmail: boolean;
@@ -46,6 +52,7 @@ export type AuditPanelProps = {
       website?: Signal;
       googleBusiness?: Signal;
       metaAds?: Signal;
+      metaPresence?: MetaPresenceSignal;
       technicalSeo?: SeoSignal;
     };
     classification?: {
@@ -219,6 +226,28 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
               <Badge variant={signalVariant(signal)}>{signalText(signal)}</Badge>
             </div>
           ))}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Facebook Page</span>
+            <Badge
+              variant={
+                !dp?.metaPresence?.checked
+                  ? "neutral"
+                  : dp.metaPresence.facebookFound
+                    ? "success"
+                    : "danger"
+              }
+            >
+              {!dp?.metaPresence?.checked
+                ? "Not yet checked"
+                : dp.metaPresence.facebookFound
+                  ? `Found${
+                      typeof dp.metaPresence.facebookFollowers === "number"
+                        ? ` - ${dp.metaPresence.facebookFollowers.toLocaleString("en-IN")} followers`
+                        : ""
+                    }`
+                  : "Not found"}
+            </Badge>
+          </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Technical SEO</span>
             <Badge

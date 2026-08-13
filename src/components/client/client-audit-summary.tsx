@@ -18,6 +18,7 @@ export type ClientAuditSummaryProps = {
       website?: Signal;
       googleBusiness?: Signal;
       metaAds?: Signal;
+      metaPresence?: { checked?: boolean; facebookFound?: boolean | null; facebookFollowers?: number | null };
     };
     classification?: {
       category?: string;
@@ -81,6 +82,28 @@ export function ClientAuditSummary({ leadId, prospecting }: ClientAuditSummaryPr
               <Badge variant={signalVariant(signal)}>{signalText(signal)}</Badge>
             </div>
           ))}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Facebook Page</span>
+            <Badge
+              variant={
+                !dp?.metaPresence?.checked
+                  ? "neutral"
+                  : dp.metaPresence.facebookFound
+                    ? "success"
+                    : "danger"
+              }
+            >
+              {!dp?.metaPresence?.checked
+                ? "Not yet checked"
+                : dp.metaPresence.facebookFound
+                  ? `Found${
+                      typeof dp.metaPresence.facebookFollowers === "number"
+                        ? ` - ${dp.metaPresence.facebookFollowers.toLocaleString("en-IN")} followers`
+                        : ""
+                    }`
+                  : "Not found"}
+            </Badge>
+          </div>
         </div>
 
         {hasReport ? (

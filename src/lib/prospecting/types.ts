@@ -35,6 +35,27 @@ export interface MetaAdsSignal {
 }
 
 /**
+ * Presence + follower counts, distinct from MetaAdsSignal (running ads).
+ * Deliberately excluded from tier classification (see classify.ts) - it's a
+ * 4th data point added after the classifier's 3-channel math was already
+ * live against 1,115 real leads, so it stays report/gap-detection only,
+ * same precedent as TechnicalSeoSignal below.
+ */
+export interface MetaPresenceSignal {
+  checked: boolean;
+  facebookFound: boolean | null;
+  facebookFollowers: number | null;
+  facebookPlaceName?: string | null;
+  /** Not yet implemented - Instagram Business Discovery needs its own,
+   * separate App Review not yet submitted. Reserved so the shape won't need
+   * to change when it lands. */
+  instagramFound: boolean | null;
+  instagramFollowers: number | null;
+  reason?: string;
+  checkedAt: Date;
+}
+
+/**
  * Quality of an existing website, from PageSpeed Insights. Distinct from the
  * presence signals above: this says how good the site is, not whether one
  * exists, and is deliberately excluded from tier classification.
@@ -59,6 +80,7 @@ export interface EnrichmentSignals {
   website?: WebsiteSignal;
   googleBusiness?: GoogleBusinessSignal;
   metaAds?: MetaAdsSignal;
+  metaPresence?: MetaPresenceSignal;
   technicalSeo?: TechnicalSeoSignal;
 }
 
