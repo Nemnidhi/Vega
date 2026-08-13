@@ -27,7 +27,13 @@ export function gapsFromSignals(enrichment: EnrichmentSignals): BlueprintGap[] {
   if (enrichment.googleBusiness?.checked && enrichment.googleBusiness.found === false) {
     gaps.push("google");
   }
-  if (enrichment.metaAds?.checked && enrichment.metaAds.found === false) {
+  // "Social" means presence, not just ads - a confirmed absence on either
+  // signals the gap, so a business with no ads but a real Page isn't
+  // wrongly flagged as having no social presence at all.
+  const noAds = enrichment.metaAds?.checked && enrichment.metaAds.found === false;
+  const noFacebookPage =
+    enrichment.metaPresence?.checked && enrichment.metaPresence.facebookFound === false;
+  if (noAds || noFacebookPage) {
     gaps.push("social");
   }
 
