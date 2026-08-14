@@ -46,11 +46,23 @@ export interface MetaPresenceSignal {
   facebookFound: boolean | null;
   facebookFollowers: number | null;
   facebookPlaceName?: string | null;
-  /** Not yet implemented - Instagram Business Discovery needs its own,
-   * separate App Review not yet submitted. Reserved so the shape won't need
-   * to change when it lands. */
+  /** Preferably chained off the matched Facebook Page's own linked Instagram
+   * account (see check-meta-presence.ts); falls back to a guessed handle,
+   * verified against the same name-match discipline as Google/Facebook, when
+   * no linked account is available. Confirmed working at Standard Access for
+   * arbitrary businesses without App Review, but still needs
+   * INSTAGRAM_DISCOVERY_ACCOUNT_ID/INSTAGRAM_DISCOVERY_ACCESS_TOKEN
+   * configured. Check instagramMatchSource before treating this as
+   * confirmed. */
   instagramFound: boolean | null;
   instagramFollowers: number | null;
+  /** The exact handle the result came from, if any. */
+  instagramUsername?: string | null;
+  /** "linked": read directly off the business's own Facebook Page - as
+   * reliable as facebookFound. "guessed": a plausible handle that passed the
+   * name-match check, not a confirmed link - lower confidence, flag
+   * accordingly wherever this is surfaced. */
+  instagramMatchSource?: "linked" | "guessed" | null;
   reason?: string;
   checkedAt: Date;
 }

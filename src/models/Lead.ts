@@ -59,6 +59,8 @@ const metaPresenceSignalSchema = new Schema(
     facebookPlaceName: { type: String, trim: true, maxlength: 200, default: null },
     instagramFound: { type: Boolean, default: null },
     instagramFollowers: { type: Number, default: null },
+    instagramUsername: { type: String, trim: true, maxlength: 100, default: null },
+    instagramMatchSource: { type: String, enum: ["linked", "guessed", null], default: null },
     reason: { type: String, trim: true, maxlength: 300, default: null },
     checkedAt: { type: Date, default: null },
   },
