@@ -14,6 +14,7 @@ const dashboardNavItems: DashboardNavItem[] = [
   { label: "Pipeline", href: "/pipeline", roles: ["admin", "sales", "digital_marketing"] },
   { label: "Clients", href: "/clients", roles: ["admin", "sales", "digital_marketing"] },
   { label: "Users", href: "/users", roles: ["admin"] },
+  { label: "Tasks", href: "/tasks", roles: ["admin", "partner", "sales", "digital_marketing", "project_manager", "developer"] },
   { label: "Calendar", href: "/calendar", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Attendance", href: "/attendance", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Account", href: "/account", roles: ["admin", "developer", "sales", "digital_marketing"] },

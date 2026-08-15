@@ -86,4 +86,8 @@ export const permissionRules = {
   accessProjectAssignments: ["admin", "developer"] as UserRole[],
   createChangeOrders: ["admin", "partner", "project_manager", "sales", "digital_marketing"] as UserRole[],
   accessClientVault: ["admin", "partner", "project_manager", "client"] as UserRole[],
+  // Anyone non-client can create/complete their own tasks (enforced in the route handler, not
+  // here); this rule gates the higher-privilege action of assigning a task to someone else.
+  assignTasksToOthers: ["admin", "partner", "project_manager"] as UserRole[],
+  manageKpis: ["admin", "partner", "project_manager"] as UserRole[],
 };
