@@ -14,6 +14,13 @@ function onboardingBadgeVariant(status: "pending" | "in_progress" | "completed")
   return "neutral" as const;
 }
 
+function healthBadgeVariant(status: "no_signal" | "downgraded" | "upgraded" | "active") {
+  if (status === "downgraded") return "danger" as const;
+  if (status === "upgraded") return "success" as const;
+  if (status === "active") return "accent" as const;
+  return "neutral" as const;
+}
+
 function humanizeStatus(status: "pending" | "in_progress" | "completed") {
   return status.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase());
 }
@@ -31,6 +38,11 @@ export default async function ClientsPage() {
     requirementSummary?: string;
     onboardingStatus?: "pending" | "in_progress" | "completed";
     onboardedAt?: string | null;
+    accountHealth: {
+      status: "no_signal" | "downgraded" | "upgraded" | "active";
+      label: string;
+      detail: string;
+    };
   }>;
 
   return (
@@ -66,9 +78,14 @@ export default async function ClientsPage() {
                       <p className="text-xs text-muted-foreground">{client.primaryContactPhone}</p>
                     ) : null}
                   </div>
-                  <Badge variant={onboardingBadgeVariant(client.onboardingStatus ?? "pending")}>
-                    {humanizeStatus(client.onboardingStatus ?? "pending")}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant={onboardingBadgeVariant(client.onboardingStatus ?? "pending")}>
+                      {humanizeStatus(client.onboardingStatus ?? "pending")}
+                    </Badge>
+                    <Badge variant={healthBadgeVariant(client.accountHealth.status)} title={client.accountHealth.detail}>
+                      {client.accountHealth.label}
+                    </Badge>
+                  </div>
                 </div>
 
                 {client.requirementSummary ? (

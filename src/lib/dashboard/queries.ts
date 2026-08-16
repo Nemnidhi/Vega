@@ -14,6 +14,7 @@ import {
 import { Types } from "mongoose";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { serializeForJson } from "@/lib/utils/serialize";
+import { computeAccountHealth } from "@/lib/clients/health";
 import type { UserRole } from "@/types/user";
 
 const leadPipelineStages = [
@@ -202,10 +203,44 @@ export async function getClients() {
     .sort({ updatedAt: -1 })
     .limit(300)
     .select(
-      "legalName primaryContactName primaryContactEmail primaryContactPhone preferredCommunication requirementSummary onboardingStatus onboardedAt",
+      "legalName primaryContactName primaryContactEmail primaryContactPhone preferredCommunication requirementSummary onboardingStatus onboardedAt dashboardOrganizationId dashboardLastEventAt",
     )
     .lean();
-  return serializeForJson(clients);
+
+  // Batch-fetch each client's most recent plan_changed event for the health computation, rather
+  // than one query per client. Only clients actually linked to a Dashboard org can have any.
+  const clientIds = clients
+    .filter((client) => client.dashboardOrganizationId)
+    .map((client) => client._id);
+  const latestPlanChangeByClientId = new Map<string, { plan?: string; previousPlan?: string }>();
+  if (clientIds.length > 0) {
+    const logs = await ActivityLogModel.aggregate([
+      {
+        $match: {
+          entityType: "client",
+          entityId: { $in: clientIds },
+          action: "dashboard_event_received",
+          "details.event": "plan_changed",
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: "$entityId", details: { $first: "$details" } } },
+    ]);
+    for (const log of logs) {
+      latestPlanChangeByClientId.set(String(log._id), log.details?.data ?? {});
+    }
+  }
+
+  const clientsWithHealth = clients.map((client) => ({
+    ...client,
+    accountHealth: computeAccountHealth({
+      dashboardOrganizationId: client.dashboardOrganizationId,
+      dashboardLastEventAt: client.dashboardLastEventAt,
+      latestPlanChange: latestPlanChangeByClientId.get(String(client._id)) ?? null,
+    }),
+  }));
+
+  return serializeForJson(clientsWithHealth);
 }
 
 export async function getStaffUsers() {
