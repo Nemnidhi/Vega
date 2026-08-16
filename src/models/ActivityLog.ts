@@ -24,6 +24,10 @@ const activityLogSchema = new Schema(
         "blueprint_approved",
         "blueprint_rejected",
         "dashboard_event_received",
+        "industry_changed",
+        "industry_segment_changed",
+        "pricing_tier_changed",
+        "pricing_package_changed",
       ],
       required: true,
       index: true,
@@ -33,7 +37,19 @@ const activityLogSchema = new Schema(
     actorId: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
     entityType: {
       type: String,
-      enum: ["lead", "proposal", "scope_manifest", "change_order", "pricing_component", "blueprint", "client"],
+      enum: [
+        "lead",
+        "proposal",
+        "scope_manifest",
+        "change_order",
+        "pricing_component",
+        "blueprint",
+        "client",
+        "industry",
+        "industry_segment",
+        "pricing_tier",
+        "pricing_package",
+      ],
       required: true,
       index: true,
     },
@@ -53,14 +69,15 @@ const existingActivityLogModel = models.ActivityLog;
 const existingActionEnum = existingActivityLogModel?.schema.path("action")?.options?.enum;
 
 // In dev HMR, an older cached model can predate the audit_*/blueprint_*/
-// proposal_viewed/proposal_rejected actions.
+// proposal_viewed/proposal_rejected/pricing-catalog actions.
 if (
   existingActivityLogModel &&
   Array.isArray(existingActionEnum) &&
   (!existingActionEnum.includes("audit_report_generated") ||
     !existingActionEnum.includes("blueprint_shared") ||
     !existingActionEnum.includes("proposal_viewed") ||
-    !existingActionEnum.includes("dashboard_event_received"))
+    !existingActionEnum.includes("dashboard_event_received") ||
+    !existingActionEnum.includes("pricing_package_changed"))
 ) {
   delete models.ActivityLog;
 }

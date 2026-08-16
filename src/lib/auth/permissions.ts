@@ -80,7 +80,10 @@ export const permissionRules = {
   manageProposals: ["admin", "partner", "sales", "digital_marketing"] as UserRole[],
   approveHighTicket: ["admin", "partner"] as UserRole[],
   manageScope: ["admin", "partner", "project_manager"] as UserRole[],
-  managePricing: ["admin", "partner"] as UserRole[],
+  // Marketing owns the pricing catalog/segments/tiers/packages day to day -
+  // full write access, not just read, per the 2026-08-16 decision to move
+  // pricing off a spreadsheet into an editable admin UI.
+  managePricing: ["admin", "partner", "digital_marketing"] as UserRole[],
   manageUsers: ["admin"] as UserRole[],
   manageProjectAssignments: ["admin"] as UserRole[],
   accessProjectAssignments: ["admin", "developer"] as UserRole[],

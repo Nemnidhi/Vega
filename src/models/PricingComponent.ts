@@ -44,6 +44,18 @@ const pricingComponentSchema = new Schema(
       required: true,
       index: true,
     },
+    // Coarse commercial grouping matching the pricing-sheet pillars a
+    // PricingPackage bundles by - separate from `category` above, which is
+    // the finer internal classification already used elsewhere (blueprint
+    // recommendation, gap-tag matching). A component keeps one category but
+    // is sold under exactly one pillar.
+    pillar: {
+      type: String,
+      enum: ["marketing_sales", "operations", "documentation_admin", "service_support"],
+      required: true,
+      default: "operations",
+      index: true,
+    },
     basePrice: { type: Number, required: true, min: 0 },
     complexityMultiplier: { type: Number, required: true, min: 1, default: 1 },
     marginPercentage: { type: Number, required: true, min: 0, max: 300, default: 30 },
@@ -53,6 +65,12 @@ const pricingComponentSchema = new Schema(
     // Empty means "suits every industry". Populated only where a component
     // genuinely does not apply elsewhere.
     appliesToIndustries: [{ type: String, trim: true, maxlength: 60 }],
+    // Segment-level scoping, alongside the industry-level field above. Empty
+    // means "every segment of every applicable industry" - populated only
+    // where a component is genuinely specific to certain business types
+    // (e.g. a component that only makes sense for a Manufacturer, not a
+    // Retailer, within the same industry).
+    appliesToSegments: [{ type: Schema.Types.ObjectId, ref: "IndustrySegment" }],
     // Ties the catalog back to the audit: a lead missing a website has the
     // "website" gap tag, and this is what answers it.
     answersGapTags: [{ type: String, trim: true, maxlength: 40 }],
@@ -79,6 +97,14 @@ pricingComponentSchema.pre("validate", function updateFinalPrice() {
 });
 
 export type PricingComponentDocument = InferSchemaType<typeof pricingComponentSchema>;
+
+const existingPricingComponentModel = models.PricingComponent;
+
+// In dev HMR, an older cached model can predate the pillar/appliesToSegments
+// fields added alongside the pricing-package work.
+if (existingPricingComponentModel && !existingPricingComponentModel.schema.path("pillar")) {
+  delete models.PricingComponent;
+}
 
 export const PricingComponentModel =
   models.PricingComponent || model("PricingComponent", pricingComponentSchema);

@@ -11,6 +11,12 @@ export type PricingCategory =
   | "ai"
   | "operations";
 
+export type PricingPillar =
+  | "marketing_sales"
+  | "operations"
+  | "documentation_admin"
+  | "service_support";
+
 /**
  * A selectable option within a component - "Website" is one thing to sell,
  * but "with online payments" is a decision made on the call.
@@ -34,6 +40,7 @@ export interface PricingComponent extends BaseDocument {
   title: string;
   description: string;
   category: PricingCategory;
+  pillar: PricingPillar;
   basePrice: number;
   complexityMultiplier: number;
   marginPercentage: number;
@@ -42,6 +49,8 @@ export interface PricingComponent extends BaseDocument {
   features: ComponentFeature[];
   /** Knowledge-bank industry keys this suits. Empty means every industry. */
   appliesToIndustries: string[];
+  /** IndustrySegment ids this suits. Empty means every segment. */
+  appliesToSegments: string[];
   /** Gap tags from the audit that this component answers ("website", "social"). */
   answersGapTags: string[];
   /** Rough build time, for the blueprint's indicative timeline. */

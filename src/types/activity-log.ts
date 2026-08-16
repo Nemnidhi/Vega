@@ -10,6 +10,10 @@ export type ActivityAction =
   | "scope_manifest_edited"
   | "change_order_created"
   | "pricing_changed"
+  | "industry_changed"
+  | "industry_segment_changed"
+  | "pricing_tier_changed"
+  | "pricing_package_changed"
   | "audit_enrichment_completed"
   | "audit_classification_completed"
   | "audit_report_generated"
@@ -25,7 +29,18 @@ export interface ActivityLog extends BaseDocument {
   action: ActivityAction;
   /** Null for cron-triggered audit actions, which have no human actor. */
   actorId: ObjectId | null;
-  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component" | "blueprint" | "client";
+  entityType:
+    | "lead"
+    | "proposal"
+    | "scope_manifest"
+    | "change_order"
+    | "pricing_component"
+    | "blueprint"
+    | "client"
+    | "industry"
+    | "industry_segment"
+    | "pricing_tier"
+    | "pricing_package";
   entityId: ObjectId;
   details: Record<string, unknown>;
   ipAddress?: string;
