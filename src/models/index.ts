@@ -21,6 +21,7 @@ export { PricingComponentModel } from "@/models/PricingComponent";
 export { PricingPackageModel } from "@/models/PricingPackage";
 export { PricingTierModel } from "@/models/PricingTier";
 export { ProposalModel } from "@/models/Proposal";
+export { RateLimitEventModel } from "@/models/RateLimitEvent";
 export { ReportModel } from "@/models/Report";
 export { ScopeManifestModel } from "@/models/ScopeManifest";
 export { TaskModel } from "@/models/Task";

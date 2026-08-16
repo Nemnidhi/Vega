@@ -12,7 +12,7 @@ import { resolveClientLeadId } from "@/lib/auth/client-lead";
 import { createBlueprintSchema } from "@/lib/validation/blueprint";
 import { handleApiError, fail, ok } from "@/lib/api/responses";
 import { serializeForJson } from "@/lib/utils/serialize";
-import { buildQuestionnaire, componentsFromAnswers, scaleTierFromAnswers, type Answer, type Question } from "@/lib/blueprint/questionnaire";
+import { answerToStorage, buildQuestionnaire, componentsFromAnswers, scaleTierFromAnswers, type Answer } from "@/lib/blueprint/questionnaire";
 import { gapsFromSignals } from "@/lib/blueprint/gaps";
 import { recommendComponents, summariseEstimate } from "@/lib/blueprint/recommend";
 import { smbCatalog } from "@/lib/pricing/smb-catalog";
@@ -35,27 +35,6 @@ async function assertCanViewBlueprint(leadId: string) {
 
   assertRoleAccess(session.role, { oneOf: permissionRules.manageLeads });
   return session;
-}
-
-/** The stored `answer` is a single printable string - a joined list of
- * chosen option labels for single/multi questions, or the raw text as-is. */
-function answerToStorage(answer: Answer, questions: Question[]) {
-  const question = questions.find((q) => q.code === answer.questionCode);
-  if (!question) return null;
-
-  const answerText =
-    question.kind === "text"
-      ? (answer.values[0] ?? "")
-      : answer.values
-          .map((value) => question.options?.find((o) => o.value === value)?.label ?? value)
-          .join(", ");
-
-  return {
-    questionCode: question.code,
-    question: question.question,
-    answer: answerText,
-    note: answer.note ?? "",
-  };
 }
 
 export async function GET(_: Request, { params }: { params: Params }) {

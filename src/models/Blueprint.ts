@@ -65,6 +65,14 @@ const blueprintSchema = new Schema(
     /** Snapshot at capture time - the lead's industry can be corrected later. */
     industry: { type: String, trim: true, maxlength: 60 },
     segment: { type: String, trim: true, maxlength: 60 },
+
+    /**
+     * Whether an executive filled this in on a call, or a prospect built it
+     * themselves through the public questionnaire. Self-service blueprints
+     * always start "indicative" confidence and have no preparedBy - nobody
+     * on staff has looked at the answers yet.
+     */
+    origin: { type: String, enum: ["staff_call", "self_service"], default: "staff_call", required: true, index: true },
     scaleTier: {
       type: String,
       enum: ["smb", "midmarket", "enterprise"],
@@ -103,7 +111,8 @@ const blueprintSchema = new Schema(
      */
     validUntil: { type: Date, default: null },
 
-    preparedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    /** Null for a self-service blueprint - nobody on staff authored it. */
+    preparedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     sharedAt: { type: Date, default: null },
     /**
      * Approval is evidence, not a flag - this is what gets pointed at when a

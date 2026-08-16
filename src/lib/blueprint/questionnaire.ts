@@ -48,6 +48,13 @@ export interface Question {
   options?: QuestionOption[];
   /** Context questions inform the narrative rather than the price. */
   isContext?: boolean;
+  /**
+   * False for a question that only makes sense coming from a salesperson
+   * who has already built some rapport on a call - e.g. budget. Defaults to
+   * true; only needs setting on the exceptions. Read by
+   * buildSelfServiceQuestionnaire() below, not by the staff-facing flow.
+   */
+  selfServiceSafe?: boolean;
 }
 
 export interface Answer {
@@ -171,6 +178,7 @@ export const UNIVERSAL_QUESTIONS: Question[] = [
     helpText: "Internal note - never printed on the client document.",
     kind: "text",
     isContext: true,
+    selfServiceSafe: false,
   },
 ];
 
@@ -216,6 +224,15 @@ export function buildQuestionnaire(industry?: string | null, hint?: SegmentHint 
   return [...UNIVERSAL_QUESTIONS, ...buildIndustryQuestions(industry, hint)];
 }
 
+/**
+ * The questionnaire a prospect can safely answer with no salesperson in the
+ * room - everything from buildQuestionnaire() except questions marked
+ * selfServiceSafe: false.
+ */
+export function buildSelfServiceQuestionnaire(industry?: string | null, hint?: SegmentHint | null): Question[] {
+  return buildQuestionnaire(industry, hint).filter((question) => question.selfServiceSafe !== false);
+}
+
 export function scaleTierFromAnswers(answers: Answer[]): ScaleTier {
   const teamSize = answers.find((a) => a.questionCode === "TEAM_SIZE")?.values[0];
   return (teamSize && SCALE_BY_TEAM_SIZE[teamSize]) || "smb";
@@ -228,6 +245,31 @@ export function scaleTierFromAnswers(answers: Answer[]): ScaleTier {
  * that they also take enquiries on WhatsApp is not a reason to sell them
  * billing anyway.
  */
+/**
+ * The stored `answer` is a single printable string - a joined list of
+ * chosen option labels for single/multi questions, or the raw text as-is.
+ * Shared by the staff-facing and self-service Blueprint-creation routes so
+ * a captured answer looks identical regardless of who filled it in.
+ */
+export function answerToStorage(answer: Answer, questions: Question[]) {
+  const question = questions.find((q) => q.code === answer.questionCode);
+  if (!question) return null;
+
+  const answerText =
+    question.kind === "text"
+      ? (answer.values[0] ?? "")
+      : answer.values
+          .map((value) => question.options?.find((o) => o.value === value)?.label ?? value)
+          .join(", ");
+
+  return {
+    questionCode: question.code,
+    question: question.question,
+    answer: answerText,
+    note: answer.note ?? "",
+  };
+}
+
 export function componentsFromAnswers(answers: Answer[], questions: Question[]) {
   const triggered = new Set<string>();
   const declined = new Set<string>();
