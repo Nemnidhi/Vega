@@ -23,6 +23,7 @@ const activityLogSchema = new Schema(
         "blueprint_shared",
         "blueprint_approved",
         "blueprint_rejected",
+        "dashboard_event_received",
       ],
       required: true,
       index: true,
@@ -32,7 +33,7 @@ const activityLogSchema = new Schema(
     actorId: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
     entityType: {
       type: String,
-      enum: ["lead", "proposal", "scope_manifest", "change_order", "pricing_component", "blueprint"],
+      enum: ["lead", "proposal", "scope_manifest", "change_order", "pricing_component", "blueprint", "client"],
       required: true,
       index: true,
     },
@@ -58,7 +59,8 @@ if (
   Array.isArray(existingActionEnum) &&
   (!existingActionEnum.includes("audit_report_generated") ||
     !existingActionEnum.includes("blueprint_shared") ||
-    !existingActionEnum.includes("proposal_viewed"))
+    !existingActionEnum.includes("proposal_viewed") ||
+    !existingActionEnum.includes("dashboard_event_received"))
 ) {
   delete models.ActivityLog;
 }

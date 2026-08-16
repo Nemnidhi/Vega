@@ -7,7 +7,7 @@ type LogInput = {
   action: ActivityAction;
   /** Omit for cron-triggered audit actions, which have no human actor. */
   actorId?: string | null;
-  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component" | "blueprint";
+  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component" | "blueprint" | "client";
   entityId: string;
   details?: Record<string, unknown>;
   ipAddress?: string;

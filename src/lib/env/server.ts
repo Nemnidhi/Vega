@@ -10,6 +10,10 @@ const serverEnvSchema = z.object({
   LEAD_CAPTURE_ALLOWED_ORIGINS: z
     .string()
     .default("https://nemnidhi.com,https://www.nemnidhi.com"),
+  // Shared secret for POST /api/integrations/dashboard-events - optional so environments that
+  // haven't configured this yet don't fail the whole server env parse; the route itself checks
+  // for its presence and rejects the request (not the process) when it's unset.
+  DASHBOARD_INTEGRATION_SECRET: z.string().min(16).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

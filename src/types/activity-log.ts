@@ -18,13 +18,14 @@ export type ActivityAction =
   | "client_portal_activated"
   | "blueprint_shared"
   | "blueprint_approved"
-  | "blueprint_rejected";
+  | "blueprint_rejected"
+  | "dashboard_event_received";
 
 export interface ActivityLog extends BaseDocument {
   action: ActivityAction;
   /** Null for cron-triggered audit actions, which have no human actor. */
   actorId: ObjectId | null;
-  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component" | "blueprint";
+  entityType: "lead" | "proposal" | "scope_manifest" | "change_order" | "pricing_component" | "blueprint" | "client";
   entityId: ObjectId;
   details: Record<string, unknown>;
   ipAddress?: string;

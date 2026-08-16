@@ -58,6 +58,17 @@ const clientSchema = new Schema(
     onboardedAt: { type: Date, default: null },
     leadId: { type: Schema.Types.ObjectId, ref: "Lead", default: null, index: true },
     accountManagerId: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
+    // Links this Client to its Dashboard Organization, so incoming events from
+    // POST /api/integrations/dashboard-events can be routed to the right record. Dashboard's
+    // Organization._id (a Mongo ObjectId in that separate database), stored as a plain string -
+    // Vega has no FK relationship into Dashboard's DB, this is an opaque reference only.
+    dashboardOrganizationId: { type: String, trim: true, default: null, index: true },
+    // Rolled-up signals from Dashboard, not raw event history - see full-system-scope.md's
+    // "Vega reads signals, never stores the underlying operational detail" boundary. Full event
+    // history lives in ActivityLog (entityType: "client", action: "dashboard_event_received").
+    dashboardPlan: { type: String, trim: true, default: null },
+    dashboardPlanUpdatedAt: { type: Date, default: null },
+    dashboardLastEventAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
