@@ -78,7 +78,38 @@ export function ProposalGeneratorForm({
     changeOrderClause: String(initialData?.changeOrderClause ?? defaultForm.changeOrderClause),
   });
   const [loading, setLoading] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [message, setMessage] = useState("");
+
+  async function draftWithAi() {
+    setDrafting(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/proposals/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scopeManifestId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error?.message ?? "Failed to draft proposal text");
+      }
+      setForm((prev) => ({
+        ...prev,
+        projectSummary: data.data.projectSummary,
+        timeline: data.data.timeline,
+      }));
+      const sourceLabel =
+        data.data.source === "fallback_template"
+          ? "a template (AI providers unavailable)"
+          : data.data.source;
+      setMessage(`Draft filled in from ${sourceLabel} - review and edit before generating.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to draft proposal text");
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function submitProposal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -152,6 +183,15 @@ export function ProposalGeneratorForm({
       </CardHeader>
       <CardContent>
         <form className="grid gap-3" onSubmit={submitProposal}>
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="secondary" onClick={draftWithAi} disabled={drafting}>
+              {drafting ? "Drafting..." : "Draft with AI"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Turns the scope manifest's objective and timeline assumptions into client-facing
+              prose for the summary and timeline fields below - always review before generating.
+            </p>
+          </div>
           <Textarea
             placeholder="Project summary"
             value={form.projectSummary}

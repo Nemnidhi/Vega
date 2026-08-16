@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { objectIdSchema } from "@/lib/validation/common";
 
+export const draftProposalSchema = z.object({
+  scopeManifestId: objectIdSchema,
+});
+
 export const proposalStatusValues = [
   "draft",
   "generated",
