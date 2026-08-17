@@ -79,15 +79,15 @@ export async function POST(request: Request, { params }: { params: Params }) {
       expiresAt: new Date(Date.now() + INVITE_TTL_SECONDS * 1000),
     });
 
-    // Prefer the configured public URL over request.url's origin - behind the
-    // VPS reverse proxy, request.url reflects the app's internal bind address
-    // (0.0.0.0:5600), not the public domain, which broke real invite emails.
-    const baseUrl = (
-      process.env.APP_BASE_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      new URL(request.url).origin
-    ).replace(/\/$/, "");
-    const activationLink = `${baseUrl}/client/activate?token=${token}`;
+    // Clients activate on nemnidhi.com/portal now, not Vega's own /client/activate -
+    // Vega is staff-only per its own documented boundary. APP_BASE_URL/NEXT_PUBLIC_APP_URL
+    // stay pointed at Vega itself (assignment-email.ts's staff-facing links depend on that),
+    // so this is a separate, narrowly-scoped env var instead of repointing those.
+    const clientPortalBaseUrl = (process.env.CLIENT_PORTAL_BASE_URL || "https://nemnidhi.com").replace(
+      /\/$/,
+      "",
+    );
+    const activationLink = `${clientPortalBaseUrl}/portal/activate?token=${token}`;
 
     let emailSent = false;
     try {
