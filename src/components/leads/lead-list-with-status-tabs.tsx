@@ -28,6 +28,7 @@ type LeadRow = {
 
 type StatusTab = "all" | "new" | "contacted";
 type TierFilter = "all" | "A" | "B" | "C" | "D" | "unclassified";
+type SourceFilter = "all" | string;
 
 function statusLabel(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (match) => match.toUpperCase());
@@ -48,6 +49,7 @@ function tierOf(lead: LeadRow) {
 export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
   const counts = useMemo(
     () => ({
@@ -73,6 +75,18 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
     return result;
   }, [prospects]);
 
+  const sourceOrder = useMemo(
+    () => Array.from(new Set(leads.map((lead) => lead.source))).sort(),
+    [leads],
+  );
+  const sourceCounts = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const source of sourceOrder) {
+      result[source] = leads.filter((lead) => lead.source === source).length;
+    }
+    return result;
+  }, [sourceOrder, leads]);
+
   const filteredLeads = useMemo(() => {
     let rows = activeTab === "all" ? leads : leads.filter((lead) => lead.status === activeTab);
 
@@ -83,8 +97,11 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
         return tier === tierFilter;
       });
     }
+    if (sourceFilter !== "all") {
+      rows = rows.filter((lead) => lead.source === sourceFilter);
+    }
     return rows;
-  }, [activeTab, tierFilter, leads]);
+  }, [activeTab, tierFilter, sourceFilter, leads]);
 
   const tabClass = (active: boolean) =>
     `rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
@@ -138,6 +155,29 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
               Unclassified {tierCounts.unclassified}
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {sourceOrder.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Source</span>
+          <button
+            type="button"
+            onClick={() => setSourceFilter("all")}
+            className={tabClass(sourceFilter === "all")}
+          >
+            All {leads.length}
+          </button>
+          {sourceOrder.map((source) => (
+            <button
+              key={source}
+              type="button"
+              onClick={() => setSourceFilter(source)}
+              className={tabClass(sourceFilter === source)}
+            >
+              {source.replaceAll("_", " ")} {sourceCounts[source]}
+            </button>
+          ))}
         </div>
       ) : null}
 

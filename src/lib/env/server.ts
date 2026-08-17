@@ -21,6 +21,13 @@ const serverEnvSchema = z.object({
   // Where invite-client emails point clients to activate their account - the public website's
   // portal, not this app's own /client/activate (kept working as an internal fallback).
   CLIENT_PORTAL_BASE_URL: z.string().optional(),
+  // Meta Lead Ads webhook (POST /api/webhooks/meta-leads) - App Secret verifies the
+  // X-Hub-Signature-256 header, Verify Token answers Meta's subscription handshake, Page
+  // Access Token pulls the real field_data for a leadgen_id. Same optional-at-parse-time
+  // shape as the other integration secrets above.
+  META_APP_SECRET: z.string().min(16).optional(),
+  META_VERIFY_TOKEN: z.string().min(8).optional(),
+  META_PAGE_ACCESS_TOKEN: z.string().min(16).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

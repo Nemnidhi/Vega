@@ -219,6 +219,10 @@ const leadSchema = new Schema(
     sourceDomain: { type: String, trim: true, lowercase: true, maxlength: 180, index: true },
     sourcePath: { type: String, trim: true, maxlength: 500 },
     sourceReferrer: { type: String, trim: true, maxlength: 1000 },
+    /** Meta Lead Ads dedupe key (their leadgen_id) - unique/sparse since only ads-sourced leads set it. */
+    metaLeadId: { type: String, trim: true, maxlength: 60, unique: true, sparse: true, index: true },
+    metaPageId: { type: String, trim: true, maxlength: 60 },
+    metaFormId: { type: String, trim: true, maxlength: 60 },
     score: { type: Number, min: 0, max: 100, default: 0, index: true },
     priorityBand: {
       type: String,
