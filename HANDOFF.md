@@ -3,19 +3,82 @@
 **Repo:** `D:\Vega-main`
 **Remote:** https://github.com/Nemnidhi/Vega.git
 **Branch:** `master`
-**HEAD as of this handoff:** `80b18d4` (2026-08-17 session, continued from a context-window
-handoff mid-session) — deployed live, health check passed. See "Client portal moved to
-nemnidhi.com + self-serve questionnaire/meeting booking" below for everything from this pass.
-**One open item, actively being chased**: a real production user hit a crash
-("Cannot read properties of undefined (reading 'map')") submitting the new portal questionnaire.
-Not reproduced locally despite a full sweep of every real industry/segment, heavy multi-select
-trigger overlap, and sparse/skipped answers. `80b18d4` adds a `console.error` with the full stack
-to the failing route so the *next* real occurrence is actually diagnosable - **next step: ask the
-user to retry the exact same flow, then `ssh -p 2424 hrmsdeploy@72.60.97.58` and `pm2 logs hrms
---lines 200 --nostream --err | grep -A 20 "client-portal/questionnaire/submit failed"` for the
-real stack trace.** Do not guess further at the cause without that trace - several plausible
-hypotheses (scaleTier edge cases, trigger-code collisions, unmapped industries) were already ruled
-out by direct reproduction attempts against both local and production data.
+**HEAD as of this handoff:** `2237cd1` (2026-08-17 session, continued from a context-window
+handoff mid-session) — deployed live, health check passed. See "Package-based self-serve
+questionnaire rewrite" below for everything from this pass. **No open items** - the production
+crash chased at the top of this file through three real occurrences is now understood and fixed;
+see that section for the full arc.
+
+## Package-based self-serve questionnaire rewrite — 2026-08-17 (later in the day)
+
+The `80b18d4` diagnostic logging below did its job: the user retried the crashing flow on
+`nemnidhi.com/portal/audit` and the real stack trace surfaced **three separate real bugs in
+sequence**, each fixed and deployed individually before the next was visible (each fix removed one
+crash, which let the next one be reached):
+
+1. **`component.features.map()` on `undefined`** (`catalog-source.ts:38`) - the real 158-component
+   catalog (migrated by `seed-pricing-catalog.ts`) and the older 10-item `seed-data.ts` both
+   `bulkWrite(...upsert: true...)` without `setDefaultsOnInsert`, and neither seed source ever sets
+   a `features` array - so it's genuinely missing on the raw documents, and `.lean()` reads (used
+   by `getDbPricingCatalog`) skip schema defaults entirely. Fixed with `?? []` guards - commit
+   `c7586cf`.
+2. **Same root cause, three more fields**: `appliesToIndustries`/`scaleTiers`/`answersGapTags` also
+   unguarded in `catalog-source.ts`, surfaced the moment the first crash stopped blocking it
+   (`legacy-trigger-map.ts:36`, reading `.length` on undefined `appliesToIndustries`). Same `?? []`
+   fix - commit `1736993`.
+3. **NaN estimate**: `monthlyPrice`/`deliveryWeeksMin`/`deliveryWeeksMax` are *also* missing from
+   the raw seeded documents (neither seed source sets them either) and were passed through
+   `catalog-source.ts` with no guard at all, so `undefined` arithmetic in `summariseEstimate`'s
+   reduces produced `NaN`, which then failed Mongoose `Number` validation on `BlueprintModel.create`.
+   Fixed with `?? 0`/`?? 1`/`?? 2` guards matching the schema's own defaults - commit `a6e8211`.
+
+After all three were live, the user pushed back on the underlying design, not just the crash:
+*"we haven't identified what are the assets available with the company and what we can build or
+upgrade... we haven't taken any selection of features from the client... then only we will be able
+to finalize the estimated price."* Investigating that led to the real structural finding: the
+questionnaire's recommendation engine (`recommendComponents` in `src/lib/blueprint/recommend.ts`,
+bridged through `src/lib/blueprint/legacy-trigger-map.ts`'s 8 hardcoded keyword buckets) was built
+for the old 12-item `smb-catalog.ts` and can never work correctly against the real catalog - its
+scale-tier filter checks `PricingComponent.scaleTiers`, which is empty on every one of the 158 real
+components, because **the real catalog's tiering isn't per-component at all** - it lives one level
+up, in `PricingPackage` (one document per industry × segment × tier, 208 total, each component
+marked `included` or `addon` - migrated straight from the marketing team's Excel sheet). That's the
+actual "what's worth building vs. what's optional" data; the questionnaire had simply never used it.
+
+**Rewrite** (client-portal flow only - the anonymous public `/business-audit` lead-capture flow is
+untouched, different purpose, not what was reported broken):
+- `src/lib/pricing/package-lookup.ts` (new) - resolves a client's industry/segment/tier to its
+  `PricingPackage` and joins in real component prices/features.
+- `src/lib/blueprint/finalize.ts` + `POST /api/client-portal/questionnaire/finalize` (new) - the
+  client's addon selection step. Baseline price comes from the package's own sheet-precomputed
+  `setupPrice`/`monthlyPrice` (stored on `Blueprint.packageBaselinePrice` at submit time), not a
+  resummed total of components - only the selected addons' own prices get added on top, since
+  individual component prices can legitimately drift from the package-level sheet figure.
+- `src/app/api/client-portal/questionnaire/submit/route.ts` rewritten to call the package lookup
+  instead of `recommendComponents`/`legacy-trigger-map`.
+- `Blueprint` schema gained `packageId`/`pricingTierKey`/`packageBaselinePrice` and each stored
+  component gained `packageStatus: "included" | "addon"`.
+- Website side (`D:\Nemnidhi-website`, PR #18, `865a04d`): a tier picker alongside the existing
+  industry/segment selects, and the flat read-only result list replaced with two groups - fixed
+  "what's included" and checkbox "optional add-ons" with a live client-side running total - plus a
+  confirm step before the final price/booking CTA appear.
+- **Real bug caught by local verification, not review**: `Blueprint.ts` was missing the same
+  dev-HMR model cache-busting guard `PricingComponent.ts` and `ActivityLog.ts` already have - a
+  long-running local dev server kept serving a stale cached model missing the new `packageStatus`
+  field, so the included/addon lists rendered empty even though the API response had the right
+  data. Fixed alongside the rest in `2237cd1`.
+- **Verified locally end-to-end** with a real browser click-through (industry/segment/tier → real
+  questions → submit → included/addon split with live-updating total → toggle an addon → confirm →
+  server-computed final price matched the client-side preview's math exactly) before deploying.
+- **Production**: both repos deployed, live SHA + health confirmed on Vega; the website's Vercel
+  deploy briefly overlapped with Vega's (a few minutes of `tier` validation errors in the log from
+  an old cached frontend calling the new backend before Vercel's build finished) - self-resolved,
+  confirmed no further errors afterward. Could not click through the *authenticated* production
+  flow end-to-end (no real client credentials, and deliberately didn't create a throwaway account
+  in the live database the way local verification did) - the public tiers endpoint, the page's
+  unauthenticated redirect, and the unrelated anonymous flow were all checked directly instead.
+
+## Original crash-chase notes (now resolved, kept for the timeline)
 
 ## Client portal moved to nemnidhi.com + self-serve questionnaire/meeting booking — 2026-08-17
 
