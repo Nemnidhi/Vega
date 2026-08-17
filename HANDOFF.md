@@ -3,11 +3,104 @@
 **Repo:** `D:\Vega-main`
 **Remote:** https://github.com/Nemnidhi/Vega.git
 **Branch:** `master`
-**HEAD as of this handoff:** `2237cd1` (2026-08-17 session, continued from a context-window
-handoff mid-session) — deployed live, health check passed. See "Package-based self-serve
-questionnaire rewrite" below for everything from this pass. **No open items** - the production
-crash chased at the top of this file through three real occurrences is now understood and fixed;
-see that section for the full arc.
+**HEAD as of this handoff:** `ba2ae2f` (2026-08-17, same day, continued past the package-flow
+rewrite below) — deployed live, health check passed, SHA confirmed on the VPS. See "Meta Lead Ads
+webhook + leads source filter" immediately below for the newest work, then "Post-launch fixes and
+verification" for what happened right after the package-flow rewrite shipped, then the rewrite
+itself further down. **Two real open items**, both needing the user's own action, not more code -
+see the end of the Meta Lead Ads section.
+
+## Meta Lead Ads webhook + leads source filter — 2026-08-17 (Phase A of the master plan, resumed)
+
+After the questionnaire work below fully landed, resumed `D:\Research\ecosystem-audit\
+execution-sequence.md` (the cross-system master plan) at the user's request. Checked Phase A
+against the actual code first rather than assuming it was still current - it wasn't: none of it
+existed, and "Nemnidhi as Workspace #1" inside Dashboard-WhatsApp was confirmed **never actually
+provisioned** (contradicts `monday-ads-launch-checklist.md`'s own assumption that the WABA
+connection "just needs re-confirming"). Confirmed with the user before building anything: a real
+WhatsApp Business number + credentials are ready, a real Meta Lead Ads campaign is live, and the
+`leads_retrieval` permission is already approved/exempt - nothing blocked on external Meta review,
+only on wiring it up.
+
+**Scope, per the more specific checklist** (not the master plan's fuller Phase A): webhook goes
+**directly to Vega**, not routed through Dashboard first - explicitly called out as not worth the
+extra hop for launch. Built:
+- `POST /api/webhooks/meta-leads` (new) - adapted from Office on Rent's `webhook.controller.js`
+  (a different client's codebase, referenced only). `GET` answers Meta's subscription handshake.
+  `POST` verifies `X-Hub-Signature-256` on every request first (**one deliberate improvement over
+  the reference, which only rate-limits the endpoint and never verifies the signature**), extracts
+  `leadgen_id`/`page_id`/`form_id`, dedupes against the new `Lead.metaLeadId` (unique/sparse) before
+  touching the Graph API, pulls `field_data` via `GET /{leadgen_id}`, and creates a `Lead` tagged
+  `meta_ads_launch`. Reuses the existing `source: "paid_ads"` enum value instead of adding a new
+  one - matches the codebase's existing `tags` convention (`self_service_questionnaire`,
+  `portal_authenticated`, etc.) rather than inventing a new field. Vega requires email on any
+  non-`cold_outreach` Lead but a Lead Ad form isn't guaranteed to ask for one - falls back to a
+  traceable `meta-lead-{leadgen_id}@leads.nemnidhi.com` placeholder rather than dropping a real lead.
+- Leads page (`src/components/leads/lead-list-with-status-tabs.tsx`) gained a Source filter row,
+  mirroring the existing tier-filter pattern exactly, driven off whatever `source` values actually
+  exist in the data rather than a hardcoded list.
+- **Verified locally** (dev server restarted so the new env vars in `.env.local` weren't served
+  from `getServerEnv()`'s stale cache): wrong signature → 401; correct signature → event parsed,
+  Graph pull fails gracefully on a fake token (expected without real creds); `GET` handshake echoes
+  the challenge on the right token, 403 on the wrong one; re-delivering the same `leadgen_id`
+  against a pre-existing Lead correctly reports `duplicate` without re-hitting the Graph API.
+
+**Real env vars still needed in production** before this does anything live -
+`META_APP_SECRET`/`META_VERIFY_TOKEN`/`META_PAGE_ACCESS_TOKEN`, added to `src/lib/env/server.ts` as
+optional-at-parse-time (same shape as `DASHBOARD_INTEGRATION_SECRET`). **Two things only the user
+can do, not something built here**: (1) add those three real values to Vega's production env and
+subscribe the real webhook URL in Meta's App dashboard, (2) connect the real WhatsApp number to the
+workspace sales will watch, via Dashboard-WhatsApp's own admin panel (its "WhatsApp" section) - no
+admin/shell access to that system exists in this environment (`hrmsdeploy` can't `sudo` to the
+`dashboard` Linux user, confirmed earlier the same day). The auto-acknowledgment WhatsApp flow
+mentioned in the master plan is explicitly optional per the checklist ("if there's time") and
+deliberately not built in this pass.
+
+## Post-launch fixes and verification — 2026-08-17, same day as the rewrite below
+
+Real user feedback on the deployed package-flow rewrite surfaced three more real, fixed issues,
+plus closed out two pre-existing open items unrelated to the questionnaire:
+
+- **Duplicate components in a package** (e.g. "MIS Reporting" rendering 2-4×): the Excel→JSON
+  extraction that produced the real 158-component catalog duplicated some `componentCodes` entries
+  within several packages (confirmed across many industries, not a one-off). Fixed defensively in
+  `package-lookup.ts` by deduping on component code rather than trusting the source data - `1a02956`.
+- **"Give every option an unselect, not just addons"**: direct user request after seeing the fixed
+  UI - reworked `finalizeSelfServiceBlueprint` so *any* component (baseline or addon) can be
+  deselected, not just addons added. Price is now simply the sum of whatever's `included`, at
+  `"informed"` confidence - dropped the earlier package-baseline-plus-addons math entirely, since
+  once baseline items became removable that split stopped making sense - `8d6a370`.
+- **Flat list still felt unstructured**: added `pillar` (Marketing & Sales / Operations /
+  Documentation & Admin / Service & Support - already on the real catalog data, previously unused
+  by this flow) to `package-lookup.ts`'s output and `Blueprint.components`, so the client UI groups
+  a long list into sections instead of one flat list - part of `1a02956`.
+- **Pillar-grouping bug caught immediately after deploying the above**: a blueprint created in the
+  ~1hr gap before `pillar` was added had it genuinely missing on its stored components (Mongoose
+  only defaults on document creation, not on reads of older raw documents) - the website's
+  `groupByPillar` filtered strictly against the 4 known values, so those items matched nothing and
+  silently vanished from the UI. Fixed with a fallback to `"operations"` for anything missing/
+  unrecognized, matching the schema's own default - website commit `ddb1de9`.
+- **`DASHBOARD_INTEGRATION_SECRET` false alarm, then proven genuinely live**: a status page built
+  this session first wrongly flagged this as unconfigured in production (only checked Vega's `.env`,
+  missing that `.env.local` also exists on the VPS and is loaded alongside it by Next.js). Corrected
+  after proving it directly - hit the live endpoint with a wrong secret, got `401` not `503`,
+  confirming it's set. Then went further and proved the *real* end-to-end path: the user changed a
+  real organization's plan through Dashboard-WhatsApp's production admin UI, and Vega's logs caught
+  it in real time. Vega's `dashboard-events` route previously only logged the matched-Client case;
+  added a `console.log` for every request regardless of match (`fc836d3`) specifically because there
+  was no way to tell "Dashboard never called us" from "it called us, nothing matched" - reuse that
+  log line for any future check like this.
+- **`MeetingAvailability` configured for the first time** (Mon-Fri 10:00-18:00 IST, 30-min slots,
+  12h notice, both online and in-person bookable) - the schema deliberately ships with no defaults
+  ("guessing office hours would be worse than an empty list"), so this needed the user's real
+  answer, not an invented one. Verified with a real booking on `nemnidhi.com/portal/book`.
+- **Test-data cleanup**: three duplicate "Somil Jain" self-service-audit Leads (debris from testing
+  across the bug-fix sequence above) marked `invalid` via a direct DB update mirroring exactly what
+  `PATCH /api/leads/[id]/status` does (same field change, same `ActivityLog` entry) - Vega has no
+  lead-delete feature at all, only a status field, confirmed by reading the actual route/UI first
+  rather than assuming.
+
+## Package-based self-serve questionnaire rewrite — 2026-08-17 (later in the day)
 
 ## Package-based self-serve questionnaire rewrite — 2026-08-17 (later in the day)
 
