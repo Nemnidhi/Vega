@@ -93,4 +93,7 @@ export const permissionRules = {
   // here); this rule gates the higher-privilege action of assigning a task to someone else.
   assignTasksToOthers: ["admin", "partner", "project_manager"] as UserRole[],
   manageKpis: ["admin", "partner", "project_manager"] as UserRole[],
+  // Gates cancelling a meeting and editing the shared availability config - viewing the
+  // upcoming list and self-assigning are open to any staff role, enforced in the route.
+  manageMeetings: ["admin", "partner", "sales", "project_manager"] as UserRole[],
 };

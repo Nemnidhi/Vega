@@ -23,7 +23,11 @@ export type ActivityAction =
   | "blueprint_shared"
   | "blueprint_approved"
   | "blueprint_rejected"
-  | "dashboard_event_received";
+  | "blueprint_self_served"
+  | "dashboard_event_received"
+  | "meeting_booked"
+  | "meeting_cancelled"
+  | "meeting_assigned";
 
 export interface ActivityLog extends BaseDocument {
   action: ActivityAction;
@@ -40,7 +44,8 @@ export interface ActivityLog extends BaseDocument {
     | "industry"
     | "industry_segment"
     | "pricing_tier"
-    | "pricing_package";
+    | "pricing_package"
+    | "meeting";
   entityId: ObjectId;
   details: Record<string, unknown>;
   ipAddress?: string;

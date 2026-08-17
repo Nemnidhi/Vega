@@ -15,6 +15,8 @@ export { LeadModel } from "@/models/Lead";
 export { LeadNoteModel } from "@/models/LeadNote";
 export { LeaveBalanceModel } from "@/models/LeaveBalance";
 export { LeaveRequestModel } from "@/models/LeaveRequest";
+export { MeetingModel } from "@/models/Meeting";
+export { MeetingAvailabilityModel } from "@/models/MeetingAvailability";
 export { PasswordChangeRequestModel } from "@/models/PasswordChangeRequest";
 export { ProjectModel } from "@/models/Project";
 export { PricingComponentModel } from "@/models/PricingComponent";

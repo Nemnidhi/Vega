@@ -19,6 +19,7 @@ const dashboardNavItems: DashboardNavItem[] = [
   { label: "Industries", href: "/industries", roles: ["admin", "partner", "sales", "digital_marketing"] },
   { label: "Pricing Tiers", href: "/pricing-tiers", roles: ["admin", "partner", "sales", "digital_marketing"] },
   { label: "Tasks", href: "/tasks", roles: ["admin", "partner", "sales", "digital_marketing", "project_manager", "developer"] },
+  { label: "Meetings", href: "/meetings", roles: ["admin", "partner", "sales", "project_manager"] },
   { label: "Calendar", href: "/calendar", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Attendance", href: "/attendance", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Account", href: "/account", roles: ["admin", "developer", "sales", "digital_marketing"] },
