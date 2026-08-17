@@ -3,7 +3,90 @@
 **Repo:** `D:\Vega-main`
 **Remote:** https://github.com/Nemnidhi/Vega.git
 **Branch:** `master`
-**HEAD as of this handoff:** `e362934` — two large pieces landed 2026-08-17 on top of the original
+**HEAD as of this handoff:** `80b18d4` (2026-08-17 session, continued from a context-window
+handoff mid-session) — deployed live, health check passed. See "Client portal moved to
+nemnidhi.com + self-serve questionnaire/meeting booking" below for everything from this pass.
+**One open item, actively being chased**: a real production user hit a crash
+("Cannot read properties of undefined (reading 'map')") submitting the new portal questionnaire.
+Not reproduced locally despite a full sweep of every real industry/segment, heavy multi-select
+trigger overlap, and sparse/skipped answers. `80b18d4` adds a `console.error` with the full stack
+to the failing route so the *next* real occurrence is actually diagnosable - **next step: ask the
+user to retry the exact same flow, then `ssh -p 2424 hrmsdeploy@72.60.97.58` and `pm2 logs hrms
+--lines 200 --nostream --err | grep -A 20 "client-portal/questionnaire/submit failed"` for the
+real stack trace.** Do not guess further at the cause without that trace - several plausible
+hypotheses (scaleTier edge cases, trigger-code collisions, unmapped industries) were already ruled
+out by direct reproduction attempts against both local and production data.
+
+## Client portal moved to nemnidhi.com + self-serve questionnaire/meeting booking — 2026-08-17
+
+Big session, two connected pieces of work, both fully deployed and mostly verified live.
+
+**Part 1 — the client portal moved off vega.nemnidhi.com onto nemnidhi.com/portal.** Vega's
+documented rule is that nobody outside Nemnidhi's staff should ever log into Vega directly, but
+the client-facing pages (login/signup/activate, audit+blueprint+proposal dashboard, queries,
+onboarding) lived entirely inside Vega itself. Fixed by adding a new shared-secret API surface
+(`src/app/api/client-portal/*`, header `x-client-portal-secret`, env `CLIENT_PORTAL_INTEGRATION_SECRET`
+- same trust pattern as the existing Dashboard→Vega event feed, not a new Bearer-token scheme) that
+`D:\Nemnidhi-website`'s own backend calls server-to-server on behalf of its logged-in portal users.
+The browser never talks to vega.nemnidhi.com. Vega's own `/client/*` pages and cookie-session
+routes are untouched, kept as an internal fallback - the new routes extract and reuse their exact
+business logic (`src/lib/auth/client-portal-credentials.ts`, `src/lib/blueprint/respond.ts`,
+`src/lib/proposals/respond.ts`/`document.ts`, `src/lib/prospecting/client-audit-report.ts`) rather
+than duplicating it. Cutover (`invite-client` emails now point at `nemnidhi.com/portal/activate`,
+new env `CLIENT_PORTAL_BASE_URL`) was deployed last, only once the website side was proven live.
+Deployed as three Vega commits (`6e63ae0`, `e6c2ce9` cutover) and three website PRs
+(#15, #16 nav/homepage discoverability, merged) on `D:\Nemnidhi-website`.
+
+**Part 2 — self-serve questionnaire + in-house meeting booking, on top of the portal.** User
+asked directly: a logged-in client with no linked project should be able to run the existing
+industry/pillar questionnaire against their own account (not create an anonymous lead), see a
+real priced estimate, and book a meeting - explicitly **in-house, not a third-party tool like
+Cal.com**, "unless we hit a compliance roadblock."
+- **`POST /api/client-portal/questionnaire/submit`** (new) runs the identical recommendation
+  pipeline the existing anonymous `/business-audit` route uses (`buildSelfServiceQuestionnaire` →
+  `componentsFromAnswers` → `resolveToRealCatalogCodes` → `recommendComponents` →
+  `summariseEstimate`), but derives identity from the account instead of re-collecting
+  contact info, and guards with a 404 if no `Client` row exists / 409 if one's already linked
+  (this endpoint is only for the "no lead yet" case).
+- **Meeting booking is entirely greenfield** - no prior scaffolding anywhere. New
+  `Meeting`/`MeetingAvailability` models, an IST-safe date/slot module
+  (`src/lib/meetings/date.ts`/`slots.ts`, same `Intl.DateTimeFormat` idiom as
+  `src/lib/attendance/date.ts`, zero new dependencies), and a two-layer recheck at booking time
+  (re-run slot generation against fresh data, then a `countDocuments` immediately before insert)
+  since a slot seen on an earlier page load can't be trusted at submit time. **Not wrapped in a
+  transaction** - no `mongoose.startSession` usage exists anywhere in this codebase and the
+  deployment's replica-set topology isn't confirmed; accepted as a documented limitation for a
+  low-volume, human-paced booking flow rather than solved with untested transaction machinery.
+- Staff side: `/meetings` (upcoming list with self-assign/cancel, availability config editor),
+  gated by a new `manageMeetings` permission rule (`admin`/`partner`/`sales`/`project_manager`).
+- **Real bug caught by testing, not review**: `ActivityLog`'s Mongoose schema keeps its own
+  hardcoded `action`/`entityType` `enum` array - a *third* place beyond the two TypeScript unions
+  (`src/types/activity-log.ts` and a duplicated inline type in `src/lib/activity/logging.ts`).
+  Missed on the first pass; the very first real questionnaire submission failed validation on it.
+  Fixed and confirmed clean. **If you add a new `ActivityAction`/`entityType` literal in this
+  codebase, all three places need it, not two** - there's already a dev-HMR cache-busting check at
+  the bottom of `src/models/ActivityLog.ts` that should also get a line added for the newest action
+  each time, matching the existing pattern there.
+- Deployed as Vega commits `19f08d6` (feature) and `80b18d4` (diagnostic logging, see the open
+  item at the top of this file) and website PR #17 (merged, `021d24f`).
+- **Verified locally end-to-end**, including a full real-browser click-through booking
+  ("Meeting confirmed - Tuesday, 18 August 2026 at 2:00 pm") - but the production crash above is
+  still open and needs the real stack trace before it can be called done.
+
+**Production follow-ups, not yet done:**
+- **No `MeetingAvailability` is configured in production** - `/portal/book` will show "No slots
+  available right now" for real clients until an admin sets up at least one weekly window via
+  `vega.nemnidhi.com/meetings` → Availability tab. Deliberately not auto-seeded (guessing office
+  hours would be worse than an empty list).
+- The open questionnaire-submit crash above.
+
+See also `D:\Whatsapp Dashboard\Dashboard-WhatsApp\HANDOFF.md` and the planning docs in
+`D:\Research\ecosystem-audit\` for wider business context, and the auto-memory file
+`nemnidhi-ecosystem-map.md` which has a matching addendum for this session.
+
+## Handoff from before this session — 2026-08-17, self-service questionnaire + pricing catalog
+
+**HEAD as of that handoff:** `e362934` — two large pieces landed 2026-08-17 on top of the original
 five commits: a full pricing-catalog/admin-UI build (`34e590c`) and a self-service questionnaire
 adaptation (`e362934`). Both pushed to `origin/master` and **both confirmed deployed live** -
 `deploy-via-git.sh` run twice directly on the VPS (once per commit, since the first push was

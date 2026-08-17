@@ -35,7 +35,7 @@ export async function getDbPricingCatalog(): Promise<CatalogComponent[]> {
     appliesToIndustries: component.appliesToIndustries,
     scaleTiers: component.scaleTiers as CatalogComponent["scaleTiers"],
     priceBasis: component.priceBasis,
-    features: component.features.map((feature: (typeof component.features)[number]) => ({
+    features: (component.features ?? []).map((feature: (typeof component.features)[number]) => ({
       code: feature.code,
       label: feature.label,
       description: feature.description,

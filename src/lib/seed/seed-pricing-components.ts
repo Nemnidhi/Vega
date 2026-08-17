@@ -20,6 +20,7 @@ export async function seedPricingComponentsData() {
           },
         },
         upsert: true,
+        setDefaultsOnInsert: true,
       },
     };
   });
