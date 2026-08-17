@@ -79,7 +79,15 @@ export async function POST(request: Request, { params }: { params: Params }) {
       expiresAt: new Date(Date.now() + INVITE_TTL_SECONDS * 1000),
     });
 
-    const activationLink = `${new URL(request.url).origin}/client/activate?token=${token}`;
+    // Prefer the configured public URL over request.url's origin - behind the
+    // VPS reverse proxy, request.url reflects the app's internal bind address
+    // (0.0.0.0:5600), not the public domain, which broke real invite emails.
+    const baseUrl = (
+      process.env.APP_BASE_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      new URL(request.url).origin
+    ).replace(/\/$/, "");
+    const activationLink = `${baseUrl}/client/activate?token=${token}`;
 
     let emailSent = false;
     try {
