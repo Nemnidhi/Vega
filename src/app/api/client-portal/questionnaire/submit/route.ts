@@ -159,6 +159,10 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    // Not yet reproduced locally despite sweeping every real industry/segment, heavy
+    // multi-select overlap, and sparse/skipped answers - log the full stack server-side so a
+    // real production occurrence is diagnosable, since handleApiError only returns a message.
+    console.error("client-portal/questionnaire/submit failed:", error);
     return handleApiError(error);
   }
 }
