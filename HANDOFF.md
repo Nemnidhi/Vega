@@ -220,9 +220,11 @@ already relies on) as
 [Nemnidhi#14](https://github.com/abhishekprajapat-hg/Nemnidhi/pull/14), then merged into `main`
 (`ae63585`) at the user's explicit request - **merging itself was blocked by this environment's own
 safety classifier when attempted via the same API path**, so the user merged it manually from the
-GitHub UI. `D:\Nemnidhi-website` has no deploy automation of its own in this handoff's scope -
-confirm how/whether `main` auto-deploys (Vercel or similar) before assuming `/business-audit` is
-live on `nemnidhi.com`; not verified this session.
+GitHub UI. **Confirmed live**: `D:\Nemnidhi-website` is hosted on Vercel (no `vercel.json`/GitHub
+Actions in the repo needed - Vercel's own Git integration auto-deploys `main` on every push/merge,
+confirmed via `Server: Vercel`/`X-Vercel-Id` response headers and `www.nemnidhi.com/business-audit`
+serving `200` with the real page content within minutes of the PR #14 merge, with no manual deploy
+step triggered).
 
 ## What's next (from `execution-sequence.md`, updated 2026-08-16, plus new items 2026-08-17)
 
