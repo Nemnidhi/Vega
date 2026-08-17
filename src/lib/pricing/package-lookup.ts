@@ -10,6 +10,7 @@ import {
 export interface PackageComponentLine {
   code: string;
   title: string;
+  pillar: string;
   oneTimePrice: number;
   monthlyPrice: number;
   deliveryWeeksMin: number;
@@ -79,15 +80,22 @@ export async function resolvePricingPackage(
 
   const included: PackageComponentLine[] = [];
   const addons: PackageComponentLine[] = [];
+  // The source pricing sheet's Excel->JSON extraction duplicated some rows within a
+  // package (e.g. the same component listed 2-4 times) - dedupe defensively here
+  // rather than relying on the underlying data being clean.
+  const seenCodes = new Set<string>();
 
   for (const inclusion of pkg.componentInclusions) {
     if (inclusion.status === "unavailable") continue;
     const component = componentById.get(String(inclusion.componentId));
     if (!component) continue;
+    if (seenCodes.has(component.code)) continue;
+    seenCodes.add(component.code);
 
     const line: PackageComponentLine = {
       code: component.code,
       title: component.title,
+      pillar: component.pillar ?? "operations",
       oneTimePrice: component.finalPrice ?? 0,
       monthlyPrice: component.monthlyPrice ?? 0,
       deliveryWeeksMin: component.deliveryWeeksMin ?? 1,

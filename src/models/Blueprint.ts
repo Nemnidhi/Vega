@@ -48,6 +48,12 @@ const selectedComponentSchema = new Schema(
      * addon concept.
      */
     packageStatus: { type: String, enum: ["included", "addon"], default: "included" },
+    /** Marketing & Sales / Operations / Documentation & Admin / Service & Support - lets the client UI group a long component list into sections instead of one flat list. */
+    pillar: {
+      type: String,
+      enum: ["marketing_sales", "operations", "documentation_admin", "service_support"],
+      default: "operations",
+    },
     features: { type: [selectedFeatureSchema], default: [] },
     oneTimePrice: { type: Number, required: true, min: 0 },
     monthlyPrice: { type: Number, default: 0, min: 0 },
