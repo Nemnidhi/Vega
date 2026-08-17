@@ -67,14 +67,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Priced as the sum of the baseline (included) components' own prices - not the
+    // package's sheet-listed setupPrice/monthlyPrice - so the number the client sees here
+    // never jumps unexpectedly when they confirm without changing anything: finalize
+    // computes the exact same way, just over whatever ends up selected.
     const spread = CONFIDENCE_SPREAD.indicative;
+    const baselineOneTime = resolved.included.reduce((sum, c) => sum + c.oneTimePrice, 0);
+    const baselineMonthly = resolved.included.reduce((sum, c) => sum + c.monthlyPrice, 0);
     const baselineWeeksMin = resolved.included.reduce((max, c) => Math.max(max, c.deliveryWeeksMin), 0);
     const baselineWeeksMax = resolved.included.reduce((sum, c) => sum + c.deliveryWeeksMax, 0);
     const estimate = {
-      oneTimeMin: round(resolved.setupPrice * (1 - spread)),
-      oneTimeMax: round(resolved.setupPrice * (1 + spread)),
-      monthlyMin: round(resolved.monthlyPrice * (1 - spread)),
-      monthlyMax: round(resolved.monthlyPrice * (1 + spread)),
+      oneTimeMin: round(baselineOneTime * (1 - spread)),
+      oneTimeMax: round(baselineOneTime * (1 + spread)),
+      monthlyMin: round(baselineMonthly * (1 - spread)),
+      monthlyMax: round(baselineMonthly * (1 + spread)),
       currency: "INR" as const,
       confidence: "indicative" as const,
       deliveryWeeksMin: baselineWeeksMin,
@@ -147,7 +153,7 @@ export async function POST(request: Request) {
       components: storedComponents,
       estimate,
       assumptions: [
-        "Baseline reflects what's included in this package - add any optional upgrades before confirming, then a specialist will follow up within one business day.",
+        "Everything below is editable - uncheck anything you don't need and add any optional upgrades before confirming, then a specialist will follow up within one business day.",
       ],
       exclusions: [],
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),

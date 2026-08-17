@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     const payload = finalizeSelfServiceBlueprintSchema.parse(rest);
 
-    const blueprint = await finalizeSelfServiceBlueprint(actor, payload.selectedAddonCodes);
+    const blueprint = await finalizeSelfServiceBlueprint(actor, payload.selectedComponentCodes);
     return ok(blueprint);
   } catch (error) {
     console.error("client-portal/questionnaire/finalize failed:", error);

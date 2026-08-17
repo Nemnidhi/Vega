@@ -14,7 +14,15 @@ import { ApiError } from "@/lib/api/responses";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { logActivity } from "@/lib/activity/logging";
 
-export async function finalizeSelfServiceBlueprint(actor: AuthSession, selectedAddonCodes: string[]) {
+/**
+ * The client can select or deselect ANY component (not just the addons) -
+ * selectedComponentCodes is the full list of codes they want, replacing
+ * whatever `included` was set to at submit time. Price is always the sum
+ * of whichever components end up included, at "informed" confidence -
+ * see submit route for why this replaced the earlier package-baseline
+ * approach once components stopped being all-or-nothing.
+ */
+export async function finalizeSelfServiceBlueprint(actor: AuthSession, selectedComponentCodes: string[]) {
   const clientLeadId = await resolveClientLeadId(actor);
   if (!clientLeadId) throw new Error("Forbidden");
 
@@ -23,27 +31,17 @@ export async function finalizeSelfServiceBlueprint(actor: AuthSession, selectedA
     throw new ApiError("No self-service blueprint is awaiting confirmation", 409);
   }
 
-  const selected = new Set(selectedAddonCodes.map((c) => c.toUpperCase()));
+  const selected = new Set(selectedComponentCodes.map((c) => c.toUpperCase()));
 
   for (const component of blueprint.components) {
-    if (component.packageStatus === "addon") {
-      component.included = selected.has(component.code);
-    }
+    component.included = selected.has(component.code);
   }
 
   type StoredComponent = (typeof blueprint.components)[number];
   const includedComponents = blueprint.components.filter((c: StoredComponent) => c.included);
-  const selectedAddons = includedComponents.filter((c: StoredComponent) => c.packageStatus === "addon");
 
-  // Baseline comes from the package's own sheet-precomputed total, not a
-  // resummed total of included components (see Blueprint.packageBaselinePrice)
-  // - only the selected addons' own prices are added on top.
-  const oneTime =
-    (blueprint.packageBaselinePrice?.oneTime ?? 0) +
-    selectedAddons.reduce((sum: number, c: StoredComponent) => sum + c.oneTimePrice, 0);
-  const monthly =
-    (blueprint.packageBaselinePrice?.monthly ?? 0) +
-    selectedAddons.reduce((sum: number, c: StoredComponent) => sum + c.monthlyPrice, 0);
+  const oneTime = includedComponents.reduce((sum: number, c: StoredComponent) => sum + c.oneTimePrice, 0);
+  const monthly = includedComponents.reduce((sum: number, c: StoredComponent) => sum + c.monthlyPrice, 0);
   const weeksMin = includedComponents.reduce((max: number, c: StoredComponent) => Math.max(max, c.deliveryWeeksMin), 0);
   const weeksMax = includedComponents.reduce((sum: number, c: StoredComponent) => sum + c.deliveryWeeksMax, 0);
   const spread = CONFIDENCE_SPREAD.informed;
@@ -66,7 +64,7 @@ export async function finalizeSelfServiceBlueprint(actor: AuthSession, selectedA
     actorId: actor.userId,
     entityType: "blueprint",
     entityId: String(blueprint._id),
-    details: { leadId: clientLeadId, selectedAddonCodes: [...selected] },
+    details: { leadId: clientLeadId, selectedComponentCodes: [...selected] },
   });
 
   return serializeForJson(blueprint.toObject());

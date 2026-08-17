@@ -16,5 +16,5 @@ export const respondBlueprintSchema = z.object({
 });
 
 export const finalizeSelfServiceBlueprintSchema = z.object({
-  selectedAddonCodes: z.array(z.string().trim().max(80)).max(50),
+  selectedComponentCodes: z.array(z.string().trim().max(80)).max(200),
 });
