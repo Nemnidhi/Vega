@@ -31,9 +31,9 @@ export async function getDbPricingCatalog(): Promise<CatalogComponent[]> {
     monthlyPrice: component.monthlyPrice,
     deliveryWeeksMin: component.deliveryWeeksMin,
     deliveryWeeksMax: component.deliveryWeeksMax,
-    answersGapTags: component.answersGapTags,
-    appliesToIndustries: component.appliesToIndustries,
-    scaleTiers: component.scaleTiers as CatalogComponent["scaleTiers"],
+    answersGapTags: component.answersGapTags ?? [],
+    appliesToIndustries: component.appliesToIndustries ?? [],
+    scaleTiers: (component.scaleTiers ?? []) as CatalogComponent["scaleTiers"],
     priceBasis: component.priceBasis,
     features: (component.features ?? []).map((feature: (typeof component.features)[number]) => ({
       code: feature.code,
