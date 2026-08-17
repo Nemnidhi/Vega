@@ -41,6 +41,13 @@ const selectedComponentSchema = new Schema(
     /** Recommended by the engine, or added by hand on the call. */
     origin: { type: String, enum: ["recommended", "manual"], default: "recommended" },
     included: { type: Boolean, default: true },
+    /**
+     * Baseline vs optional, from the PricingPackage this component came from
+     * (self-service package flow only). Staff-flow blueprints never set this
+     * - "included" is the correct default there too, since that flow has no
+     * addon concept.
+     */
+    packageStatus: { type: String, enum: ["included", "addon"], default: "included" },
     features: { type: [selectedFeatureSchema], default: [] },
     oneTimePrice: { type: Number, required: true, min: 0 },
     monthlyPrice: { type: Number, default: 0, min: 0 },
@@ -78,6 +85,21 @@ const blueprintSchema = new Schema(
       enum: ["smb", "midmarket", "enterprise"],
       default: "smb",
       required: true,
+    },
+    /** The PricingPackage this blueprint was built from (package-based self-service flow only). */
+    packageId: { type: Schema.Types.ObjectId, ref: "PricingPackage", default: null },
+    /** The chosen launch/growth/scale/enterprise tier key - separate vocabulary from scaleTier above. */
+    pricingTierKey: { type: String, trim: true, maxlength: 60, default: null },
+    /**
+     * The package's own setupPrice/monthlyPrice at capture time - the sheet's
+     * precomputed baseline total, kept separate from summing components[]
+     * because individual PricingComponent finalPrice values can legitimately
+     * drift from the package-level sheet figure. Finalizing adds only the
+     * selected addons' own prices on top of this, never resums the baseline.
+     */
+    packageBaselinePrice: {
+      oneTime: { type: Number, default: 0, min: 0 },
+      monthly: { type: Number, default: 0, min: 0 },
     },
 
     answers: { type: [requirementAnswerSchema], default: [] },
@@ -134,5 +156,14 @@ blueprintSchema.index({ leadId: 1, version: -1 }, { unique: true });
 blueprintSchema.index({ status: 1, updatedAt: -1 });
 
 export type BlueprintDocument = InferSchemaType<typeof blueprintSchema>;
+
+const existingBlueprintModel = models.Blueprint;
+
+// In dev HMR, an older cached model can predate the package-flow fields
+// (packageId/pricingTierKey/packageBaselinePrice) - same pattern as
+// PricingComponent.ts and ActivityLog.ts.
+if (existingBlueprintModel && !existingBlueprintModel.schema.path("packageId")) {
+  delete models.Blueprint;
+}
 
 export const BlueprintModel = models.Blueprint || model("Blueprint", blueprintSchema);

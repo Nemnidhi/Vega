@@ -159,11 +159,14 @@ export function recommendComponents(
  * an indicative estimate off a first call deserves a wider band than one
  * taken after a proper requirements session.
  */
-const CONFIDENCE_SPREAD: Record<"indicative" | "informed" | "firm", number> = {
+export const CONFIDENCE_SPREAD: Record<"indicative" | "informed" | "firm", number> = {
   indicative: 0.35,
   informed: 0.18,
   firm: 0.08,
 };
+
+/** Rounds a price to the nearest Rs 500 - shared by every estimate calculation in this module. */
+export const round = (n: number) => Math.round(n / 500) * 500;
 
 export function summariseEstimate(
   components: RecommendedComponent[],
@@ -177,8 +180,6 @@ export function summariseEstimate(
   // floor than the sum, while the sum is a fair worst case for the ceiling.
   const weeksMin = components.reduce((max, c) => Math.max(max, c.deliveryWeeksMin), 0);
   const weeksMax = components.reduce((sum, c) => sum + c.deliveryWeeksMax, 0);
-
-  const round = (n: number) => Math.round(n / 500) * 500;
 
   return {
     oneTimeMin: round(oneTime * (1 - spread)),

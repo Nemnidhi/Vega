@@ -14,3 +14,7 @@ export const respondBlueprintSchema = z.object({
   decision: z.enum(["approve", "reject"]),
   reason: z.string().trim().min(5).max(1000).optional(),
 });
+
+export const finalizeSelfServiceBlueprintSchema = z.object({
+  selectedAddonCodes: z.array(z.string().trim().max(80)).max(50),
+});

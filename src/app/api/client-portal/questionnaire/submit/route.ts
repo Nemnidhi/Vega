@@ -1,7 +1,10 @@
-// Shared-secret counterpart to /api/public/questionnaire/submit - runs the identical
-// recommendation pipeline, but for an already-authenticated portal client instead of an
-// anonymous visitor. Only for the "no lead linked yet" case: re-submission/versioning is
-// out of scope here, guarded by the already-linked check below.
+// Package-based counterpart to /api/public/questionnaire/submit for an already-authenticated
+// portal client. Diverges deliberately from the public route's keyword/gap matcher
+// (recommendComponents + legacy-trigger-map): resolves the client's industry/segment/tier
+// straight to a PricingPackage instead, since the real catalog is packaged that way, not
+// scale-tiered per component (see src/lib/pricing/package-lookup.ts). Only for the "no lead
+// linked yet" case: re-submission/versioning is out of scope here, guarded by the
+// already-linked check below. Follow-up call: /api/client-portal/questionnaire/finalize.
 
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { assertValidClientPortalSecret, resolveClientPortalActor } from "@/lib/auth/client-portal-actor";
@@ -9,16 +12,9 @@ import { submitClientPortalQuestionnaireSchema } from "@/lib/validation/client-p
 import { ClientModel, LeadModel, BlueprintModel, UserModel } from "@/models";
 import { scoreLead } from "@/lib/leads/scoring";
 import { serializeForJson } from "@/lib/utils/serialize";
-import {
-  answerToStorage,
-  buildSelfServiceQuestionnaire,
-  componentsFromAnswers,
-  scaleTierFromAnswers,
-  type Answer,
-} from "@/lib/blueprint/questionnaire";
-import { recommendComponents, summariseEstimate } from "@/lib/blueprint/recommend";
-import { getDbPricingCatalog } from "@/lib/pricing/catalog-source";
-import { resolveToRealCatalogCodes } from "@/lib/blueprint/legacy-trigger-map";
+import { answerToStorage, buildSelfServiceQuestionnaire, type Answer } from "@/lib/blueprint/questionnaire";
+import { CONFIDENCE_SPREAD, round } from "@/lib/blueprint/recommend";
+import { resolvePricingPackage } from "@/lib/pricing/package-lookup";
 import { getIndustryProfile } from "@/lib/prospecting/industry-knowledge";
 import { logActivity } from "@/lib/activity/logging";
 import { ApiError, handleApiError, ok } from "@/lib/api/responses";
@@ -63,30 +59,27 @@ export async function POST(request: Request) {
       .map((a) => answerToStorage(a, questions))
       .filter((a): a is NonNullable<typeof a> => a !== null);
 
-    const scaleTier = scaleTierFromAnswers(answers);
-    const { requestedCodes, declinedCodes, rationales } = componentsFromAnswers(answers, questions);
-
-    const catalog = await getDbPricingCatalog();
-
-    const realRequestedCodes = resolveToRealCatalogCodes(requestedCodes, catalog, payload.industry);
-    const realDeclinedCodes = resolveToRealCatalogCodes(declinedCodes, catalog, payload.industry);
-    const realRationales: Record<string, string> = {};
-    for (const [legacyCode, rationale] of Object.entries(rationales)) {
-      for (const realCode of resolveToRealCatalogCodes([legacyCode], catalog, payload.industry)) {
-        realRationales[realCode] = rationale;
-      }
+    const resolved = await resolvePricingPackage(payload.industry, payload.segment, payload.tier);
+    if (!resolved) {
+      throw new ApiError(
+        "We haven't set up pricing for this combination yet - a specialist will reach out to put together a custom estimate.",
+        404,
+      );
     }
 
-    const recommended = recommendComponents(catalog, {
-      industry: payload.industry,
-      segment: payload.segment,
-      scaleTier,
-      missingGapTags: [],
-      requestedCodes: realRequestedCodes,
-      declinedCodes: realDeclinedCodes,
-      answerRationales: realRationales,
-    });
-    const estimate = summariseEstimate(recommended, "indicative");
+    const spread = CONFIDENCE_SPREAD.indicative;
+    const baselineWeeksMin = resolved.included.reduce((max, c) => Math.max(max, c.deliveryWeeksMin), 0);
+    const baselineWeeksMax = resolved.included.reduce((sum, c) => sum + c.deliveryWeeksMax, 0);
+    const estimate = {
+      oneTimeMin: round(resolved.setupPrice * (1 - spread)),
+      oneTimeMax: round(resolved.setupPrice * (1 + spread)),
+      monthlyMin: round(resolved.monthlyPrice * (1 - spread)),
+      monthlyMax: round(resolved.monthlyPrice * (1 + spread)),
+      currency: "INR" as const,
+      confidence: "indicative" as const,
+      deliveryWeeksMin: baselineWeeksMin,
+      deliveryWeeksMax: baselineWeeksMax,
+    };
 
     const industryLabel = getIndustryProfile(payload.industry, { segment: payload.segment })?.label ?? payload.industry;
 
@@ -109,18 +102,34 @@ export async function POST(request: Request) {
       ...scoreLead({ source: "website", category: "software_request", urgency: "medium" }),
     });
 
-    const storedComponents = recommended.map((c) => ({
-      code: c.code,
-      title: c.title,
-      rationale: c.rationale,
-      origin: c.origin,
-      included: true,
-      features: c.features,
-      oneTimePrice: c.oneTimePrice,
-      monthlyPrice: c.monthlyPrice,
-      deliveryWeeksMin: c.deliveryWeeksMin,
-      deliveryWeeksMax: c.deliveryWeeksMax,
-    }));
+    const storedComponents = [
+      ...resolved.included.map((c) => ({
+        code: c.code,
+        title: c.title,
+        rationale: `Included in the ${resolved.tierLabel} package for this industry.`,
+        origin: "recommended" as const,
+        included: true,
+        packageStatus: "included" as const,
+        features: c.features,
+        oneTimePrice: c.oneTimePrice,
+        monthlyPrice: c.monthlyPrice,
+        deliveryWeeksMin: c.deliveryWeeksMin,
+        deliveryWeeksMax: c.deliveryWeeksMax,
+      })),
+      ...resolved.addons.map((c) => ({
+        code: c.code,
+        title: c.title,
+        rationale: `Optional add-on available on the ${resolved.tierLabel} package.`,
+        origin: "recommended" as const,
+        included: false,
+        packageStatus: "addon" as const,
+        features: c.features,
+        oneTimePrice: c.oneTimePrice,
+        monthlyPrice: c.monthlyPrice,
+        deliveryWeeksMin: c.deliveryWeeksMin,
+        deliveryWeeksMax: c.deliveryWeeksMax,
+      })),
+    ];
 
     const blueprint = await BlueprintModel.create({
       leadId: lead._id,
@@ -129,12 +138,14 @@ export async function POST(request: Request) {
       origin: "self_service",
       industry: payload.industry,
       segment: payload.segment,
-      scaleTier,
+      packageId: resolved.packageId,
+      pricingTierKey: resolved.tierKey,
+      packageBaselinePrice: { oneTime: resolved.setupPrice, monthly: resolved.monthlyPrice },
       answers: storedAnswers,
       components: storedComponents,
       estimate,
       assumptions: [
-        "Generated automatically from your questionnaire answers - a specialist will confirm this within one business day.",
+        "Baseline reflects what's included in this package - add any optional upgrades before confirming, then a specialist will follow up within one business day.",
       ],
       exclusions: [],
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -159,9 +170,10 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    // Not yet reproduced locally despite sweeping every real industry/segment, heavy
-    // multi-select overlap, and sparse/skipped answers - log the full stack server-side so a
-    // real production occurrence is diagnosable, since handleApiError only returns a message.
+    // handleApiError only returns a message to the client - log the full stack server-side too,
+    // the diagnostic discipline that caught three real production bugs in the previous version
+    // of this route (missing features/appliesToIndustries/scaleTiers/monthlyPrice on legacy-
+    // seeded PricingComponent documents).
     console.error("client-portal/questionnaire/submit failed:", error);
     return handleApiError(error);
   }

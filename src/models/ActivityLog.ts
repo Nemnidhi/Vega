@@ -24,6 +24,7 @@ const activityLogSchema = new Schema(
         "blueprint_approved",
         "blueprint_rejected",
         "blueprint_self_served",
+        "blueprint_finalized",
         "dashboard_event_received",
         "industry_changed",
         "industry_segment_changed",
@@ -83,7 +84,8 @@ if (
     !existingActionEnum.includes("proposal_viewed") ||
     !existingActionEnum.includes("dashboard_event_received") ||
     !existingActionEnum.includes("pricing_package_changed") ||
-    !existingActionEnum.includes("meeting_booked"))
+    !existingActionEnum.includes("meeting_booked") ||
+    !existingActionEnum.includes("blueprint_finalized"))
 ) {
   delete models.ActivityLog;
 }
