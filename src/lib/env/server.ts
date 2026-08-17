@@ -14,6 +14,13 @@ const serverEnvSchema = z.object({
   // haven't configured this yet don't fail the whole server env parse; the route itself checks
   // for its presence and rejects the request (not the process) when it's unset.
   DASHBOARD_INTEGRATION_SECRET: z.string().min(16).optional(),
+  // Shared secret for /api/client-portal/* - the nemnidhi.com website's backend calls these
+  // server-to-server on behalf of its own logged-in client users, same optional-at-parse-time
+  // shape as DASHBOARD_INTEGRATION_SECRET above.
+  CLIENT_PORTAL_INTEGRATION_SECRET: z.string().min(16).optional(),
+  // Where invite-client emails point clients to activate their account - the public website's
+  // portal, not this app's own /client/activate (kept working as an internal fallback).
+  CLIENT_PORTAL_BASE_URL: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

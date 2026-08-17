@@ -15,7 +15,25 @@ export function fail(message: string, status = 400, details?: unknown) {
   );
 }
 
+/**
+ * For business logic shared between a route and an extracted lib function
+ * (e.g. src/lib/auth/client-portal-credentials.ts) where the caller needs an
+ * exact status code (409 conflict, 422 validation, etc.) that handleApiError's
+ * generic message-substring matching wouldn't infer correctly on its own.
+ */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export function handleApiError(error: unknown) {
+  if (error instanceof ApiError) {
+    return fail(error.message, error.status);
+  }
+
   if (error instanceof ZodError) {
     return fail("Validation failed", 422, error.issues);
   }

@@ -15,7 +15,7 @@ import { LeadModel, ReportModel } from "@/models";
 import { handleApiError, fail, ok } from "@/lib/api/responses";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { getCurrentSession } from "@/lib/auth/session";
-import { resolveClientLeadId } from "@/lib/auth/client-lead";
+import { getClientAuditReportPdf } from "@/lib/prospecting/client-audit-report";
 import { logActivity } from "@/lib/activity/logging";
 import { buildReportDocument } from "@/lib/prospecting/report-template";
 import { generateParagraph } from "@/lib/prospecting/generate-paragraph";
@@ -121,22 +121,20 @@ export async function GET(_: Request, { params }: { params: Params }) {
     // their own - same ownership check the blueprint routes use.
     const session = await getCurrentSession();
     if (!session) throw new Error("Unauthorized");
+
+    let pdf: Buffer;
     if (session.role === "client") {
-      const clientLeadId = await resolveClientLeadId(session);
-      if (!clientLeadId || clientLeadId !== id) throw new Error("Forbidden");
+      pdf = await getClientAuditReportPdf(session, id);
     } else {
       assertRoleAccess(session.role, { oneOf: permissionRules.manageLeads });
+      // Hydrated, not .lean() - a lean read returns the pdf as a BSON Binary
+      // rather than a Buffer.
+      const report = await ReportModel.findOne({ leadId: id }).sort({ generatedAt: -1 });
+      if (!report) {
+        return fail("No audit report generated for this lead yet", 404);
+      }
+      pdf = Buffer.isBuffer(report.pdf) ? report.pdf : Buffer.from(report.pdf.buffer);
     }
-    // Hydrated, not .lean() - a lean read returns the pdf as a BSON Binary
-    // rather than a Buffer.
-    const report = await ReportModel.findOne({ leadId: id }).sort({ generatedAt: -1 });
-    if (!report) {
-      return fail("No audit report generated for this lead yet", 404);
-    }
-
-    const pdf: Buffer = Buffer.isBuffer(report.pdf)
-      ? report.pdf
-      : Buffer.from(report.pdf.buffer);
 
     return new Response(new Uint8Array(pdf), {
       headers: {
