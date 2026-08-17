@@ -586,7 +586,9 @@ export function PricingComponentPanel({ initialComponents, segments }: Props) {
                     {PILLAR_OPTIONS.find((option) => option.value === component.pillar)?.label ?? component.pillar}
                   </td>
                   <td className="py-2 pr-3">₹{component.finalPrice.toLocaleString("en-IN")}</td>
-                  <td className="py-2 pr-3">₹{component.monthlyPrice.toLocaleString("en-IN")}</td>
+                  <td className="py-2 pr-3">
+                    {component.monthlyPrice ? `₹${component.monthlyPrice.toLocaleString("en-IN")}` : "—"}
+                  </td>
                   <td className="py-2 pr-3">
                     <Badge variant={component.isActive ? "success" : "neutral"}>
                       {component.isActive ? "active" : "inactive"}
