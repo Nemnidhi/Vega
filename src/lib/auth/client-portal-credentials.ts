@@ -60,7 +60,7 @@ function inferGoalFromCategory(category: unknown) {
   if (category === "infrastructure") return "Strengthen infrastructure and reliability";
   if (category === "legal_automation") return "Automate legal operations";
   if (category === "retainer_enterprise") return "Long-term growth and support partnership";
-  return "Plan project execution with Nemnidhi team";
+  return "Plan service execution with Nemnidhi team";
 }
 
 export async function createClientSignup(

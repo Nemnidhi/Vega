@@ -3,19 +3,19 @@ import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = {
   primary:
-    "border border-accent/75 bg-accent text-white shadow-sm hover:brightness-[1.03] focus-visible:outline-accent",
+    "border border-vega-purple bg-[#7c3fe0] text-white hover:bg-vega-purple-hover focus-visible:ring-vega-purple/40",
   secondary:
-    "border border-border/90 bg-white/92 text-foreground shadow-sm hover:border-accent/35 hover:bg-white focus-visible:outline-accent",
+    "border border-vega-border bg-vega-surface-1 text-vega-text-secondary hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text focus-visible:ring-vega-purple/40",
   subtle:
-    "border border-accent/20 bg-accent-soft text-accent-strong hover:border-accent/35 hover:brightness-[0.98] focus-visible:outline-accent",
+    "border border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd] hover:border-vega-purple hover:bg-vega-surface-selected focus-visible:ring-vega-purple/40",
   danger:
-    "border border-danger/80 bg-danger text-white shadow-sm hover:brightness-[1.02] focus-visible:outline-danger",
+    "border border-vega-red/45 bg-vega-surface-1 text-vega-red hover:bg-vega-red/10 focus-visible:ring-vega-red/35",
 } as const;
 
 const buttonSizes = {
-  sm: "h-9 px-3.5 text-sm",
-  md: "h-11 px-4.5 text-sm",
-  lg: "h-12 px-6 text-base",
+  sm: "h-8 px-2.5 text-xs",
+  md: "h-[34px] px-3 text-xs",
+  lg: "h-10 px-4 text-sm",
 } as const;
 
 type ButtonVariant = keyof typeof buttonVariants;
@@ -34,9 +34,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          "inline-flex items-center justify-center rounded-xl font-semibold tracking-wide transition-all duration-200",
+          "inline-flex items-center justify-center rounded-md font-medium transition-all duration-150",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+          "focus-visible:outline-none focus-visible:ring-2",
           buttonVariants[variant],
           buttonSizes[size],
           className,

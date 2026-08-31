@@ -45,7 +45,7 @@ export function ClientLoginForm() {
       <CardHeader className="space-y-1 pb-4 sm:pb-6">
         <CardTitle className="text-xl sm:text-2xl">Client Login</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">
-          Sign in to raise project queries and track responses.
+          Sign in to raise service queries and track responses.
         </p>
       </CardHeader>
       <CardContent>

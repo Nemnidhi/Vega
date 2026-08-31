@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
   await requireRoleAccess(["admin", "sales", "digital_marketing"], {
-    redirectTo: "/projects",
+    redirectTo: "/tasks",
   });
 
   const stages = (await getPipelineBoard({ limitPerStage: 80 })) as Array<{

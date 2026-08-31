@@ -4,7 +4,6 @@ export * from "@/types/change-order";
 export * from "@/types/client";
 export * from "@/types/common";
 export * from "@/types/lead";
-export * from "@/types/project";
 export * from "@/types/pricing-component";
 export * from "@/types/proposal";
 export * from "@/types/report";

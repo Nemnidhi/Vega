@@ -1,7 +1,7 @@
 // AI drafting assist for the proposal generator - same resilience pattern as
 // lib/prospecting/generate-paragraph.ts (Groq primary, Gemini fallback, a plain-template
 // fallback so drafting never hard-fails), applied to proposal narrative text instead of audit
-// report paragraphs. Only drafts the two genuinely-prose fields (projectSummary, timeline) -
+// report paragraphs. Only drafts the two genuinely-prose fields (summary, timeline) -
 // exclusions/changeOrderClause are structured/already-prose data on ScopeManifest, so the API
 // route that calls this copies those directly rather than asking AI to rewrite them.
 
@@ -24,7 +24,7 @@ export interface ProposalDraftResult {
 }
 
 function buildSystemPrompt() {
-  return `You write two short sections of a client-facing project proposal for a software/creative agency.
+  return `You write two short sections of a client-facing proposal for a software/creative agency.
 
 Rules:
 - Use ONLY the facts provided below. Never invent deliverables, dates, durations, or details not given to you.
@@ -32,15 +32,15 @@ Rules:
 - Do not use exclamation points or superlatives ("amazing", "huge", "incredible").
 - Output EXACTLY this format, nothing else, no markdown:
 PROJECT SUMMARY:
-<2-4 sentence paragraph summarizing the project and its objective>
+<2-4 sentence paragraph summarizing the requirement and its objective>
 TIMELINE:
-<1-2 sentence paragraph describing the project timeline in prose, based on the assumptions given>`;
+<1-2 sentence paragraph describing the delivery timeline in prose, based on the assumptions given>`;
 }
 
 function buildFactsSummary(input: ProposalDraftInput) {
   const lines = [
     `Client: ${input.clientName}`,
-    `Project: ${input.leadTitle}`,
+    `Requirement: ${input.leadTitle}`,
     `Business objective: ${input.businessObjective}`,
     `Confirmed deliverables: ${input.confirmedDeliverables.join("; ")}`,
   ];

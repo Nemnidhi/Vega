@@ -86,7 +86,7 @@ export default async function ClientQueriesPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Raise project-related questions and track their status.
+            Raise service-related questions and track their status.
           </p>
         </CardContent>
       </Card>

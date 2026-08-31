@@ -1,10 +1,8 @@
 import { Badge } from "@/components/ui/badge";
+import { Activity } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 
 interface StatCardProps {
@@ -29,23 +27,28 @@ export function StatCard({
   const trendConfig = trendMap[trend];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+    <Card className="h-full min-h-[128px]">
+      <CardContent className="flex h-full flex-col justify-between gap-3 p-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-md border border-vega-purple-border bg-vega-purple-soft text-vega-purple">
+              <Activity className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium leading-4 text-vega-text-secondary">{title}</p>
+              <p className="mt-1 text-[21px] font-semibold leading-6 text-vega-text">{value}</p>
+            </div>
+          </div>
           <Badge variant={trendConfig.variant}>{trendConfig.label}</Badge>
         </div>
-      </CardHeader>
-      <CardContent className="pt-3">
-        <p className="text-4xl font-semibold tracking-tight text-foreground md:text-[2.1rem]">
-          {value}
-        </p>
-        <CardDescription className="mt-3">{helperText}</CardDescription>
-        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-surface-soft">
+        <div>
+          <p className="mb-2 text-[10px] leading-4 text-vega-text-muted">{helperText}</p>
+          <div className="h-1.5 w-full overflow-hidden rounded-sm bg-[#263445]">
           <div
-            className="h-full rounded-full bg-accent transition-all duration-300"
+            className="h-full rounded-sm bg-vega-purple transition-all duration-300"
             style={{ width: trend === "up" ? "82%" : trend === "down" ? "35%" : "58%" }}
           />
+          </div>
         </div>
       </CardContent>
     </Card>

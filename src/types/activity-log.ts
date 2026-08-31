@@ -28,7 +28,27 @@ export type ActivityAction =
   | "dashboard_event_received"
   | "meeting_booked"
   | "meeting_cancelled"
-  | "meeting_assigned";
+  | "meeting_assigned"
+  | "subtask_dependency_added"
+  | "subtask_dependency_removed"
+  | "subtask_import_completed"
+  | "subtask_created"
+  | "subtask_assigned"
+  | "subtask_reassigned"
+  | "subtask_ready"
+  | "subtask_blocked"
+  | "subtask_completed"
+  | "subtask_due_approaching"
+  | "subtask_overdue"
+  | "subtask_comment_added"
+  | "subtask_comment_mention"
+  | "approval_requested"
+  | "approval_accepted"
+  | "approval_rejected"
+  | "workflow_changed"
+  | "workflow_node_status_changed"
+  | "workflow_node_decision_changed"
+  | "workflow_node_rescheduled";
 
 export interface ActivityLog extends BaseDocument {
   action: ActivityAction;
@@ -46,7 +66,8 @@ export interface ActivityLog extends BaseDocument {
     | "industry_segment"
     | "pricing_tier"
     | "pricing_package"
-    | "meeting";
+    | "meeting"
+    | "task";
   entityId: ObjectId;
   details: Record<string, unknown>;
   ipAddress?: string;

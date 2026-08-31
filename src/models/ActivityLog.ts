@@ -33,6 +33,26 @@ const activityLogSchema = new Schema(
         "meeting_booked",
         "meeting_cancelled",
         "meeting_assigned",
+        "subtask_dependency_added",
+        "subtask_dependency_removed",
+        "subtask_import_completed",
+        "subtask_created",
+        "subtask_assigned",
+        "subtask_reassigned",
+        "subtask_ready",
+        "subtask_blocked",
+        "subtask_completed",
+        "subtask_due_approaching",
+        "subtask_overdue",
+        "subtask_comment_added",
+        "subtask_comment_mention",
+        "approval_requested",
+        "approval_accepted",
+        "approval_rejected",
+        "workflow_changed",
+        "workflow_node_status_changed",
+        "workflow_node_decision_changed",
+        "workflow_node_rescheduled",
       ],
       required: true,
       index: true,
@@ -55,6 +75,7 @@ const activityLogSchema = new Schema(
         "pricing_tier",
         "pricing_package",
         "meeting",
+        "task",
       ],
       required: true,
       index: true,
@@ -73,6 +94,7 @@ export type ActivityLogDocument = InferSchemaType<typeof activityLogSchema>;
 
 const existingActivityLogModel = models.ActivityLog;
 const existingActionEnum = existingActivityLogModel?.schema.path("action")?.options?.enum;
+const existingEntityEnum = existingActivityLogModel?.schema.path("entityType")?.options?.enum;
 
 // In dev HMR, an older cached model can predate the audit_*/blueprint_*/
 // proposal_viewed/proposal_rejected/pricing-catalog/meeting_* actions.
@@ -85,7 +107,26 @@ if (
     !existingActionEnum.includes("dashboard_event_received") ||
     !existingActionEnum.includes("pricing_package_changed") ||
     !existingActionEnum.includes("meeting_booked") ||
-    !existingActionEnum.includes("blueprint_finalized"))
+    !existingActionEnum.includes("blueprint_finalized") ||
+    !existingActionEnum.includes("subtask_dependency_added") ||
+    !existingActionEnum.includes("subtask_import_completed") ||
+    !existingActionEnum.includes("subtask_created") ||
+    !existingActionEnum.includes("subtask_assigned") ||
+    !existingActionEnum.includes("subtask_reassigned") ||
+    !existingActionEnum.includes("subtask_ready") ||
+    !existingActionEnum.includes("subtask_blocked") ||
+    !existingActionEnum.includes("subtask_completed") ||
+    !existingActionEnum.includes("subtask_due_approaching") ||
+    !existingActionEnum.includes("subtask_overdue") ||
+    !existingActionEnum.includes("subtask_comment_added") ||
+    !existingActionEnum.includes("subtask_comment_mention") ||
+    !existingActionEnum.includes("approval_requested") ||
+    !existingActionEnum.includes("approval_accepted") ||
+    !existingActionEnum.includes("approval_rejected") ||
+    !existingActionEnum.includes("workflow_changed") ||
+    !existingActionEnum.includes("workflow_node_status_changed") ||
+    !existingActionEnum.includes("workflow_node_rescheduled") ||
+    (Array.isArray(existingEntityEnum) && !existingEntityEnum.includes("task")))
 ) {
   delete models.ActivityLog;
 }

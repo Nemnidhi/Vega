@@ -1,15 +1,37 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TaskAnalyticsPanel } from "@/components/tasks/task-analytics-panel";
 
 type PopulatedUser = { _id: string; fullName: string; email: string; role: string };
 
 type TaskStatus = "todo" | "in_progress" | "done";
+type WorkflowTemplate = "custom" | "client_delivery" | "lead_to_delivery" | "marketing_campaign" | "n8n_automation";
+
+type SubTask = {
+  _id?: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  dueAt: string | null;
+  assignedToUserId: PopulatedUser | string | null;
+  sourceSheet?: string;
+  sourceRow?: number | null;
+  order: number;
+};
+
+type TaskFlowStep = {
+  key: string;
+  title: string;
+  status: TaskStatus;
+  order: number;
+};
 
 type Task = {
   _id: string;
@@ -20,6 +42,9 @@ type Task = {
   assignedToUserId: PopulatedUser | string;
   createdBy: PopulatedUser | string;
   kpiId: string | null;
+  workflowTemplate: WorkflowTemplate;
+  flowSteps: TaskFlowStep[];
+  subTasks: SubTask[];
 };
 
 type KpiPeriod = "weekly" | "monthly" | "quarterly" | "yearly";
@@ -35,6 +60,16 @@ type Kpi = {
   assignedRole: string | null;
   assignedUserId: PopulatedUser | string | null;
   progress: { completed: number; target: number; progress: number };
+};
+
+type TaskFormState = {
+  title: string;
+  description: string;
+  dueAt: string;
+  assignedToUserId: string;
+  kpiId: string;
+  workflowTemplate: WorkflowTemplate;
+  subTasks: SubTask[];
 };
 
 const ASSIGNABLE_ROLES = ["admin", "partner", "sales", "digital_marketing", "project_manager", "developer"] as const;
@@ -53,10 +88,134 @@ const STATUS_VARIANT: Record<TaskStatus, "neutral" | "accent" | "success"> = {
   done: "success",
 };
 
+const WORKFLOW_TEMPLATES: Record<
+  WorkflowTemplate,
+  { label: string; steps: string[]; subTasks: Array<{ title: string; description: string }> }
+> = {
+  custom: {
+    label: "Custom flow",
+    steps: ["Start", "Work", "Review", "Done"],
+    subTasks: [],
+  },
+  client_delivery: {
+    label: "Client delivery",
+    steps: ["Kickoff", "Production", "Client review", "Delivery"],
+    subTasks: [
+      { title: "Confirm scope and owner", description: "Lock expected output, assignee, and due date." },
+      { title: "Prepare first draft", description: "Create the first working version for internal review." },
+      { title: "Client review follow-up", description: "Collect comments and update the delivery checklist." },
+      { title: "Final delivery handover", description: "Share the final asset and close the loop." },
+    ],
+  },
+  lead_to_delivery: {
+    label: "Lead to delivery",
+    steps: ["Lead intake", "Proposal", "Onboarding", "Execution"],
+    subTasks: [
+      { title: "Qualify requirement", description: "Capture budget, timeline, decision maker, and fit." },
+      { title: "Send proposal", description: "Prepare pricing and scope for the client." },
+      { title: "Complete onboarding", description: "Collect credentials, assets, and approvals." },
+      { title: "Start execution", description: "Assign the delivery owner and first milestone." },
+    ],
+  },
+  marketing_campaign: {
+    label: "Marketing campaign",
+    steps: ["Plan", "Create", "Launch", "Optimize"],
+    subTasks: [
+      { title: "Campaign brief", description: "Define audience, offer, channel, and budget." },
+      { title: "Creative and copy", description: "Prepare campaign assets and approval notes." },
+      { title: "Launch checklist", description: "Verify tracking, targeting, and publish settings." },
+      { title: "Performance review", description: "Check early results and record next actions." },
+    ],
+  },
+  n8n_automation: {
+    label: "n8n style automation",
+    steps: ["Trigger", "Transform", "Action", "Notify"],
+    subTasks: [
+      { title: "Define trigger event", description: "Decide what starts the flow and required payload fields." },
+      { title: "Map data fields", description: "Normalize incoming values before the action nodes." },
+      { title: "Execute action node", description: "Create or update the target record." },
+      { title: "Notify owner", description: "Send status to the responsible user or channel." },
+    ],
+  },
+};
+
 function displayName(user: PopulatedUser | string | null | undefined) {
   if (!user) return "Unassigned";
   if (typeof user === "string") return user;
   return user.fullName || user.email;
+}
+
+function userIdOf(user: PopulatedUser | string | null | undefined) {
+  if (!user) return "";
+  return typeof user === "string" ? user : user._id;
+}
+
+function normalizeKey(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function findCell(row: Record<string, unknown>, aliases: string[]) {
+  const wanted = new Set(aliases.map(normalizeKey));
+  const match = Object.entries(row).find(([key]) => wanted.has(normalizeKey(key)));
+  return match ? match[1] : "";
+}
+
+function cellToString(value: unknown) {
+  if (value === null || value === undefined) return "";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).trim();
+}
+
+function parseDateInput(value: unknown) {
+  if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return toDateKey(value);
+  if (typeof value === "number") {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    excelEpoch.setUTCDate(excelEpoch.getUTCDate() + value);
+    return excelEpoch.toISOString().slice(0, 10);
+  }
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? "" : toDateKey(parsed);
+}
+
+function buildFlowSteps(template: WorkflowTemplate) {
+  return WORKFLOW_TEMPLATES[template].steps.map((title, index) => ({
+    key: `${template}-${index + 1}`,
+    title,
+    status: "todo" as TaskStatus,
+    order: index,
+  }));
+}
+
+function buildTemplateSubTasks(template: WorkflowTemplate, assignedToUserId: string) {
+  return WORKFLOW_TEMPLATES[template].subTasks.map((subTask, index) => ({
+    title: subTask.title,
+    description: subTask.description,
+    status: "todo" as TaskStatus,
+    dueAt: "",
+    assignedToUserId,
+    sourceSheet: "",
+    sourceRow: null,
+    order: index,
+  }));
+}
+
+function serializeSubTasks(subTasks: SubTask[]) {
+  return subTasks
+    .filter((subTask) => subTask.title.trim())
+    .map((subTask, index) => ({
+      _id: subTask._id,
+      title: subTask.title.trim(),
+      description: subTask.description?.trim() || undefined,
+      status: subTask.status,
+      dueAt: subTask.dueAt || undefined,
+      assignedToUserId: userIdOf(subTask.assignedToUserId) || undefined,
+      sourceSheet: subTask.sourceSheet || undefined,
+      sourceRow: subTask.sourceRow || undefined,
+      order: index,
+    }));
 }
 
 function toDateKey(date: Date) {
@@ -117,7 +276,7 @@ export function TasksView({
   initialKpis,
   assignableUsers,
 }: TasksViewProps) {
-  const [activeTab, setActiveTab] = useState<"tasks" | "calendar" | "kpis">("tasks");
+  const [activeTab, setActiveTab] = useState<"tasks" | "calendar" | "analytics" | "kpis">("tasks");
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [kpis, setKpis] = useState<Kpi[]>(initialKpis);
   const [error, setError] = useState("");
@@ -126,14 +285,17 @@ export function TasksView({
   const canAssignOthers = ASSIGN_OTHERS_ROLES.includes(currentUserRole);
   const canManageKpis = MANAGE_KPI_ROLES.includes(currentUserRole);
 
-  const [taskForm, setTaskForm] = useState({
+  const [taskForm, setTaskForm] = useState<TaskFormState>({
     title: "",
     description: "",
     dueAt: "",
     assignedToUserId: currentUserId,
     kpiId: "",
+    workflowTemplate: "n8n_automation" as WorkflowTemplate,
+    subTasks: buildTemplateSubTasks("n8n_automation", currentUserId),
   });
   const [creatingTask, setCreatingTask] = useState(false);
+  const [uploadSummary, setUploadSummary] = useState("");
 
   const [kpiForm, setKpiForm] = useState({
     title: "",
@@ -164,6 +326,114 @@ export function TasksView({
   const monthGrid = useMemo(() => buildMonthGrid(visibleMonth, tasksByDateKey), [visibleMonth, tasksByDateKey]);
   const undatedTasks = tasks.filter((task) => !task.dueAt && task.status !== "done");
 
+  function applyWorkflowTemplate(template: WorkflowTemplate) {
+    setTaskForm((form) => ({
+      ...form,
+      workflowTemplate: template,
+      subTasks:
+        template === "custom" ? form.subTasks : buildTemplateSubTasks(template, form.assignedToUserId || currentUserId),
+    }));
+    setUploadSummary("");
+  }
+
+  function addManualSubTask() {
+    setTaskForm((form) => ({
+      ...form,
+      subTasks: [
+        ...form.subTasks,
+        {
+          title: "",
+          description: "",
+          status: "todo",
+          dueAt: "",
+          assignedToUserId: form.assignedToUserId || currentUserId,
+          sourceSheet: "",
+          sourceRow: null,
+          order: form.subTasks.length,
+        },
+      ],
+    }));
+  }
+
+  function updateDraftSubTask(index: number, patch: Partial<SubTask>) {
+    setTaskForm((form) => ({
+      ...form,
+      subTasks: form.subTasks.map((subTask, currentIndex) =>
+        currentIndex === index ? { ...subTask, ...patch } : subTask,
+      ),
+    }));
+  }
+
+  function removeDraftSubTask(index: number) {
+    setTaskForm((form) => ({
+      ...form,
+      subTasks: form.subTasks.filter((_, currentIndex) => currentIndex !== index),
+    }));
+  }
+
+  async function handleExcelUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setError("");
+    setUploadSummary("Reading workbook...");
+    try {
+      const xlsx = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const workbook = xlsx.read(buffer, { type: "array", cellDates: true });
+      const imported: SubTask[] = [];
+
+      for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        const rows = xlsx.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
+        rows.forEach((row, rowIndex) => {
+          const title = cellToString(
+            findCell(row, ["sub task", "subtask", "task", "task title", "title", "name", "activity", "step"]),
+          );
+          if (!title) return;
+
+          const assigneeText = cellToString(findCell(row, ["assignee", "assigned to", "owner", "email"])).toLowerCase();
+          const matchedUser = assignableUsers.find((user) => {
+            const name = user.fullName.toLowerCase();
+            const email = user.email.toLowerCase();
+            return assigneeText && (assigneeText === email || assigneeText === name || email.includes(assigneeText));
+          });
+
+          imported.push({
+            title,
+            description: cellToString(findCell(row, ["description", "details", "notes", "remark", "remarks"])),
+            status: "todo",
+            dueAt: parseDateInput(findCell(row, ["due", "due date", "deadline", "date"])),
+            assignedToUserId: matchedUser?._id ?? taskForm.assignedToUserId,
+            sourceSheet: sheetName,
+            sourceRow: rowIndex + 2,
+            order: imported.length,
+          });
+        });
+      }
+
+      if (!imported.length) {
+        setUploadSummary("");
+        setError("No subtasks found. Use a column like Sub Task, Task, Title, Activity, or Step.");
+        return;
+      }
+
+      setTaskForm((form) => ({
+        ...form,
+        subTasks: imported.map((subTask, index) => ({
+          ...subTask,
+          assignedToUserId: subTask.assignedToUserId || form.assignedToUserId || currentUserId,
+          order: index,
+        })),
+      }));
+      setUploadSummary(`Imported ${imported.length} subtasks from ${file.name}.`);
+    } catch (nextError) {
+      setUploadSummary("");
+      setError(nextError instanceof Error ? nextError.message : "Could not read the Excel file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   async function handleCreateTask(event: React.FormEvent) {
     event.preventDefault();
     if (!taskForm.title.trim()) {
@@ -181,10 +451,22 @@ export function TasksView({
           dueAt: taskForm.dueAt || undefined,
           assignedToUserId: canAssignOthers ? taskForm.assignedToUserId : undefined,
           kpiId: taskForm.kpiId || undefined,
+          workflowTemplate: taskForm.workflowTemplate,
+          flowSteps: buildFlowSteps(taskForm.workflowTemplate),
+          subTasks: serializeSubTasks(taskForm.subTasks),
         }),
       });
       setTasks((current) => [created, ...current]);
-      setTaskForm({ title: "", description: "", dueAt: "", assignedToUserId: currentUserId, kpiId: "" });
+      setTaskForm({
+        title: "",
+        description: "",
+        dueAt: "",
+        assignedToUserId: currentUserId,
+        kpiId: "",
+        workflowTemplate: "n8n_automation",
+        subTasks: buildTemplateSubTasks("n8n_automation", currentUserId),
+      });
+      setUploadSummary("");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Could not create task.");
     } finally {
@@ -210,6 +492,27 @@ export function TasksView({
       }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Could not update task.");
+    } finally {
+      setBusyTaskId("");
+    }
+  }
+
+  async function updateSubTaskStatus(task: Task, targetSubTask: SubTask, status: TaskStatus) {
+    setBusyTaskId(task._id);
+    setError("");
+    try {
+      const nextSubTasks = task.subTasks.map((subTask, index) => (
+        (targetSubTask._id && subTask._id === targetSubTask._id) || (!targetSubTask._id && subTask.order === targetSubTask.order)
+          ? { ...subTask, status }
+          : { ...subTask, order: subTask.order ?? index }
+      ));
+      const updated = await callApi<Task>(`/api/tasks/${task._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ subTasks: serializeSubTasks(nextSubTasks) }),
+      });
+      setTasks((current) => current.map((item) => (item._id === task._id ? updated : item)));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not update subtask.");
     } finally {
       setBusyTaskId("");
     }
@@ -275,7 +578,7 @@ export function TasksView({
   return (
     <div className="space-y-6">
       <div className="flex gap-2 border-b border-border/70">
-        {(["tasks", "calendar", "kpis"] as const).map((tab) => (
+        {(["tasks", "calendar", "analytics", "kpis"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -325,7 +628,16 @@ export function TasksView({
                 {canAssignOthers ? (
                   <select
                     value={taskForm.assignedToUserId}
-                    onChange={(event) => setTaskForm((form) => ({ ...form, assignedToUserId: event.target.value }))}
+                    onChange={(event) =>
+                      setTaskForm((form) => ({
+                        ...form,
+                        assignedToUserId: event.target.value,
+                        subTasks: form.subTasks.map((subTask) => ({
+                          ...subTask,
+                          assignedToUserId: userIdOf(subTask.assignedToUserId) || event.target.value,
+                        })),
+                      }))
+                    }
                     className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
                   >
                     <option value={currentUserId}>Myself</option>
@@ -335,9 +647,20 @@ export function TasksView({
                         <option key={user._id} value={user._id}>
                           {user.fullName} ({user.role})
                         </option>
-                      ))}
+                    ))}
                   </select>
                 ) : null}
+                <select
+                  value={taskForm.workflowTemplate}
+                  onChange={(event) => applyWorkflowTemplate(event.target.value as WorkflowTemplate)}
+                  className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                >
+                  {(Object.keys(WORKFLOW_TEMPLATES) as WorkflowTemplate[]).map((template) => (
+                    <option key={template} value={template}>
+                      {WORKFLOW_TEMPLATES[template].label}
+                    </option>
+                  ))}
+                </select>
                 {kpis.length > 0 ? (
                   <select
                     value={taskForm.kpiId}
@@ -352,8 +675,83 @@ export function TasksView({
                     ))}
                   </select>
                 ) : null}
+                <div className="sm:col-span-2 rounded-lg border border-border/80 bg-surface-soft/50 p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Subtasks</p>
+                      {uploadSummary ? <p className="text-xs text-success">{uploadSummary}</p> : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground shadow-sm hover:border-accent/40 hover:bg-surface-soft">
+                        Upload Excel
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={handleExcelUpload}
+                          className="sr-only"
+                        />
+                      </label>
+                      <Button type="button" variant="secondary" size="sm" onClick={addManualSubTask}>
+                        Add subtask
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {buildFlowSteps(taskForm.workflowTemplate).map((step, index, steps) => (
+                      <div key={step.key} className="flex items-center gap-2">
+                        <span className="rounded-md border border-accent/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-accent-strong">
+                          {step.title}
+                        </span>
+                        {index < steps.length - 1 ? <span className="text-xs text-muted-foreground">-&gt;</span> : null}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {taskForm.subTasks.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Add manual subtasks or upload an Excel sheet.</p>
+                    ) : null}
+                    {taskForm.subTasks.map((subTask, index) => (
+                      <div key={`${subTask.sourceSheet ?? "manual"}-${subTask.sourceRow ?? index}`} className="grid gap-2 rounded-lg border border-border/70 bg-white p-2 sm:grid-cols-[1.2fr_1.4fr_0.8fr_1fr_auto]">
+                        <Input
+                          placeholder="Subtask title"
+                          value={subTask.title}
+                          onChange={(event) => updateDraftSubTask(index, { title: event.target.value })}
+                        />
+                        <Input
+                          placeholder="Description"
+                          value={subTask.description}
+                          onChange={(event) => updateDraftSubTask(index, { description: event.target.value })}
+                        />
+                        <Input
+                          type="date"
+                          value={subTask.dueAt ?? ""}
+                          onChange={(event) => updateDraftSubTask(index, { dueAt: event.target.value })}
+                        />
+                        {canAssignOthers ? (
+                          <select
+                            value={userIdOf(subTask.assignedToUserId) || taskForm.assignedToUserId}
+                            onChange={(event) => updateDraftSubTask(index, { assignedToUserId: event.target.value })}
+                            className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                          >
+                            <option value={taskForm.assignedToUserId}>Parent assignee</option>
+                            {assignableUsers.map((user) => (
+                              <option key={user._id} value={user._id}>
+                                {user.fullName}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                        <Button type="button" variant="secondary" size="sm" onClick={() => removeDraftSubTask(index)}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <Button type="submit" disabled={creatingTask} className="sm:col-span-2 justify-self-start">
-                  {creatingTask ? "Adding..." : "Add task"}
+                  {creatingTask ? "Adding..." : "Create task flow"}
                 </Button>
               </form>
             </CardContent>
@@ -382,8 +780,89 @@ export function TasksView({
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       Assigned to {displayName(task.assignedToUserId)}
                     </p>
+                    {task.flowSteps?.length ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {task.flowSteps
+                          .slice()
+                          .sort((first, second) => first.order - second.order)
+                          .map((step, index, steps) => (
+                            <div key={step.key} className="flex items-center gap-1.5">
+                              <span className="rounded-md border border-border bg-surface-soft px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                                {step.title}
+                              </span>
+                              {index < steps.length - 1 ? (
+                                <span className="text-[10px] text-muted-foreground">-&gt;</span>
+                              ) : null}
+                            </div>
+                          ))}
+                      </div>
+                    ) : null}
+                    {task.subTasks?.length ? (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                          <span>
+                            {task.subTasks.filter((subTask) => subTask.status === "done").length} / {task.subTasks.length} subtasks done
+                          </span>
+                          <span>{WORKFLOW_TEMPLATES[task.workflowTemplate ?? "custom"]?.label ?? "Custom flow"}</span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted/40">
+                          <div
+                            className="h-full rounded-full bg-success"
+                            style={{
+                              width: `${Math.round(
+                                (task.subTasks.filter((subTask) => subTask.status === "done").length / task.subTasks.length) * 100,
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          {task.subTasks
+                            .slice()
+                            .sort((first, second) => first.order - second.order)
+                            .map((subTask, index) => (
+                              <div
+                                key={subTask._id ?? `${task._id}-${index}`}
+                                className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-soft/45 p-2 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`text-xs font-semibold ${subTask.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                      {subTask.title}
+                                    </span>
+                                    <Badge variant={STATUS_VARIANT[subTask.status]}>{STATUS_LABEL[subTask.status]}</Badge>
+                                    {subTask.dueAt ? (
+                                      <Badge variant="neutral">Due {new Date(subTask.dueAt).toLocaleDateString()}</Badge>
+                                    ) : null}
+                                  </div>
+                                  {subTask.description ? (
+                                    <p className="mt-0.5 text-[11px] text-muted-foreground">{subTask.description}</p>
+                                  ) : null}
+                                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                    Owner {displayName(subTask.assignedToUserId)}
+                                    {subTask.sourceSheet ? ` - ${subTask.sourceSheet} row ${subTask.sourceRow ?? ""}` : ""}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={busyTaskId === task._id}
+                                  onClick={() => updateSubTaskStatus(task, subTask, subTask.status === "done" ? "todo" : "done")}
+                                >
+                                  {subTask.status === "done" ? "Reopen" : "Done"}
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 gap-2">
+                    <Link
+                      href={`/tasks/${task._id}`}
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground shadow-sm transition-all duration-150 hover:border-accent/40 hover:bg-surface-soft"
+                    >
+                      Open
+                    </Link>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -465,6 +944,14 @@ export function TasksView({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {activeTab === "analytics" && (
+        <TaskAnalyticsPanel
+          assignableUsers={assignableUsers}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+        />
       )}
 
       {activeTab === "kpis" && (

@@ -85,8 +85,6 @@ export const permissionRules = {
   // pricing off a spreadsheet into an editable admin UI.
   managePricing: ["admin", "partner", "digital_marketing"] as UserRole[],
   manageUsers: ["admin"] as UserRole[],
-  manageProjectAssignments: ["admin"] as UserRole[],
-  accessProjectAssignments: ["admin", "developer"] as UserRole[],
   createChangeOrders: ["admin", "partner", "project_manager", "sales", "digital_marketing"] as UserRole[],
   accessClientVault: ["admin", "partner", "project_manager", "client"] as UserRole[],
   // Anyone non-client can create/complete their own tasks (enforced in the route handler, not

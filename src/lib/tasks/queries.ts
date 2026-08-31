@@ -3,6 +3,8 @@ import { KpiModel, TaskModel, UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { computeKpiProgressBulk } from "@/lib/kpi/progress";
 import { permissionRules } from "@/lib/auth/permissions";
+import { getDependencyMap } from "@/lib/tasks/dependencies";
+import { canAccessTask, populateTaskRelations } from "@/lib/tasks/subtasks";
 import type { UserRole } from "@/types/user";
 
 function canAssignOthers(role: UserRole) {
@@ -15,11 +17,12 @@ function canManageKpis(role: UserRole) {
 
 export async function getTasksForUser(userId: string) {
   await connectToDatabase();
-  const tasks = await TaskModel.find({ assignedToUserId: userId })
+  const tasks = await TaskModel.find({ assignedToUserId: userId, parentTaskId: null })
     .sort({ dueAt: 1, createdAt: -1 })
     .limit(500)
     .populate("assignedToUserId", "fullName email role")
     .populate("createdBy", "fullName email role")
+    .populate("subTasks.assignedToUserId", "fullName email role")
     .lean();
   return serializeForJson(tasks);
 }
@@ -59,4 +62,30 @@ export async function getAssignableUsers(role: UserRole) {
     .sort({ fullName: 1 })
     .lean();
   return serializeForJson(users);
+}
+
+export async function getTaskDetailForUser(taskId: string, userId: string, role: UserRole) {
+  await connectToDatabase();
+  const task = await populateTaskRelations(
+    TaskModel.findOne({ _id: taskId, parentTaskId: null })
+      .populate("subTasks.assignedToUserId", "fullName email role")
+      .populate("leadId", "title status")
+      .populate("clientId", "businessName contactName email"),
+  ).lean();
+
+  if (!task || !canAccessTask({ userId, role }, task)) {
+    return null;
+  }
+
+  const subtasks = await populateTaskRelations(
+    TaskModel.find({ parentTaskId: taskId }).sort({ order: 1, createdAt: 1 }),
+  ).lean();
+  const dependencyMap = await getDependencyMap(taskId);
+  const subtasksWithDependencies = subtasks.map((subtask) => ({
+    ...subtask,
+    blockedBy: dependencyMap.bySuccessor.get(String(subtask._id)) ?? [],
+    blocking: dependencyMap.byPredecessor.get(String(subtask._id)) ?? [],
+  }));
+
+  return serializeForJson({ task, subtasks: subtasksWithDependencies, dependencies: dependencyMap.dependencies });
 }

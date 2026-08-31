@@ -24,7 +24,7 @@ export const COMPANY = {
   email: "info@nemnidhi.com",
 } as const;
 
-export const WHO_WE_ARE = `This audit was run by ${COMPANY.legalName}, a software studio in Indore that builds and manages digital systems - websites, CRM, and automation - for growing businesses, not one-off projects. A person reviewed this report before it reached you; nothing here is auto-generated spam.`;
+export const WHO_WE_ARE = `This audit was run by ${COMPANY.legalName}, a software studio in Indore that builds and manages digital systems - websites, CRM, and automation - for growing businesses, not one-off jobs. A person reviewed this report before it reached you; nothing here is auto-generated spam.`;
 
 export const PRIVACY_NOTE =
   "Everything in this report - website status, business listings, and public social media presence - was gathered from publicly available sources only. No private data, messages, or account information was accessed.";

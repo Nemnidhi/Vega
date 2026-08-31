@@ -3,19 +3,17 @@ import {
   ActivityLogModel,
   ChangeOrderModel,
   ClientModel,
+  ClientQueryModel,
   LeadModel,
-  ProjectModel,
   PasswordChangeRequestModel,
   PricingComponentModel,
   ProposalModel,
   ScopeManifestModel,
   UserModel,
 } from "@/models";
-import { Types } from "mongoose";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { computeAccountHealth } from "@/lib/clients/health";
-import type { UserRole } from "@/types/user";
 
 const leadPipelineStages = [
   "new",
@@ -281,92 +279,15 @@ export async function getPasswordChangeRequests() {
   );
 }
 
-export async function getDevelopers() {
+export async function getClientQueries(options?: { limit?: number }) {
   await connectToDatabase();
-  const developers = await UserModel.find({ role: "developer", status: "active" })
-    .sort({ fullName: 1 })
-    .select("fullName email role status")
+  const limit = clampLimit(options?.limit, 200, 500);
+  const queries = await ClientQueryModel.find({})
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate("raisedBy", "fullName email")
     .lean();
-  return serializeForJson(developers);
+
+  return serializeForJson(queries);
 }
 
-type ProjectPopulationQuery<TSelf> = {
-  select(fields: string): TSelf;
-  populate(path: string, select: string): TSelf;
-};
-
-function applyProjectPopulation<T extends ProjectPopulationQuery<T>>(
-  query: T,
-  includeHistory: boolean,
-) {
-  let populated = query
-    .select("title description status assignedDeveloperId createdBy tasks updatedAt")
-    .populate("assignedDeveloperId", "fullName email role status")
-    .populate("createdBy", "fullName email role")
-    .populate("tasks.assignedDeveloperId", "fullName email role status")
-    .populate("tasks.completedByDeveloperId", "fullName email role status")
-    .populate("tasks.createdBy", "fullName email role");
-
-  if (includeHistory) {
-    populated = populated
-      .populate("tasks.history.actorId", "fullName email role status")
-      .populate("tasks.history.assignedDeveloperId", "fullName email role status");
-  }
-
-  return populated;
-}
-
-function buildProjectAccessQuery(actor: { role: UserRole; userId: string }) {
-  if (actor.role === "developer") {
-    return {
-      $or: [
-        { assignedDeveloperId: actor.userId },
-        { "tasks.assignedDeveloperId": actor.userId },
-      ],
-    };
-  }
-
-  return {};
-}
-
-export async function getProjectsForActor(
-  actor: { role: UserRole; userId: string },
-  options?: { includeHistory?: boolean; limit?: number },
-) {
-  await connectToDatabase();
-  const includeHistory = options?.includeHistory ?? true;
-  const limit = Math.min(Math.max(options?.limit ?? 150, 1), 300);
-  const query = buildProjectAccessQuery(actor);
-
-  const projects = await applyProjectPopulation(
-    ProjectModel.find(query).sort({ updatedAt: -1 }).limit(limit),
-    includeHistory,
-  ).lean();
-
-  return serializeForJson(projects);
-}
-
-export async function getProjectByIdForActor(
-  actor: { role: UserRole; userId: string },
-  projectId: string,
-  options?: { includeHistory?: boolean },
-) {
-  await connectToDatabase();
-  if (!Types.ObjectId.isValid(projectId)) {
-    return null;
-  }
-
-  const includeHistory = options?.includeHistory ?? true;
-  const accessQuery = buildProjectAccessQuery(actor);
-  const query = {
-    _id: projectId,
-    ...accessQuery,
-  };
-
-  const project = await applyProjectPopulation(ProjectModel.findOne(query), includeHistory).lean();
-  if (!project) {
-    return null;
-  }
-
-  return serializeForJson(project);
-}

@@ -70,7 +70,7 @@ export function ClientSignupForm() {
       <CardHeader className="space-y-1 pb-4 sm:pb-6">
         <CardTitle className="text-xl sm:text-2xl">Client Sign Up</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">
-          Create your client account and share complete Nemnidhi project details in one flow.
+          Create your client account and share complete Nemnidhi requirement details in one flow.
         </p>
       </CardHeader>
       <CardContent>
