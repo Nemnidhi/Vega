@@ -1,5 +1,6 @@
 import { ActivityLogModel, TaskDependencyModel, TaskModel } from "@/models";
 import { isDependencyBranchActive, isDependencySatisfied } from "@/lib/tasks/dependencies";
+import { isCompletedStatus, normalizeTaskStatus } from "@/lib/tasks/status";
 import { serializeForJson } from "@/lib/utils/serialize";
 
 type ExecutionState = "completed" | "active" | "ready" | "blocked" | "overdue" | "waiting" | "upcoming";
@@ -46,9 +47,13 @@ export function calculateExecutionState(
   subtask: LeanSubtask,
   incoming: LeanDependency[],
 ): { state: ExecutionState; blockedBy: LeanDependency[]; waitingOnInactiveBranch: boolean } {
-  if (subtask.status === "COMPLETED") return { state: "completed", blockedBy: [], waitingOnInactiveBranch: false };
-  if (subtask.status === "IN_PROGRESS" || subtask.status === "REVIEW") return { state: "active", blockedBy: [], waitingOnInactiveBranch: false };
-  if (subtask.status === "WAITING") return { state: "waiting", blockedBy: [], waitingOnInactiveBranch: false };
+  const status = normalizeTaskStatus(subtask.status);
+
+  if (status === "COMPLETED") return { state: "completed", blockedBy: [], waitingOnInactiveBranch: false };
+  if (status === "IN_PROGRESS" || status === "REVIEW" || status === "CLIENT_REVIEW") {
+    return { state: "active", blockedBy: [], waitingOnInactiveBranch: false };
+  }
+  if (status === "WAITING") return { state: "waiting", blockedBy: [], waitingOnInactiveBranch: false };
 
   const activeIncoming = incoming.filter((dependency) =>
     isDependencyBranchActive(dependency, asSubtask(dependency.predecessorSubtaskId)),
@@ -59,11 +64,11 @@ export function calculateExecutionState(
     return !isDependencySatisfied(predecessor?.status, dependency.dependencyType);
   });
 
-  if (blockedBy.length > 0 || subtask.status === "BLOCKED") return { state: "blocked", blockedBy, waitingOnInactiveBranch: false };
+  if (blockedBy.length > 0 || status === "BLOCKED") return { state: "blocked", blockedBy, waitingOnInactiveBranch: false };
   if (isPast(subtask.dueAt)) return { state: "overdue", blockedBy: [], waitingOnInactiveBranch: false };
   if (activeIncoming.length > 0) return { state: "ready", blockedBy: [], waitingOnInactiveBranch: false };
   if (inactiveIncoming.length > 0) return { state: "upcoming", blockedBy: [], waitingOnInactiveBranch: true };
-  if (subtask.status === "READY") return { state: "ready", blockedBy: [], waitingOnInactiveBranch: false };
+  if (status === "READY") return { state: "ready", blockedBy: [], waitingOnInactiveBranch: false };
   return { state: "upcoming", blockedBy: [], waitingOnInactiveBranch: false };
 }
 
@@ -109,7 +114,7 @@ export async function getWorkflowExecutionSummary(parentTaskId: string) {
   });
 
   const total = nodes.length;
-  const completed = nodes.filter((node) => node.status === "COMPLETED").length;
+  const completed = nodes.filter((node) => isCompletedStatus(node.status)).length;
   const taskProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
   const blockedTasks = nodes.filter((node) => node.executionState === "blocked");
   const overdueTasks = nodes.filter((node) => node.executionState === "overdue");
@@ -142,7 +147,9 @@ export async function getWorkflowExecutionSummary(parentTaskId: string) {
 export async function syncParentTaskProgress(parentTaskId: string) {
   const subtasks = await TaskModel.find({ parentTaskId }).select("status").lean();
   const total = subtasks.length;
-  const completed = subtasks.filter((subtask) => subtask.status === "COMPLETED").length;
+  // Counts normalised status, so a parent whose children carry legacy `done` no longer
+  // computes 0% progress.
+  const completed = subtasks.filter((subtask) => isCompletedStatus(subtask.status)).length;
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
   await TaskModel.updateOne({ _id: parentTaskId }, { $set: { progressPercent } });
   return { total, completed, progressPercent };

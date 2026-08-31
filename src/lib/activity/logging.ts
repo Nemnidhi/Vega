@@ -20,7 +20,8 @@ type LogInput = {
     | "pricing_tier"
     | "pricing_package"
     | "meeting"
-    | "task";
+    | "task"
+    | "project";
   entityId: string;
   details?: Record<string, unknown>;
   ipAddress?: string;

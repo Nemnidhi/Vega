@@ -10,9 +10,16 @@ export const advancedTaskStatusSchema = z.enum([
   "WAITING",
   "BLOCKED",
   "REVIEW",
+  "CLIENT_REVIEW",
   "COMPLETED",
   "CANCELLED",
 ]);
+
+/**
+ * Accepts both status generations, for routes that must keep taking the legacy lowercase values
+ * from existing clients. Normalise with `normalizeTaskStatus` before storing or comparing.
+ */
+export const anyTaskStatusSchema = z.union([taskStatusSchema, advancedTaskStatusSchema]);
 
 export const taskPrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
 export const taskDependencyTypeSchema = z.enum(["FINISH_TO_START", "START_TO_START", "FINISH_TO_FINISH"]);
@@ -46,31 +53,85 @@ export const taskFlowStepSchema = z.object({
   order: z.coerce.number().int().min(0).optional(),
 });
 
-export const createTaskSchema = z.object({
-  title: z.string().trim().min(3).max(200),
-  description: z.string().trim().max(2000).optional(),
-  dueAt: z.coerce.date().optional(),
-  assignedToUserId: objectIdSchema.optional(),
-  leadId: objectIdSchema.optional(),
-  clientId: objectIdSchema.optional(),
-  projectId: objectIdSchema.optional(),
-  kpiId: objectIdSchema.optional(),
-  workflowTemplate: workflowTemplateSchema.optional(),
-  flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
-  subTasks: z.array(subTaskSchema).max(300).optional(),
+export const createTaskSchema = z
+  .object({
+    title: z.string().trim().min(3).max(200),
+    description: z.string().trim().max(2000).optional(),
+    code: z.string().trim().min(2).max(80).optional(),
+    status: anyTaskStatusSchema.optional(),
+    priority: taskPrioritySchema.optional(),
+    startAt: z.coerce.date().nullable().optional(),
+    dueAt: z.coerce.date().nullable().optional(),
+    estimatedEffortHours: z.coerce.number().min(0).nullable().optional(),
+    progressPercent: z.coerce.number().min(0).max(100).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    stage: z.string().trim().max(120).optional(),
+    assignedToUserId: objectIdSchema.optional(),
+    leadId: objectIdSchema.optional(),
+    clientId: objectIdSchema.optional(),
+    projectId: objectIdSchema.optional(),
+    kpiId: objectIdSchema.optional(),
+    parentTaskId: objectIdSchema.optional(),
+    workflowTemplate: workflowTemplateSchema.optional(),
+    flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
+    /** @deprecated Send child tasks to /api/tasks/[id]/subtasks instead. Ignored on write. */
+    subTasks: z.array(subTaskSchema).max(300).optional(),
+  })
+  .refine((value) => !value.startAt || !value.dueAt || value.startAt <= value.dueAt, {
+    message: "Due date must be on or after the start date.",
+    path: ["dueAt"],
+  });
+
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(3).max(200).optional(),
+    description: z.string().trim().max(2000).optional(),
+    status: anyTaskStatusSchema.optional(),
+    priority: taskPrioritySchema.optional(),
+    startAt: z.coerce.date().nullable().optional(),
+    dueAt: z.coerce.date().nullable().optional(),
+    estimatedEffortHours: z.coerce.number().min(0).nullable().optional(),
+    actualEffortHours: z.coerce.number().min(0).nullable().optional(),
+    progressPercent: z.coerce.number().min(0).max(100).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    stage: z.string().trim().max(120).optional(),
+    assignedToUserId: objectIdSchema.optional(),
+    kpiId: objectIdSchema.nullable().optional(),
+    projectId: objectIdSchema.nullable().optional(),
+    leadId: objectIdSchema.nullable().optional(),
+    clientId: objectIdSchema.nullable().optional(),
+    parentTaskId: objectIdSchema.nullable().optional(),
+    workflowTemplate: workflowTemplateSchema.optional(),
+    flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
+    /** @deprecated Ignored on write - use the subtask routes. */
+    subTasks: z.array(subTaskSchema).max(300).optional(),
+  })
+  .refine((value) => !value.startAt || !value.dueAt || value.startAt <= value.dueAt, {
+    message: "Due date must be on or after the start date.",
+    path: ["dueAt"],
+  });
+
+export const duplicateTaskSchema = z.object({
+  title: z.string().trim().min(3).max(200).optional(),
+  includeChildren: z.coerce.boolean().default(true),
+  includeDependencies: z.coerce.boolean().default(true),
+  resetStatus: z.coerce.boolean().default(true),
 });
 
-export const updateTaskSchema = z.object({
-  title: z.string().trim().min(3).max(200).optional(),
-  description: z.string().trim().max(2000).optional(),
-  status: taskStatusSchema.optional(),
-  dueAt: z.coerce.date().nullable().optional(),
-  assignedToUserId: objectIdSchema.optional(),
-  kpiId: objectIdSchema.nullable().optional(),
-  projectId: objectIdSchema.nullable().optional(),
-  workflowTemplate: workflowTemplateSchema.optional(),
-  flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
-  subTasks: z.array(subTaskSchema).max(300).optional(),
+export const bulkUpdateTasksSchema = z.object({
+  taskIds: z.array(objectIdSchema).min(1).max(1000),
+  patch: z
+    .object({
+      status: anyTaskStatusSchema.optional(),
+      priority: taskPrioritySchema.optional(),
+      assignedToUserId: objectIdSchema.optional(),
+      dueAt: z.coerce.date().nullable().optional(),
+      stage: z.string().trim().max(120).optional(),
+      projectId: objectIdSchema.nullable().optional(),
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+      message: "At least one update field is required.",
+    }),
 });
 
 export const taskAttachmentSchema = z.object({
@@ -326,6 +387,7 @@ export const taskAnalyticsStatusSchema = z.enum([
   "WAITING",
   "BLOCKED",
   "REVIEW",
+  "CLIENT_REVIEW",
   "COMPLETED",
   "CANCELLED",
 ]);

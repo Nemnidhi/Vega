@@ -48,7 +48,19 @@ export type ActivityAction =
   | "workflow_changed"
   | "workflow_node_status_changed"
   | "workflow_node_decision_changed"
-  | "workflow_node_rescheduled";
+  | "workflow_node_rescheduled"
+  | "task_created"
+  | "task_updated"
+  | "task_assigned"
+  | "task_status_changed"
+  | "task_archived"
+  | "task_restored"
+  | "task_duplicated"
+  | "task_bulk_updated"
+  | "subtask_reordered"
+  | "project_created"
+  | "project_updated"
+  | "project_archived";
 
 export interface ActivityLog extends BaseDocument {
   action: ActivityAction;
@@ -67,7 +79,8 @@ export interface ActivityLog extends BaseDocument {
     | "pricing_tier"
     | "pricing_package"
     | "meeting"
-    | "task";
+    | "task"
+    | "project";
   entityId: ObjectId;
   details: Record<string, unknown>;
   ipAddress?: string;

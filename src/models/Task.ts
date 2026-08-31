@@ -1,5 +1,8 @@
 import { deleteModel, model, models, Schema, type InferSchemaType } from "mongoose";
 
+// Two generations of status values. The lowercase trio is legacy and must stay in the enum for
+// existing rows to keep loading; nothing writes it any more. Normalise with normalizeTaskStatus()
+// before comparing - see lib/tasks/status.ts.
 const taskStatusValues = [
   "todo",
   "in_progress",
@@ -10,6 +13,7 @@ const taskStatusValues = [
   "WAITING",
   "BLOCKED",
   "REVIEW",
+  "CLIENT_REVIEW",
   "COMPLETED",
   "CANCELLED",
 ] as const;
@@ -158,6 +162,8 @@ const taskSchema = new Schema(
     tags: { type: [String], default: [] },
     stage: { type: String, trim: true, maxlength: 120, default: "" },
     order: { type: Number, min: 0, default: 0, index: true },
+    archivedAt: { type: Date, default: null, index: true },
+    archivedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     workflowPositionX: { type: Number, default: null },
     workflowPositionY: { type: Number, default: null },
     workflowWidth: { type: Number, min: 180, max: 520, default: null },
@@ -188,6 +194,14 @@ const taskSchema = new Schema(
       type: [taskFlowStepSchema],
       default: [],
     },
+    /**
+     * @deprecated Legacy embedded subtasks. Read-only - nothing writes this any more.
+     *
+     * Rows created here were invisible to the Task Workspace, the dependency engine and the
+     * workflow canvas, because those all operate on child Task documents (`parentTaskId`).
+     * `scripts/migrate-embedded-subtasks.ts` moves surviving rows across. The path stays on the
+     * schema so historical documents keep loading until that migration is verified in production.
+     */
     subTasks: {
       type: [subTaskSchema],
       default: [],
@@ -201,6 +215,9 @@ const taskSchema = new Schema(
 taskSchema.index({ parentTaskId: 1, order: 1, createdAt: 1 });
 taskSchema.index({ parentTaskId: 1, status: 1, priority: 1 });
 taskSchema.index({ projectId: 1, parentTaskId: 1 });
+taskSchema.index({ projectId: 1, status: 1, dueAt: 1 });
+taskSchema.index({ assignedToUserId: 1, status: 1, dueAt: 1 });
+taskSchema.index({ parentTaskId: 1, workflowNodeType: 1 });
 taskSchema.index(
   { parentTaskId: 1, importFingerprint: 1 },
   { unique: true, partialFilterExpression: { importFingerprint: { $type: "string", $gt: "" } } },
@@ -211,7 +228,9 @@ export type TaskDocument = InferSchemaType<typeof taskSchema>;
 if (
   process.env.NODE_ENV !== "production" &&
   models.Task &&
-  (!models.Task.schema.path("subTasks") || !models.Task.schema.path("parentTaskId"))
+  (!models.Task.schema.path("subTasks") ||
+    !models.Task.schema.path("parentTaskId") ||
+    !models.Task.schema.path("archivedAt"))
 ) {
   deleteModel("Task");
 }

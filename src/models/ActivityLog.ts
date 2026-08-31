@@ -53,6 +53,18 @@ const activityLogSchema = new Schema(
         "workflow_node_status_changed",
         "workflow_node_decision_changed",
         "workflow_node_rescheduled",
+        "task_created",
+        "task_updated",
+        "task_assigned",
+        "task_status_changed",
+        "task_archived",
+        "task_restored",
+        "task_duplicated",
+        "task_bulk_updated",
+        "subtask_reordered",
+        "project_created",
+        "project_updated",
+        "project_archived",
       ],
       required: true,
       index: true,
@@ -76,6 +88,7 @@ const activityLogSchema = new Schema(
         "pricing_package",
         "meeting",
         "task",
+        "project",
       ],
       required: true,
       index: true,
@@ -89,6 +102,7 @@ const activityLogSchema = new Schema(
 );
 
 activityLogSchema.index({ createdAt: -1 });
+activityLogSchema.index({ entityType: 1, entityId: 1, createdAt: -1 });
 
 export type ActivityLogDocument = InferSchemaType<typeof activityLogSchema>;
 
@@ -126,7 +140,12 @@ if (
     !existingActionEnum.includes("workflow_changed") ||
     !existingActionEnum.includes("workflow_node_status_changed") ||
     !existingActionEnum.includes("workflow_node_rescheduled") ||
-    (Array.isArray(existingEntityEnum) && !existingEntityEnum.includes("task")))
+    !existingActionEnum.includes("task_created") ||
+    !existingActionEnum.includes("task_status_changed") ||
+    !existingActionEnum.includes("task_archived") ||
+    !existingActionEnum.includes("project_created") ||
+    (Array.isArray(existingEntityEnum) &&
+      (!existingEntityEnum.includes("task") || !existingEntityEnum.includes("project"))))
 ) {
   delete models.ActivityLog;
 }

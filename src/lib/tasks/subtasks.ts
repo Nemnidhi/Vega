@@ -1,7 +1,12 @@
-import { Types, type ClientSession } from "mongoose";
+import { Types } from "mongoose";
 import { assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { TaskModel } from "@/models";
 import type { UserRole } from "@/types/user";
+
+// Code generation and status handling moved into dedicated modules. Re-exported here so the many
+// existing call sites keep their import path.
+export { normalizeTaskCode, generateSubtaskCode, generateTaskCode } from "@/lib/tasks/codes";
+export { getCompletionFields, normalizeTaskStatus, isCompletedStatus, isClosedStatus } from "@/lib/tasks/status";
 
 export type TaskActor = {
   userId: string;
@@ -59,40 +64,6 @@ export function assertCanAssignSubtask(actor: TaskActor, assignedToUserId?: stri
   assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
 }
 
-export function normalizeTaskCode(value: string) {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-}
-
-export async function generateSubtaskCode(parentTaskId: string, requestedCode?: string, options?: { session?: ClientSession }) {
-  if (requestedCode) {
-    const code = normalizeTaskCode(requestedCode);
-    const existing = await TaskModel.exists({ code }).session(options?.session ?? null);
-    if (existing) {
-      throw new Error("Subtask code already exists.");
-    }
-    return code;
-  }
-
-  const parent = await TaskModel.findById(parentTaskId).select("code").session(options?.session ?? null).lean();
-  const parentCode = typeof parent?.code === "string" && parent.code ? parent.code : `TASK-${parentTaskId.slice(-6)}`;
-  const base = normalizeTaskCode(`${parentCode}-ST`);
-  const count = await TaskModel.countDocuments({ parentTaskId }).session(options?.session ?? null);
-
-  for (let offset = 1; offset <= 25; offset += 1) {
-    const code = `${base}-${String(count + offset).padStart(3, "0")}`;
-    const existing = await TaskModel.exists({ code }).session(options?.session ?? null);
-    if (!existing) return code;
-  }
-
-  return `${base}-${Date.now().toString(36).toUpperCase()}`;
-}
-
 export function normalizeAttachments(attachments: AttachmentInput[] | undefined, actor: TaskActor) {
   return (attachments ?? []).map((attachment) => ({
     ...(attachment._id ? { _id: new Types.ObjectId(attachment._id) } : {}),
@@ -127,18 +98,6 @@ export function normalizeChecklist(checklist: ChecklistInput[] | undefined, acto
       order: item.order ?? index,
     };
   });
-}
-
-export function getCompletionFields(status?: string, progressPercent?: number) {
-  if (status === "COMPLETED") {
-    return { completedAt: new Date(), progressPercent: 100 };
-  }
-
-  if (status === "CANCELLED") {
-    return { completedAt: null, progressPercent: progressPercent ?? 0 };
-  }
-
-  return { completedAt: null, progressPercent: progressPercent ?? 0 };
 }
 
 export function populateTaskRelations<TQuery extends { populate(path: string, select: string): TQuery }>(query: TQuery) {

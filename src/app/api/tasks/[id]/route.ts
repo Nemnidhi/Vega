@@ -3,9 +3,16 @@ import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/p
 import { objectIdSchema } from "@/lib/validation/common";
 import { updateTaskSchema } from "@/lib/validation/task";
 import { fail, handleApiError, ok } from "@/lib/api/responses";
-import { TaskModel } from "@/models";
+import { TaskDependencyModel, TaskModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
-import type { UserRole } from "@/types/user";
+import { logActivity } from "@/lib/activity/logging";
+import { getCompletionFields, normalizeTaskStatus } from "@/lib/tasks/status";
+import {
+  assertValidParent,
+  assertValidProject,
+  assertValidDateRange,
+  collectDescendantIds,
+} from "@/lib/tasks/hierarchy";
 
 type Params = Promise<{ id: string }>;
 
@@ -31,45 +38,29 @@ function normalizeFlowSteps(
   }));
 }
 
-function normalizeSubTasks(
-  subTasks:
-    | Array<{
-        _id?: string;
-        title: string;
-        description?: string;
-        status?: "todo" | "in_progress" | "done";
-        dueAt?: Date | null;
-        assignedToUserId?: string | null;
-        sourceSheet?: string;
-        sourceRow?: number | null;
-        order?: number;
-      }>
-    | undefined,
-) {
-  return (subTasks ?? []).map((subTask, index) => ({
-    ...(subTask._id ? { _id: subTask._id } : {}),
-    title: subTask.title,
-    description: subTask.description ?? "",
-    status: subTask.status ?? "todo",
-    dueAt: subTask.dueAt ?? null,
-    assignedToUserId: subTask.assignedToUserId ?? null,
-    sourceSheet: subTask.sourceSheet ?? "",
-    sourceRow: subTask.sourceRow ?? null,
-    order: subTask.order ?? index,
-    completedAt: subTask.status === "done" ? new Date() : null,
-  }));
-}
+export async function GET(_request: Request, { params }: { params: Params }) {
+  try {
+    await connectToDatabase();
+    const actor = await getActorContext();
 
-function assertSubTaskAssignees(
-  actor: { userId: string; role: UserRole },
-  subTasks: Array<{ assignedToUserId?: string | null }> | undefined,
-) {
-  if (!subTasks?.length) return;
-  const assignsSomeoneElse = subTasks.some(
-    (subTask) => subTask.assignedToUserId && subTask.assignedToUserId !== actor.userId,
-  );
-  if (assignsSomeoneElse) {
-    assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
+    const { id } = await params;
+    const taskId = objectIdSchema.parse(id);
+
+    const task = await TaskModel.findById(taskId)
+      .populate("assignedToUserId", "fullName email role")
+      .populate("createdBy", "fullName email role")
+      .lean();
+
+    if (!task) {
+      return fail("Task not found.", 404);
+    }
+    if (!canModify(actor, task as { assignedToUserId: unknown; createdBy: unknown })) {
+      return fail("Forbidden", 403);
+    }
+
+    return ok(serializeForJson(task));
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -89,31 +80,97 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (!canModify(actor, task)) {
       return fail("Forbidden", 403);
     }
-    if (payload.assignedToUserId && payload.assignedToUserId !== String(task.assignedToUserId)) {
+
+    const previousStatus = normalizeTaskStatus(task.status);
+    const previousAssignee = String(task.assignedToUserId ?? "");
+
+    if (payload.assignedToUserId && payload.assignedToUserId !== previousAssignee) {
       assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
       task.assignedToUserId = payload.assignedToUserId as unknown as typeof task.assignedToUserId;
     }
-    assertSubTaskAssignees(actor, payload.subTasks);
+
+    if (payload.projectId !== undefined) {
+      await assertValidProject(payload.projectId);
+      task.projectId = payload.projectId as unknown as typeof task.projectId;
+    }
+
+    if (payload.parentTaskId !== undefined) {
+      if (payload.parentTaskId === null) {
+        task.parentTaskId = null as unknown as typeof task.parentTaskId;
+        task.rootTaskId = null as unknown as typeof task.rootTaskId;
+      } else {
+        const rootTaskId = await assertValidParent(taskId, payload.parentTaskId, {
+          projectId: payload.projectId !== undefined ? payload.projectId : (task.projectId ? String(task.projectId) : null),
+        });
+        task.parentTaskId = payload.parentTaskId as unknown as typeof task.parentTaskId;
+        task.rootTaskId = rootTaskId as unknown as typeof task.rootTaskId;
+      }
+    }
 
     if (payload.title !== undefined) task.title = payload.title;
     if (payload.description !== undefined) task.description = payload.description;
+    if (payload.priority !== undefined) task.priority = payload.priority;
+    if (payload.startAt !== undefined) task.startAt = payload.startAt;
     if (payload.dueAt !== undefined) task.dueAt = payload.dueAt;
+    if (payload.estimatedEffortHours !== undefined) task.estimatedEffortHours = payload.estimatedEffortHours;
+    if (payload.actualEffortHours !== undefined) task.actualEffortHours = payload.actualEffortHours;
+    if (payload.tags !== undefined) task.tags = payload.tags;
+    if (payload.stage !== undefined) task.stage = payload.stage;
     if (payload.kpiId !== undefined) task.kpiId = payload.kpiId as unknown as typeof task.kpiId;
-    if (payload.projectId !== undefined) task.projectId = payload.projectId as unknown as typeof task.projectId;
+    if (payload.leadId !== undefined) task.leadId = payload.leadId as unknown as typeof task.leadId;
+    if (payload.clientId !== undefined) task.clientId = payload.clientId as unknown as typeof task.clientId;
     if (payload.workflowTemplate !== undefined) task.workflowTemplate = payload.workflowTemplate;
     if (payload.flowSteps !== undefined) task.flowSteps = normalizeFlowSteps(payload.flowSteps) as typeof task.flowSteps;
-    if (payload.subTasks !== undefined) task.subTasks = normalizeSubTasks(payload.subTasks) as typeof task.subTasks;
+    // payload.subTasks is deliberately ignored - the embedded array is frozen. See models/Task.ts.
+
     if (payload.status !== undefined) {
-      task.status = payload.status;
-      task.completedAt = payload.status === "done" ? new Date() : null;
+      const status = normalizeTaskStatus(payload.status);
+      const completion = getCompletionFields(status, payload.progressPercent ?? task.progressPercent);
+      task.status = status;
+      task.completedAt = completion.completedAt;
+      task.progressPercent = completion.progressPercent;
+    } else if (payload.progressPercent !== undefined) {
+      task.progressPercent = payload.progressPercent;
     }
 
+    assertValidDateRange(task.startAt ?? null, task.dueAt ?? null);
+
     await task.save();
+
+    const nextStatus = normalizeTaskStatus(task.status);
+    const nextAssignee = String(task.assignedToUserId ?? "");
+
+    await logActivity({
+      action: "task_updated",
+      actorId: actor.userId,
+      entityType: "task",
+      entityId: String(task._id),
+      details: { code: task.code ?? null, fields: Object.keys(payload) },
+    });
+
+    if (nextStatus !== previousStatus) {
+      await logActivity({
+        action: "task_status_changed",
+        actorId: actor.userId,
+        entityType: "task",
+        entityId: String(task._id),
+        details: { code: task.code ?? null, from: previousStatus, to: nextStatus },
+      });
+    }
+
+    if (nextAssignee !== previousAssignee) {
+      await logActivity({
+        action: "task_assigned",
+        actorId: actor.userId,
+        entityType: "task",
+        entityId: String(task._id),
+        details: { code: task.code ?? null, from: previousAssignee || null, to: nextAssignee },
+      });
+    }
 
     const hydrated = await TaskModel.findById(task._id)
       .populate("assignedToUserId", "fullName email role")
       .populate("createdBy", "fullName email role")
-      .populate("subTasks.assignedToUserId", "fullName email role")
       .lean();
 
     return ok(serializeForJson(hydrated));
@@ -122,13 +179,21 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Params }) {
+/**
+ * Archive by default; `?hard=1` still deletes.
+ *
+ * The previous behaviour hard-deleted the task and every child, which orphaned TaskDependency
+ * rows, ImportJob.createdSubtaskIds and Notification references. Archiving keeps the graph
+ * consistent, and the hard path now cleans up the dependency edges it invalidates.
+ */
+export async function DELETE(request: Request, { params }: { params: Params }) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
 
     const { id } = await params;
     const taskId = objectIdSchema.parse(id);
+    const hardDelete = new URL(request.url).searchParams.get("hard") === "1";
 
     const task = await TaskModel.findById(taskId);
     if (!task) {
@@ -138,9 +203,48 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
       return fail("Forbidden", 403);
     }
 
-    await TaskModel.deleteMany({ parentTaskId: taskId });
-    await task.deleteOne();
-    return ok({ deleted: true });
+    const descendantIds = await collectDescendantIds(taskId);
+    const affectedIds = [taskId, ...descendantIds];
+
+    if (hardDelete) {
+      // Only roles that can assign work may destroy records outright.
+      assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
+
+      await TaskDependencyModel.deleteMany({
+        $or: [
+          { predecessorSubtaskId: { $in: affectedIds } },
+          { successorSubtaskId: { $in: affectedIds } },
+        ],
+      });
+      await TaskModel.deleteMany({ _id: { $in: descendantIds } });
+      await task.deleteOne();
+
+      await logActivity({
+        action: "task_archived",
+        actorId: actor.userId,
+        entityType: "task",
+        entityId: taskId,
+        details: { code: task.code ?? null, hardDeleted: true, descendants: descendantIds.length },
+      });
+
+      return ok({ deleted: true, descendants: descendantIds.length });
+    }
+
+    const archivedAt = new Date();
+    await TaskModel.updateMany(
+      { _id: { $in: affectedIds } },
+      { $set: { archivedAt, archivedBy: actor.userId } },
+    );
+
+    await logActivity({
+      action: "task_archived",
+      actorId: actor.userId,
+      entityType: "task",
+      entityId: taskId,
+      details: { code: task.code ?? null, hardDeleted: false, descendants: descendantIds.length },
+    });
+
+    return ok({ archived: true, descendants: descendantIds.length });
   } catch (error) {
     return handleApiError(error);
   }

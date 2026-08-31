@@ -1,6 +1,7 @@
 import type { ClientSession } from "mongoose";
 import { TaskDependencyModel, TaskModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
+import { normalizeTaskStatus } from "@/lib/tasks/status";
 
 export type DependencyType = "FINISH_TO_START" | "START_TO_START" | "FINISH_TO_FINISH";
 
@@ -31,11 +32,15 @@ function sameId(first: unknown, second: unknown) {
 }
 
 export function isDependencySatisfied(predecessorStatus?: string, dependencyType?: string) {
+  const status = normalizeTaskStatus(predecessorStatus);
+
+  // START_TO_START clears as soon as the predecessor is genuinely underway; the other types need
+  // it finished.
   if (dependencyType === "START_TO_START") {
-    return ["IN_PROGRESS", "REVIEW", "COMPLETED"].includes(predecessorStatus ?? "");
+    return ["IN_PROGRESS", "REVIEW", "CLIENT_REVIEW", "COMPLETED"].includes(status);
   }
 
-  return predecessorStatus === "COMPLETED";
+  return status === "COMPLETED";
 }
 
 function normalizeDecision(value?: string | null) {
