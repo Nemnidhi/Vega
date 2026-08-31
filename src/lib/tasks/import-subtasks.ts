@@ -87,11 +87,17 @@ const STATUS_ALIASES = new Map([
   ["WAITING", "WAITING"],
   ["BLOCKED", "BLOCKED"],
   ["REVIEW", "REVIEW"],
+  ["IN REVIEW", "REVIEW"],
+  ["CLIENT REVIEW", "CLIENT_REVIEW"],
+  ["CLIENTREVIEW", "CLIENT_REVIEW"],
   ["COMPLETED", "COMPLETED"],
   ["COMPLETE", "COMPLETED"],
   ["DONE", "COMPLETED"],
   ["CANCELLED", "CANCELLED"],
   ["CANCELED", "CANCELLED"],
+  // Legacy values, so a sheet exported from older Vega data re-imports cleanly.
+  ["TODO", "NOT_STARTED"],
+  ["BACKLOG", "NOT_STARTED"],
 ]);
 
 const PRIORITY_ALIASES = new Map([
@@ -101,6 +107,14 @@ const PRIORITY_ALIASES = new Map([
   ["HIGH", "HIGH"],
   ["URGENT", "URGENT"],
 ]);
+
+export function resolveImportStatus(value: string) {
+  return STATUS_ALIASES.get(normalizeToken(value).replace(/_/g, " ")) ?? "";
+}
+
+export function resolveImportPriority(value: string) {
+  return PRIORITY_ALIASES.get(normalizeToken(value).replace(/[^A-Z]/g, "")) ?? "";
+}
 
 export function getImportTemplateHeaders() {
   return TEMPLATE_HEADERS;
@@ -193,6 +207,52 @@ export function autoMapHeaders(headers: string[]): ImportMapping {
   return mapping;
 }
 
+/**
+ * Reject a file whose content does not match the extension it claims.
+ *
+ * SheetJS is deliberately permissive: handed arbitrary bytes with an .xlsx name it will often
+ * parse them as a single-column sheet rather than failing, so a corrupt or mislabelled upload
+ * surfaced as confusing row-level validation errors instead of "this is not a spreadsheet".
+ * Checking the container signature turns that into one clear rejection.
+ *
+ * Signatures: xlsx is a zip container (PK); xls is an OLE2 compound document
+ * (D0 CF 11 E0 A1 B1 1A E1). csv is plain text and has none, so it is only checked for the NUL
+ * bytes that indicate a binary file wearing a .csv name.
+ */
+function assertContentMatchesExtension(buffer: Buffer, ext: "xlsx" | "xls" | "csv") {
+  if (buffer.length === 0) {
+    throw new Error("Import file is empty.");
+  }
+
+  if (ext === "xlsx") {
+    const isZip =
+      buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      (buffer[2] === 0x03 || buffer[2] === 0x05 || buffer[2] === 0x07);
+    if (!isZip) {
+      throw new Error("File is not a valid .xlsx workbook.");
+    }
+    return;
+  }
+
+  if (ext === "xls") {
+    const ole = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+    const isOle = buffer.length >= 8 && ole.every((byte, index) => buffer[index] === byte);
+    // Some tools emit .xls names for zip-based or plain-text sheets, so accept those too rather
+    // than rejecting a file the parser could genuinely read.
+    const isZip = buffer.length >= 2 && buffer[0] === 0x50 && buffer[1] === 0x4b;
+    if (!isOle && !isZip) {
+      throw new Error("File is not a valid .xls workbook.");
+    }
+    return;
+  }
+
+  if (buffer.subarray(0, 8192).includes(0x00)) {
+    throw new Error("File is not valid CSV text.");
+  }
+}
+
 export function parseSpreadsheet(buffer: Buffer, fileName: string) {
   const ext = fileName.toLowerCase().split(".").pop();
   if (!ext || !["xlsx", "xls", "csv"].includes(ext)) {
@@ -201,6 +261,8 @@ export function parseSpreadsheet(buffer: Buffer, fileName: string) {
   if (buffer.length > MAX_IMPORT_FILE_BYTES) {
     throw new Error("Import file is too large. Maximum size is 5 MB.");
   }
+
+  assertContentMatchesExtension(buffer, ext as "xlsx" | "xls" | "csv");
 
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
@@ -260,6 +322,8 @@ function normalizeRows(
   userMaps: Awaited<ReturnType<typeof buildUserMaps>>,
 ) {
   const seenExternalIds = new Set<string>();
+  // Content signature -> first row that used it, so a repeated line can name its original.
+  const seenContent = new Map<string, number>();
   const normalized: NormalizedImportRow[] = [];
 
   for (const row of rows) {
@@ -338,6 +402,20 @@ function normalizeRows(
       warnings.push(issue(row.rowNumber, "warning", "subtaskId", "Rows with dependencies should have a Subtask ID."));
     }
 
+    // A repeated line is usually a copy-paste slip rather than two genuinely identical subtasks,
+    // but it is not certain enough to reject - warn and let the importer decide.
+    if (title) {
+      const signature = [title.toLowerCase(), assigneeEmail, dueDate.value?.toISOString() ?? ""].join("|");
+      const firstSeenAt = seenContent.get(signature);
+      if (firstSeenAt) {
+        warnings.push(
+          issue(row.rowNumber, "warning", "name", `Same name, assignee and due date as row ${firstSeenAt}.`),
+        );
+      } else {
+        seenContent.set(signature, row.rowNumber);
+      }
+    }
+
     const fingerprint = hashText(
       [parentTaskId, fileHash, row.rowNumber, externalId, title.toLowerCase(), assigneeEmail].join("|"),
     );
@@ -367,7 +445,7 @@ function normalizeRows(
   return normalized;
 }
 
-function validateDependencies(rows: NormalizedImportRow[]) {
+export function validateDependencies(rows: NormalizedImportRow[]) {
   const byExternalId = new Map(rows.filter((row) => row.externalId).map((row) => [row.externalId, row]));
   const adjacency = new Map<string, string[]>();
 
@@ -381,6 +459,9 @@ function validateDependencies(rows: NormalizedImportRow[]) {
         row.errors.push(issue(row.rowNumber, "error", "dependsOn", "A row cannot depend on itself."));
         continue;
       }
+      // A row with no Subtask ID cannot be a dependency target; adding it would put an empty
+      // string into the graph as a node. The missing-ID case is already warned about above.
+      if (!row.externalId) continue;
       adjacency.set(dependency, [...(adjacency.get(dependency) ?? []), row.externalId]);
     }
   }
