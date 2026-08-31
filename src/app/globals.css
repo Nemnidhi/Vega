@@ -128,6 +128,26 @@ a {
   background: rgba(139, 92, 246, 0.3);
 }
 
+/*
+ * Scrollbars are hidden app-wide.
+ *
+ * Scrolling itself is untouched - wheel, trackpad, touch, keyboard (arrows, Page Up/Down, Home/End)
+ * and programmatic scrolling all still work. Only the visual track is suppressed, so panels and
+ * tables no longer show a chrome scrollbar over the dark surfaces.
+ *
+ * .no-scrollbar is kept as an explicit opt-in for anything rendered outside this cascade.
+ */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

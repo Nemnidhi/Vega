@@ -1173,7 +1173,7 @@ export function TaskDetailTabs({
     return (
       <div className="space-y-2">
         {items.map((item) => (
-          <div key={item._id} className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+          <div key={item._id} className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3 break-words">
             <p className="text-sm text-vega-text">{activityMessage(item)}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-vega-text-muted">
               <span>{humanize(item.action)}</span>
@@ -1840,7 +1840,7 @@ export function TaskDetailTabs({
 
       {drawerOpen ? (
         <div className="fixed inset-0 z-[80] flex justify-end bg-[rgba(2,7,12,0.68)] backdrop-blur-[2px]">
-          <div className="h-full w-full max-w-[405px] overflow-y-auto border-l border-vega-border bg-[#0a141f] shadow-[0_12px_32px_rgba(0,0,0,0.28)]">
+          <div className="h-full w-full max-w-[min(760px,94vw)] overflow-y-auto overflow-x-hidden border-l border-vega-border bg-[#0a141f] shadow-[0_12px_32px_rgba(0,0,0,0.28)]">
             <div className="sticky top-0 z-10 border-b border-vega-border bg-[#0a141f] p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
