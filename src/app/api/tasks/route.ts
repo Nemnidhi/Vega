@@ -17,19 +17,6 @@ function canAssignOthers(role: string) {
   return (permissionRules.assignTasksToOthers as string[]).includes(role);
 }
 
-function normalizeFlowSteps(
-  steps:
-    | Array<{ key: string; title: string; status?: "todo" | "in_progress" | "done"; order?: number }>
-    | undefined,
-) {
-  return (steps ?? []).map((step, index) => ({
-    key: step.key,
-    title: step.title,
-    status: step.status ?? "todo",
-    order: step.order ?? index,
-  }));
-}
-
 export async function GET(request: Request) {
   try {
     await connectToDatabase();
@@ -121,11 +108,8 @@ export async function POST(request: Request) {
       kpiId: payload.kpiId ?? null,
       parentTaskId: payload.parentTaskId ?? null,
       rootTaskId,
-      workflowTemplate: payload.workflowTemplate ?? "custom",
-      flowSteps: normalizeFlowSteps(payload.flowSteps),
-      // payload.subTasks is deliberately ignored. The embedded array is frozen - child work is
-      // created as real Task documents through /api/tasks/[id]/subtasks, so it stays visible to
-      // the workspace, the dependency engine and the workflow canvas.
+      // Child work is created as real Task documents through /api/tasks/[id]/subtasks, so it
+      // stays visible to the workspace, the dependency engine and the workflow canvas.
     });
 
     await logActivity({

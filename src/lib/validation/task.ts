@@ -79,10 +79,7 @@ export const createTaskSchema = z
     projectId: objectIdSchema.optional(),
     kpiId: objectIdSchema.optional(),
     parentTaskId: objectIdSchema.optional(),
-    workflowTemplate: workflowTemplateSchema.optional(),
-    flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
-    /** @deprecated Send child tasks to /api/tasks/[id]/subtasks instead. Ignored on write. */
-    subTasks: z.array(subTaskSchema).max(300).optional(),
+
   })
   .refine((value) => !value.startAt || !value.dueAt || value.startAt <= value.dueAt, {
     message: "Due date must be on or after the start date.",
@@ -108,11 +105,7 @@ export const updateTaskSchema = z
     leadId: objectIdSchema.nullable().optional(),
     clientId: objectIdSchema.nullable().optional(),
     parentTaskId: objectIdSchema.nullable().optional(),
-    workflowTemplate: workflowTemplateSchema.optional(),
-    flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
     checklist: z.array(checklistItemSchema).max(300).optional(),
-    /** @deprecated Ignored on write - use the subtask routes. */
-    subTasks: z.array(subTaskSchema).max(300).optional(),
   })
   .refine((value) => !value.startAt || !value.dueAt || value.startAt <= value.dueAt, {
     message: "Due date must be on or after the start date.",

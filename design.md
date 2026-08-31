@@ -101,12 +101,13 @@ the surface. This applies especially to workflow nodes and table rows.
 
 ## 2. Status and priority mapping — canonical
 
-> **Known divergence, must be resolved.** `statusVariant`/`statusTone`/`priorityTone` are currently
-> reimplemented in at least eight files (`task-detail-tabs.tsx:319`, `task-workflow-builder.tsx:273`,
-> `task-timeline-gantt.tsx:108`, plus leads, queries, blueprint, attendance and client-portal
-> variants) and they **disagree**: `IN_PROGRESS` renders purple in the detail tabs and blue on the
-> canvas; `HIGH` priority renders yellow in one and orange in the other. The table below is the
-> canonical mapping. Extract it to a single shared module and delete the duplicates.
+> **Implemented in `src/lib/tasks/tone.ts`.** Import `statusTone`, `priorityTone`, `progressTone`,
+> `dueLabel` and `humanize` from there; do not write another local mapping. This was previously
+> reimplemented across eight files with results that disagreed — `IN_PROGRESS` rendered purple in
+> the task detail tabs and blue on the canvas, `HIGH` priority yellow in one place and orange in
+> another. The table below is the canonical mapping and is locked by assertions in
+> `npm run test:task-foundation`. The remaining local copies in the leads, queries, blueprint,
+> attendance and client-portal components still need folding in.
 
 ### 2.1 Task status
 
@@ -353,7 +354,8 @@ transparent border, `hover:bg-vega-surface-hover`. Footer pins the user card and
 `Quick Create` (34px, ghost with purple hover), 34px icon buttons for Settings and Notifications
 (unread count as a red pill at `text-[9px]`), then the user menu.
 
-Below `lg` the sidebar is replaced by `mobile-nav.tsx`.
+Below `lg` the sidebar is hidden and navigation moves into the top bar, which renders its own
+collapsible menu (the Menu / Close control in `top-nav.tsx`).
 
 ---
 

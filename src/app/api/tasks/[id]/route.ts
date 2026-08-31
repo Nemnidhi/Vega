@@ -26,19 +26,6 @@ function canModify(actor: { userId: string; role: string }, task: { assignedToUs
   return String(task.assignedToUserId) === actor.userId || String(task.createdBy) === actor.userId;
 }
 
-function normalizeFlowSteps(
-  steps:
-    | Array<{ key: string; title: string; status?: "todo" | "in_progress" | "done"; order?: number }>
-    | undefined,
-) {
-  return (steps ?? []).map((step, index) => ({
-    key: step.key,
-    title: step.title,
-    status: step.status ?? "todo",
-    order: step.order ?? index,
-  }));
-}
-
 export async function GET(_request: Request, { params }: { params: Params }) {
   try {
     await connectToDatabase();
@@ -120,12 +107,9 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (payload.kpiId !== undefined) task.kpiId = payload.kpiId as unknown as typeof task.kpiId;
     if (payload.leadId !== undefined) task.leadId = payload.leadId as unknown as typeof task.leadId;
     if (payload.clientId !== undefined) task.clientId = payload.clientId as unknown as typeof task.clientId;
-    if (payload.workflowTemplate !== undefined) task.workflowTemplate = payload.workflowTemplate;
-    if (payload.flowSteps !== undefined) task.flowSteps = normalizeFlowSteps(payload.flowSteps) as typeof task.flowSteps;
     if (payload.checklist !== undefined) {
       task.checklist = normalizeChecklist(payload.checklist, actor) as typeof task.checklist;
     }
-    // payload.subTasks is deliberately ignored - the embedded array is frozen. See models/Task.ts.
 
     if (payload.status !== undefined) {
       const status = normalizeTaskStatus(payload.status);

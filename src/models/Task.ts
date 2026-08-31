@@ -184,12 +184,22 @@ const taskSchema = new Schema(
     attachments: { type: [taskAttachmentSchema], default: [] },
     comments: { type: [taskCommentSchema], default: [] },
     checklist: { type: [checklistItemSchema], default: [] },
+    /**
+     * @deprecated Frozen. Nothing writes this any more.
+     *
+     * A canned template name that predates real child tasks and workflow stages. Kept on the
+     * schema so historical documents keep loading; it is not part of any write path.
+     */
     workflowTemplate: {
       type: String,
       enum: ["custom", "client_delivery", "lead_to_delivery", "marketing_campaign", "n8n_automation"],
       default: "custom",
       required: true,
     },
+    /**
+     * @deprecated Frozen. Superseded by child Task documents and TaskDependency edges, which the
+     * workspace, the dependency engine and the canvas all actually read.
+     */
     flowSteps: {
       type: [taskFlowStepSchema],
       default: [],
