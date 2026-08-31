@@ -7,6 +7,8 @@ import { TaskDependencyModel, TaskModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { logActivity } from "@/lib/activity/logging";
 import { getCompletionFields, normalizeTaskStatus } from "@/lib/tasks/status";
+import { recalculateSuccessorsForPredecessor } from "@/lib/tasks/dependencies";
+import { syncParentTaskProgress } from "@/lib/tasks/workflow-execution";
 import { normalizeChecklist } from "@/lib/tasks/subtasks";
 import {
   assertValidParent,
@@ -71,6 +73,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
 
     const previousStatus = normalizeTaskStatus(task.status);
     const previousAssignee = String(task.assignedToUserId ?? "");
+    const previousParentId = task.parentTaskId ? String(task.parentTaskId) : null;
 
     if (payload.assignedToUserId && payload.assignedToUserId !== previousAssignee) {
       assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
@@ -108,7 +111,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (payload.leadId !== undefined) task.leadId = payload.leadId as unknown as typeof task.leadId;
     if (payload.clientId !== undefined) task.clientId = payload.clientId as unknown as typeof task.clientId;
     if (payload.checklist !== undefined) {
-      task.checklist = normalizeChecklist(payload.checklist, actor) as typeof task.checklist;
+      task.checklist = normalizeChecklist(payload.checklist, actor, task.checklist) as typeof task.checklist;
     }
 
     if (payload.status !== undefined) {
@@ -127,6 +130,22 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
 
     const nextStatus = normalizeTaskStatus(task.status);
     const nextAssignee = String(task.assignedToUserId ?? "");
+
+    // This route accepts any task id, child tasks included, so a subtask can have its status
+    // changed here rather than through /api/tasks/[id]/subtasks/[subtaskId]. Those routes run
+    // the workflow engine afterwards and this one did not, so completing a child here left
+    // its successors blocked forever and its parent's progress stale. Reparenting has to
+    // resync both the old and new parent, since the child left one tree and joined another.
+    const parentsToResync = new Set<string>();
+    if (previousParentId) parentsToResync.add(previousParentId);
+    if (task.parentTaskId) parentsToResync.add(String(task.parentTaskId));
+
+    if (parentsToResync.size > 0 && nextStatus !== previousStatus) {
+      await recalculateSuccessorsForPredecessor(taskId);
+    }
+    for (const parentId of parentsToResync) {
+      await syncParentTaskProgress(parentId);
+    }
 
     await logActivity({
       action: "task_updated",

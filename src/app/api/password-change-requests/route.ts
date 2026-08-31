@@ -1,7 +1,8 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { assertAuthRateLimit } from "@/lib/rate-limit";
 import { handleApiError, ok, fail } from "@/lib/api/responses";
 import { passwordChangeRequestSchema } from "@/lib/validation/user";
 import { PasswordChangeRequestModel, UserModel } from "@/models";
@@ -71,11 +72,17 @@ export async function POST(request: Request) {
       role: { $in: LOGIN_ROLES },
       status: "active",
     })
-      .select("_id")
+      .select("_id passwordHash")
       .lean();
 
     if (!user) {
       return fail("Active staff user not found.", 404);
+    }
+
+    await assertAuthRateLimit(request, "password_change_request", actor.userId);
+
+    if (!user.passwordHash || !verifyPassword(payload.currentPassword, user.passwordHash)) {
+      return fail("Your current password is incorrect.", 401);
     }
 
     const existingPendingRequest = await PasswordChangeRequestModel.findOne({

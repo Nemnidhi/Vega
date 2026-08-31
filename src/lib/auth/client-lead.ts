@@ -17,3 +17,34 @@ export async function resolveClientLeadId(session: AuthSession): Promise<string 
   if (!client?.leadId) return null;
   return String(client.leadId);
 }
+
+/**
+ * The id of the Client record a logged-in client owns, matched the same way
+ * resolveClientLeadId matches it. Any route that takes a clientId from the URL
+ * and serves the `client` role has to check it against this - the role gate
+ * alone says "is a client", never "is *this* client".
+ */
+export async function resolveClientId(session: AuthSession): Promise<string | null> {
+  if (session.role !== "client") return null;
+
+  const client = await ClientModel.findOne({ primaryContactEmail: session.email })
+    .select("_id")
+    .lean();
+
+  if (!client?._id) return null;
+  return String(client._id);
+}
+
+/**
+ * Throws unless `clientId` is the caller's own Client record. Staff roles pass
+ * through untouched - they are allowed to read across clients, and their access
+ * is gated by the role check the caller already ran.
+ */
+export async function assertClientOwnsRecord(session: AuthSession, clientId: string) {
+  if (session.role !== "client") return;
+
+  const ownClientId = await resolveClientId(session);
+  if (!ownClientId || ownClientId !== String(clientId)) {
+    throw new Error("Forbidden");
+  }
+}

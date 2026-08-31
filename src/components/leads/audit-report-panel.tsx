@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,6 +86,7 @@ function signalVariant(signal?: Signal): "success" | "danger" | "neutral" {
 }
 
 export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelProps) {
+  const router = useRouter();
   const [busy, setBusy] = useState<null | "generate" | "send">(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -117,8 +119,10 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
             ? `Report generated - tier ${body.data.tier}, ${Math.round(body.data.bytes / 1024)} KB, text by ${body.data.paragraphSource}.`
             : `Sent to ${body.data.to} (${body.data.sentToday}/${body.data.dailyLimit} today).`,
       });
-      // Server component data (status, tier) is stale after this.
-      setTimeout(() => window.location.reload(), 1200);
+      // Server component data (status, tier) is stale after this. router.refresh() re-runs
+      // the server components in place, so it keeps the rest of the page's state instead of
+      // throwing it away, and needs no guessed delay.
+      router.refresh();
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Request failed" });
     } finally {

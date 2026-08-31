@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,7 @@ export function ClientInvitePanel({
   invite,
   linkedClientUser,
 }: ClientInvitePanelProps) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [activationLink, setActivationLink] = useState<string | null>(null);
@@ -47,7 +49,9 @@ export function ClientInvitePanel({
         });
         setActivationLink(body.data.activationLink);
       }
-      setTimeout(() => window.location.reload(), activationLink ? 4000 : 1200);
+      // Refresh in place rather than reloading the page - the activation link rendered
+      // above has to survive, and a timed reload used to race the request and wipe it.
+      router.refresh();
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Request failed" });
     } finally {

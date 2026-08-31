@@ -70,7 +70,17 @@ export async function connectToDatabase() {
         try {
           return await mongoose.connect(uri, {
             dbName: env.MONGODB_DB_NAME,
-            autoIndex: process.env.NODE_ENV !== "production",
+            // Building indexes on every cold start is the wrong default for a serving
+            // process, but leaving it off in production meant the declared indexes were
+            // never created there at all - including the unique ones several modules rely
+            // on for correctness (Lead.metaLeadId dedupes Meta webhook redeliveries,
+            // Task.code and Task.importFingerprint dedupe generated codes and imported
+            // rows, the partial unique index keeps one pending password-change request per
+            // user, and the TTL index is what stops RateLimitEvent growing without bound).
+            // Production now builds them from `npm run sync:indexes` as a deploy step;
+            // MONGODB_AUTO_INDEX=true forces the old inline behaviour when needed.
+            autoIndex:
+              process.env.MONGODB_AUTO_INDEX === "true" || process.env.NODE_ENV !== "production",
             family: 4,
             maxPoolSize: 10,
             minPoolSize: 0,

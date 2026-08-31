@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { getCurrentSession } from "@/lib/auth/session";
 import type { UserRole } from "@/types/user";
 
@@ -17,45 +16,27 @@ const roleMatrix: Record<UserRole, number> = {
   admin: 6,
 };
 
-export async function getActorContext(options?: {
-  allowHeaderFallback?: boolean;
-}): Promise<ActorContext> {
+/**
+ * The acting user for this request, from the session cookie.
+ *
+ * This used to accept an `allowHeaderFallback` option that read identity and role straight
+ * out of the `x-user-id` / `x-user-role` request headers when no cookie was present -
+ * client-controlled values, unsigned and never checked against the database. Nothing passed
+ * the option, but any route that started to would have become a complete authentication
+ * bypass: send `x-user-role: admin` and you were an admin. It is removed rather than left
+ * switched off, and src/proxy.ts strips both headers at the edge of the API.
+ *
+ * A server-to-server caller that genuinely needs to act for a user does what the client
+ * portal integration already does: proves itself with a shared secret, then re-derives a real
+ * session from the database (see resolveClientPortalActor).
+ */
+export async function getActorContext(): Promise<ActorContext> {
   const session = await getCurrentSession();
-  if (session) {
-    return { userId: session.userId, role: session.role };
-  }
-
-  if (!options?.allowHeaderFallback) {
+  if (!session) {
     throw new Error("Unauthorized");
   }
 
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("x-user-id");
-  const roleHeader = requestHeaders.get("x-user-role");
-
-  if (!userId || !roleHeader) {
-    throw new Error("Unauthorized");
-  }
-
-  const role =
-    roleHeader &&
-    [
-      "admin",
-      "partner",
-      "sales",
-      "digital_marketing",
-      "project_manager",
-      "developer",
-      "client",
-    ].includes(roleHeader)
-      ? (roleHeader as UserRole)
-      : null;
-
-  if (!role) {
-    throw new Error("Unauthorized");
-  }
-
-  return { userId, role };
+  return { userId: session.userId, role: session.role };
 }
 
 export function canAccessAtLeast(actorRole: UserRole, minimumRole: UserRole) {

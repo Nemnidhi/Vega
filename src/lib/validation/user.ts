@@ -25,12 +25,20 @@ export const updateUserSchema = z
 
 export const passwordChangeRequestSchema = z
   .object({
+    // Proves the requester is the account holder and not just someone holding the session -
+    // a borrowed laptop or a stolen cookie. The admin approving the request has no other
+    // signal that it came from the real user.
+    currentPassword: z.string().min(1).max(72),
     newPassword: z.string().min(8).max(72),
     confirmPassword: z.string().min(8).max(72),
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
     message: "New password and confirm password do not match.",
     path: ["confirmPassword"],
+  })
+  .refine((value) => value.newPassword !== value.currentPassword, {
+    message: "New password must be different from your current password.",
+    path: ["newPassword"],
   });
 
 export const reviewPasswordChangeRequestSchema = z.object({

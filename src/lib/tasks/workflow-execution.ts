@@ -1,6 +1,6 @@
 import { ActivityLogModel, TaskDependencyModel, TaskModel } from "@/models";
 import { isDependencyBranchActive, isDependencySatisfied } from "@/lib/tasks/dependencies";
-import { isCompletedStatus, normalizeTaskStatus } from "@/lib/tasks/status";
+import { isCancelledStatus, isCompletedStatus, normalizeTaskStatus } from "@/lib/tasks/status";
 import { serializeForJson } from "@/lib/utils/serialize";
 
 type ExecutionState = "completed" | "active" | "ready" | "blocked" | "overdue" | "waiting" | "upcoming";
@@ -34,13 +34,20 @@ function asSubtask(value: LeanSubtask | string) {
   return typeof value === "string" ? null : value;
 }
 
+/**
+ * Is this due date genuinely in the past - meaning before today, not merely earlier today?
+ *
+ * The comparison used to be against the *end* of today, which every due date falling today
+ * satisfies, so everything due today was reported overdue in the counts, the overdue list and
+ * the canvas colouring. Work is overdue once its day has passed.
+ */
 function isPast(value?: Date | string | null) {
   if (!value) return false;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return false;
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-  return date.getTime() < todayEnd.getTime();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return date.getTime() < todayStart.getTime();
 }
 
 export function calculateExecutionState(
@@ -75,7 +82,7 @@ export function calculateExecutionState(
 export async function getWorkflowExecutionSummary(parentTaskId: string) {
   const [parent, subtasks, dependencies, activity] = await Promise.all([
     TaskModel.findById(parentTaskId).select("title status progressPercent").lean(),
-    TaskModel.find({ parentTaskId }).sort({ order: 1, createdAt: 1 }).lean(),
+    TaskModel.find({ parentTaskId, archivedAt: null }).sort({ order: 1, createdAt: 1 }).lean(),
     TaskDependencyModel.find({ parentTaskId })
       .sort({ createdAt: 1 })
       .populate("predecessorSubtaskId", "code title status dueAt workflowNodeType workflowDecision progressPercent")
@@ -144,12 +151,29 @@ export async function getWorkflowExecutionSummary(parentTaskId: string) {
   });
 }
 
+/**
+ * Recompute a parent's progress from its children.
+ *
+ * Two things are deliberately excluded from the denominator, and both used to be counted:
+ *
+ * - Archived subtasks. They are no longer part of the plan, so counting them meant archiving
+ *   work made the parent's progress go *down*.
+ * - Cancelled subtasks. Cancelled work can never reach COMPLETED, so a single cancelled child
+ *   capped its parent below 100% permanently.
+ *
+ * A parent whose children are all cancelled or archived has nothing outstanding, which reads
+ * as complete rather than as 0%.
+ */
 export async function syncParentTaskProgress(parentTaskId: string) {
-  const subtasks = await TaskModel.find({ parentTaskId }).select("status").lean();
-  const total = subtasks.length;
+  const subtasks = await TaskModel.find({ parentTaskId, archivedAt: null })
+    .select("status")
+    .lean();
+
+  const countable = subtasks.filter((subtask) => !isCancelledStatus(subtask.status));
+  const total = countable.length;
   // Counts normalised status, so a parent whose children carry legacy `done` no longer
   // computes 0% progress.
-  const completed = subtasks.filter((subtask) => isCompletedStatus(subtask.status)).length;
+  const completed = countable.filter((subtask) => isCompletedStatus(subtask.status)).length;
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
   await TaskModel.updateOne({ _id: parentTaskId }, { $set: { progressPercent } });
   return { total, completed, progressPercent };

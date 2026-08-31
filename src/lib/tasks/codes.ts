@@ -83,17 +83,22 @@ async function ensureTaskCounterSeeded(session?: ClientSession) {
   }
 
   // Find the highest TASK-<n> already in use so the counter starts above it.
-  const highest = await TaskModel.find({ code: /^TASK-\d+$/ })
+  //
+  // This used to sort by `code` descending and take the top 200. That sort is lexicographic,
+  // so "TASK-999" ranks above "TASK-1000": past a thousand tasks the window held only the
+  // TASK-9xx/8xx codes and the counter seeded at 999, handing out codes that were already
+  // taken. Parse the numeric part and take the real maximum instead - it runs once per
+  // process, so scanning the codes is cheap enough and cannot be fooled by their width.
+  const existingCodes = await TaskModel.find({ code: /^TASK-\d+$/ })
     .select("code")
-    .sort({ code: -1 })
-    .limit(200)
     .session(session ?? null)
     .lean();
 
-  const maxSeq = highest.reduce((max, task) => {
+  const maxSeq = existingCodes.reduce((max, task) => {
     const match = /^TASK-(\d+)$/.exec(String(task.code ?? ""));
     if (!match) return max;
-    return Math.max(max, Number(match[1]));
+    const seq = Number(match[1]);
+    return Number.isSafeInteger(seq) ? Math.max(max, seq) : max;
   }, 0);
 
   await CounterModel.updateOne(

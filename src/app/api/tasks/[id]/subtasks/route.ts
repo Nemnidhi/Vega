@@ -29,16 +29,24 @@ export async function GET(request: Request, { params }: { params: Params }) {
     const priority = searchParams.get("priority");
     const assignee = searchParams.get("assignedToUserId");
     const search = searchParams.get("q")?.trim();
+    const includeArchived = searchParams.get("includeArchived") === "1";
 
+    // Deleting a subtask archives it rather than destroying it, so the default list has to
+    // exclude archived rows - otherwise a deleted subtask stays on screen. Matches the
+    // includeArchived flag the root-task list already accepts.
+    if (!includeArchived) query.archivedAt = null;
     if (status) query.status = status;
     if (priority) query.priority = priority;
     if (assignee) query.assignedToUserId = assignee;
     if (search) {
+      // Escaped: the raw value went straight into $regex, so a caller could pass a pattern
+      // that backtracks catastrophically against every subtask's description.
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { code: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { tags: { $regex: search, $options: "i" } },
+        { title: { $regex: escapedSearch, $options: "i" } },
+        { code: { $regex: escapedSearch, $options: "i" } },
+        { description: { $regex: escapedSearch, $options: "i" } },
+        { tags: { $regex: escapedSearch, $options: "i" } },
       ];
     }
 

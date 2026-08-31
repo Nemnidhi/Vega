@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { logActivity } from "@/lib/activity/logging";
-import { getActorContext } from "@/lib/auth/permissions";
+import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
+import { collectDescendantIds } from "@/lib/tasks/hierarchy";
 import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { recalculateSubtaskDependencyState, recalculateSuccessorsForPredecessor } from "@/lib/tasks/dependencies";
 import { syncParentTaskProgress } from "@/lib/tasks/workflow-execution";
@@ -103,13 +104,13 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (payload.workflowGroup !== undefined) subtask.workflowGroup = payload.workflowGroup;
     if (payload.workflowDecision !== undefined) subtask.workflowDecision = payload.workflowDecision;
     if (payload.attachments !== undefined) {
-      subtask.attachments = normalizeAttachments(payload.attachments, actor) as typeof subtask.attachments;
+      subtask.attachments = normalizeAttachments(payload.attachments, actor, subtask.attachments) as typeof subtask.attachments;
     }
     if (payload.comments !== undefined) {
-      subtask.comments = normalizeComments(payload.comments, actor) as typeof subtask.comments;
+      subtask.comments = normalizeComments(payload.comments, actor, subtask.comments) as typeof subtask.comments;
     }
     if (payload.checklist !== undefined) {
-      subtask.checklist = normalizeChecklist(payload.checklist, actor) as typeof subtask.checklist;
+      subtask.checklist = normalizeChecklist(payload.checklist, actor, subtask.checklist) as typeof subtask.checklist;
     }
 
     if (payload.progressPercent !== undefined || payload.status !== undefined) {
@@ -209,33 +210,84 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Params }) {
+/**
+ * Archive by default; `?hard=1` still deletes.
+ *
+ * This used to hard-delete unconditionally, for anyone with access to the subtask, while
+ * DELETE /api/tasks/[id] archived by default and required both `?hard=1` and an elevated role
+ * to destroy anything. Two routes over the same collection with opposite destructiveness is a
+ * trap, so this now mirrors the parent's semantics - including collecting descendants, which
+ * the old path ignored, orphaning any nested subtask rather than removing it.
+ */
+export async function DELETE(request: Request, { params }: { params: Params }) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
     const { id, subtaskId } = await params;
     const parentTaskId = objectIdSchema.parse(id);
     const parsedSubtaskId = objectIdSchema.parse(subtaskId);
+    const hardDelete = new URL(request.url).searchParams.get("hard") === "1";
 
     const { parent, subtask } = await getParentAndSubtask(parentTaskId, parsedSubtaskId);
     if (!parent) return fail("Task not found.", 404);
     if (!subtask) return fail("Subtask not found.", 404);
     await assertCanAccessTask(actor, subtask);
 
+    const descendantIds = await collectDescendantIds(parsedSubtaskId);
+    const affectedIds = [parsedSubtaskId, ...descendantIds];
+
+    // Successors of anything being removed have to be re-evaluated afterwards: with their
+    // predecessor gone they may no longer be blocked.
     const predecessorEdges = await TaskDependencyModel.find({
-      parentTaskId,
-      predecessorSubtaskId: parsedSubtaskId,
+      predecessorSubtaskId: { $in: affectedIds },
     })
       .select("successorSubtaskId")
       .lean();
-    await TaskDependencyModel.deleteMany({
-      parentTaskId,
-      $or: [{ predecessorSubtaskId: parsedSubtaskId }, { successorSubtaskId: parsedSubtaskId }],
-    });
-    await subtask.deleteOne();
-    await Promise.all(predecessorEdges.map((edge) => recalculateSubtaskDependencyState(String(edge.successorSubtaskId))));
+
+    if (hardDelete) {
+      // Only roles that can assign work may destroy records outright.
+      assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
+
+      await TaskDependencyModel.deleteMany({
+        $or: [
+          { predecessorSubtaskId: { $in: affectedIds } },
+          { successorSubtaskId: { $in: affectedIds } },
+        ],
+      });
+      await TaskModel.deleteMany({ _id: { $in: descendantIds } });
+      await subtask.deleteOne();
+    } else {
+      await TaskModel.updateMany(
+        { _id: { $in: affectedIds } },
+        { $set: { archivedAt: new Date(), archivedBy: actor.userId } },
+      );
+    }
+
+    const affectedIdSet = new Set(affectedIds.map(String));
+    await Promise.all(
+      [...new Set(predecessorEdges.map((edge) => String(edge.successorSubtaskId)))]
+        // A successor that was itself removed needs no recalculation.
+        .filter((successorId) => !affectedIdSet.has(successorId))
+        .map((successorId) => recalculateSubtaskDependencyState(successorId)),
+    );
     await syncParentTaskProgress(parentTaskId);
-    return ok({ deleted: true });
+
+    await logActivity({
+      action: "task_archived",
+      actorId: actor.userId,
+      entityType: "task",
+      entityId: parentTaskId,
+      details: {
+        subtaskId: parsedSubtaskId,
+        code: subtask.code ?? null,
+        hardDeleted: hardDelete,
+        descendants: descendantIds.length,
+      },
+    });
+
+    return hardDelete
+      ? ok({ deleted: true, descendants: descendantIds.length })
+      : ok({ archived: true, descendants: descendantIds.length });
   } catch (error) {
     return handleApiError(error);
   }

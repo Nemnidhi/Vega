@@ -219,14 +219,24 @@ export async function recalculateSubtaskDependencyState(subtaskId: string, optio
     // READY only. Starting the work is a person's decision, never the engine's.
     subtask.status = "READY";
     await subtask.save({ session: options?.session });
+  } else if (previousStatus === "BLOCKED" && !isClosedStatus(subtask.status)) {
+    // Nothing blocks it any more, but readyToStart requires at least one live predecessor -
+    // so a subtask whose last dependency was deleted (or whose only predecessors ended up on
+    // an inactive branch) matched neither branch above and stayed BLOCKED forever, with
+    // nothing left in the graph that could ever clear it. Release it explicitly: READY when
+    // it still has predecessors that are all satisfied, NOT_STARTED when it has none left
+    // and is simply an independent subtask again.
+    subtask.status = readiness.activeDependencyCount > 0 ? "READY" : "NOT_STARTED";
+    await subtask.save({ session: options?.session });
   }
 
   const nextStatus = normalizeTaskStatus(subtask.status);
   const changed = previousStatus !== nextStatus;
 
-  if (changed && (nextStatus === "READY" || nextStatus === "BLOCKED")) {
+  // NOT_STARTED is included so releasing a stranded BLOCKED subtask leaves a trail too.
+  if (changed && ["READY", "BLOCKED", "NOT_STARTED"].includes(nextStatus)) {
     await logActivity({
-      action: nextStatus === "READY" ? "subtask_ready" : "subtask_blocked",
+      action: nextStatus === "BLOCKED" ? "subtask_blocked" : "subtask_ready",
       actorId: null,
       entityType: "task",
       entityId: String(subtask._id),

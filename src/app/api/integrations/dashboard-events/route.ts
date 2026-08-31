@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getServerEnv } from "@/lib/env/server";
+import { secretsMatch } from "@/lib/auth/secrets";
 import { dashboardEventSchema } from "@/lib/validation/integrations";
 import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { ClientModel } from "@/models";
@@ -16,7 +17,7 @@ function assertValidSecret(request: Request) {
   }
 
   const provided = request.headers.get("x-integration-secret");
-  if (provided !== DASHBOARD_INTEGRATION_SECRET) {
+  if (!secretsMatch(provided, DASHBOARD_INTEGRATION_SECRET)) {
     throw new Error("Unauthorized: invalid integration secret");
   }
 }

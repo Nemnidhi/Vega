@@ -64,37 +64,117 @@ export function assertCanAssignSubtask(actor: TaskActor, assignedToUserId?: stri
   assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
 }
 
-export function normalizeAttachments(attachments: AttachmentInput[] | undefined, actor: TaskActor) {
-  return (attachments ?? []).map((attachment) => ({
-    ...(attachment._id ? { _id: new Types.ObjectId(attachment._id) } : {}),
-    name: attachment.name,
-    url: attachment.url,
-    mimeType: attachment.mimeType ?? "",
-    sizeBytes: attachment.sizeBytes ?? null,
-    uploadedBy: actor.userId,
-    uploadedAt: new Date(),
-  }));
+/**
+ * These three take the *whole* array on every update, because that is the shape the PATCH
+ * routes accept. That makes preserving what is already stored their responsibility: an entry
+ * that arrives with an `_id` already exists, and stamping the current actor and time onto it
+ * would silently reattribute someone else's comment, upload or tick-off to whoever happened
+ * to edit the subtask next. Only entries with no `_id` are new and get stamped.
+ *
+ * Each takes the existing subdocuments so it can carry that provenance forward; callers that
+ * genuinely have nothing stored yet pass an empty array.
+ */
+
+type ExistingWithId = { _id?: unknown };
+
+function indexExistingById<T extends ExistingWithId>(existing: readonly T[] | undefined) {
+  const byId = new Map<string, T>();
+  for (const entry of existing ?? []) {
+    if (entry?._id) byId.set(String(entry._id), entry);
+  }
+  return byId;
 }
 
-export function normalizeComments(comments: CommentInput[] | undefined, actor: TaskActor) {
-  return (comments ?? []).map((comment) => ({
-    ...(comment._id ? { _id: new Types.ObjectId(comment._id) } : {}),
-    body: comment.body,
-    createdBy: actor.userId,
-    createdAt: new Date(),
-    updatedAt: null,
-  }));
+type ExistingAttachment = ExistingWithId & { uploadedBy?: unknown; uploadedAt?: Date | null };
+
+export function normalizeAttachments(
+  attachments: AttachmentInput[] | undefined,
+  actor: TaskActor,
+  existing?: readonly ExistingAttachment[],
+) {
+  const byId = indexExistingById(existing);
+
+  return (attachments ?? []).map((attachment) => {
+    const stored = attachment._id ? byId.get(String(attachment._id)) : undefined;
+
+    return {
+      ...(attachment._id ? { _id: new Types.ObjectId(attachment._id) } : {}),
+      name: attachment.name,
+      url: attachment.url,
+      mimeType: attachment.mimeType ?? "",
+      sizeBytes: attachment.sizeBytes ?? null,
+      uploadedBy: stored?.uploadedBy ?? actor.userId,
+      uploadedAt: stored?.uploadedAt ?? new Date(),
+    };
+  });
 }
 
-export function normalizeChecklist(checklist: ChecklistInput[] | undefined, actor: TaskActor) {
+type ExistingComment = ExistingWithId & { body?: string; createdBy?: unknown; createdAt?: Date | null };
+
+export function normalizeComments(
+  comments: CommentInput[] | undefined,
+  actor: TaskActor,
+  existing?: readonly ExistingComment[],
+) {
+  const byId = indexExistingById(existing);
+
+  return (comments ?? []).map((comment) => {
+    const stored = comment._id ? byId.get(String(comment._id)) : undefined;
+    if (!stored) {
+      return {
+        ...(comment._id ? { _id: new Types.ObjectId(comment._id) } : {}),
+        body: comment.body,
+        createdBy: actor.userId,
+        createdAt: new Date(),
+        updatedAt: null,
+      };
+    }
+
+    // An existing comment keeps its author and creation time; only an actual change to the
+    // body counts as an edit and moves updatedAt.
+    const bodyChanged = stored.body !== comment.body;
+    return {
+      _id: new Types.ObjectId(String(comment._id)),
+      body: comment.body,
+      createdBy: stored.createdBy ?? actor.userId,
+      createdAt: stored.createdAt ?? new Date(),
+      updatedAt: bodyChanged ? new Date() : null,
+    };
+  });
+}
+
+type ExistingChecklistItem = ExistingWithId & {
+  completed?: boolean;
+  completedAt?: Date | null;
+  completedBy?: unknown;
+};
+
+export function normalizeChecklist(
+  checklist: ChecklistInput[] | undefined,
+  actor: TaskActor,
+  existing?: readonly ExistingChecklistItem[],
+) {
+  const byId = indexExistingById(existing);
+
   return (checklist ?? []).map((item, index) => {
     const completed = item.completed ?? false;
+    const stored = item._id ? byId.get(String(item._id)) : undefined;
+
+    // Who ticked an item off is recorded once, when it is ticked. Re-saving an already
+    // completed item leaves that record alone; unticking clears it.
+    const alreadyCompleted = stored?.completed === true;
+    const completionFields =
+      completed && alreadyCompleted
+        ? { completedAt: stored?.completedAt ?? new Date(), completedBy: stored?.completedBy ?? actor.userId }
+        : completed
+          ? { completedAt: new Date(), completedBy: actor.userId }
+          : { completedAt: null, completedBy: null };
+
     return {
       ...(item._id ? { _id: new Types.ObjectId(item._id) } : {}),
       title: item.title,
       completed,
-      completedAt: completed ? new Date() : null,
-      completedBy: completed ? actor.userId : null,
+      ...completionFields,
       order: item.order ?? index,
     };
   });

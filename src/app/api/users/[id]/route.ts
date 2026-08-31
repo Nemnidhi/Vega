@@ -42,6 +42,16 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (payload.fullName) {
       user.fullName = payload.fullName;
     }
+
+    // Role, status and password changes have to invalidate every session this user already
+    // holds. Their session cookie is a signed snapshot with a 7-day life, so without the
+    // bump a demoted admin keeps admin, and a deactivated account keeps working, until it
+    // expires on its own. A rename is cosmetic and doesn't need to sign anyone out.
+    const revokesSessions =
+      (payload.role && payload.role !== user.role) ||
+      (payload.status && payload.status !== user.status) ||
+      Boolean(payload.password);
+
     if (payload.role) {
       user.role = payload.role;
     }
@@ -50,6 +60,9 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     }
     if (payload.password) {
       user.passwordHash = hashPassword(payload.password);
+    }
+    if (revokesSessions) {
+      user.sessionVersion = (user.sessionVersion ?? 0) + 1;
     }
 
     await user.save();
