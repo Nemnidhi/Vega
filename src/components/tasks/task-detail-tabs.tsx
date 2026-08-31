@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskTimelineGantt } from "@/components/tasks/task-timeline-gantt";
 import { TaskWorkflowBuilder } from "@/components/tasks/task-workflow-builder";
+import { isCompletedStatus } from "@/lib/tasks/status";
 
 type PopulatedUser = { _id: string; fullName: string; email: string; role?: string };
 type SubtaskStatus =
@@ -535,21 +536,18 @@ export function TaskDetailTabs({
     });
   }, [assigneeFilter, priorityFilter, search, statusFilter, subtasks]);
   const totalPages = Math.max(1, Math.ceil(filteredSubtasks.length / pageSize));
+
+  // Derived during render rather than corrected in an effect. Filtering can shrink the result set
+  // below the current page, and syncing that back through setState caused a cascading re-render.
+  const currentPage = Math.min(page, totalPages);
+
   const visibleSubtasks = useMemo(() => {
-    const start = (page - 1) * pageSize;
+    const start = (currentPage - 1) * pageSize;
     return filteredSubtasks.slice(start, start + pageSize);
-  }, [filteredSubtasks, page, pageSize]);
+  }, [filteredSubtasks, currentPage, pageSize]);
 
-  const completedCount = subtasks.filter((subtask) => subtask.status === "COMPLETED").length;
+  const completedCount = subtasks.filter((subtask) => isCompletedStatus(subtask.status)).length;
   const completionPercent = subtasks.length ? Math.round((completedCount / subtasks.length) * 100) : 0;
-
-  useEffect(() => {
-    setPage(1);
-  }, [assigneeFilter, pageSize, priorityFilter, search, statusFilter]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   const loadImportHistory = useCallback(async () => {
     try {
@@ -562,7 +560,19 @@ export function TaskDetailTabs({
 
   useEffect(() => {
     if (!importOpen) return;
-    void loadImportHistory();
+    let active = true;
+
+    async function syncImportHistory() {
+      // Deferred a microtask so the state update lands outside the effect body.
+      await Promise.resolve();
+      if (!active) return;
+      await loadImportHistory();
+    }
+
+    void syncImportHistory();
+    return () => {
+      active = false;
+    };
   }, [importOpen, loadImportHistory]);
 
   useEffect(() => {
@@ -1446,7 +1456,13 @@ export function TaskDetailTabs({
               <option value="">All assignees</option>
               {assigneeOptions.map((user) => <option key={user._id} value={user._id}>{user.fullName}</option>)}
             </select>
-            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+            <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPage(1);
+                }}
+              >
               {[25, 50, 100].map((size) => <option key={size} value={size}>{size} rows</option>)}
             </select>
             <Button variant="secondary" onClick={() => void refreshSubtasks()}>Refresh</Button>
@@ -1555,13 +1571,13 @@ export function TaskDetailTabs({
               -{Math.min(page * pageSize, filteredSubtasks.length)} of {filteredSubtasks.length}
             </span>
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+              <Button variant="secondary" size="sm" disabled={currentPage <= 1} onClick={() => setPage(Math.max(1, currentPage - 1))}>
                 Previous
               </Button>
               <span className="flex h-8 items-center rounded-md border border-vega-border px-2">
                 {page}/{totalPages}
               </span>
-              <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+              <Button variant="secondary" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage(Math.min(totalPages, currentPage + 1))}>
                 Next
               </Button>
             </div>

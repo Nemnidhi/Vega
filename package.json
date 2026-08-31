@@ -22,7 +22,8 @@
     "classify:leads:ci": "tsx scripts/classify-leads.ts",
     "migrate:embedded-subtasks": "tsx --env-file=.env.local scripts/migrate-embedded-subtasks.ts",
     "typecheck": "tsc --noEmit",
-    "test:task-foundation": "tsx scripts/validate-task-foundation.ts"
+    "test:task-foundation": "tsx scripts/validate-task-foundation.ts",
+    "migrate:project-tasks": "tsx --env-file=.env.local scripts/migrate-project-tasks.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.0",
