@@ -15,17 +15,6 @@ import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { computeAccountHealth } from "@/lib/clients/health";
 
-const leadPipelineStages = [
-  "new",
-  "contacted",
-  "qualified",
-  "proposal_sent",
-  "negotiation",
-  "closed_won",
-  "closed_lost",
-  "invalid",
-] as const;
-
 function clampLimit(value: number | undefined, fallback: number, max: number) {
   return Math.min(Math.max(value ?? fallback, 1), max);
 }
@@ -94,32 +83,6 @@ export async function getLeadById(id: string) {
     .select("title status score priorityBand")
     .lean();
   return serializeForJson(lead);
-}
-
-export async function getPipelineBoard(options?: { limitPerStage?: number }) {
-  await connectToDatabase();
-  const limitPerStage = clampLimit(options?.limitPerStage, 60, 200);
-  const [stageLeadGroups = {}] = await LeadModel.aggregate([
-    {
-      $facet: Object.fromEntries(
-        leadPipelineStages.map((stage) => [
-          stage,
-          [
-            { $match: { status: stage } },
-            { $sort: { updatedAt: -1 } },
-            { $limit: limitPerStage },
-            { $project: { status: 1, title: 1, contactName: 1, priorityBand: 1, score: 1 } },
-          ],
-        ]),
-      ),
-    },
-  ]);
-
-  const items = leadPipelineStages.map((stage) => ({
-    stage,
-    leads: stageLeadGroups[stage] ?? [],
-  }));
-  return serializeForJson(items);
 }
 
 export async function getScopeByLeadId(leadId: string) {

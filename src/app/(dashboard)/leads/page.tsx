@@ -1,5 +1,5 @@
 import { DashboardHeader } from "@/components/dashboard/header";
-import { LeadIntakeForms } from "@/components/leads/lead-intake-forms";
+import { LeadIntakeLauncher } from "@/components/leads/lead-intake-launcher";
 import { LeadListWithStatusTabs } from "@/components/leads/lead-list-with-status-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,10 +38,13 @@ export default async function LeadsPage() {
 
   return (
     <section className="space-y-6">
-      <DashboardHeader
-        title="Leads"
-        subtitle="Create, update, and track leads in a simple CRM flow."
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <DashboardHeader
+          title="Leads"
+          subtitle="Create, update, and track leads in a simple CRM flow."
+        />
+        <LeadIntakeLauncher />
+      </div>
 
       {prospects.length > 0 ? (
         <Card>
@@ -76,8 +79,6 @@ export default async function LeadsPage() {
           </CardContent>
         </Card>
       ) : null}
-
-      <LeadIntakeForms />
 
       <Card>
         <CardHeader>

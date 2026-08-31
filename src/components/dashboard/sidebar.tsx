@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   BriefcaseBusiness,
   CalendarDays,
   ChevronLeft,
@@ -38,7 +37,6 @@ export function DashboardSidebar({ role, userLabel }: DashboardSidebarProps) {
     Home: LayoutDashboard,
     Chat: MessageSquareText,
     Leads: Target,
-    Pipeline: BarChart3,
     Queries: MessageSquareText,
     Clients: BriefcaseBusiness,
     Users,
