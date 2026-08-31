@@ -1,11 +1,10 @@
 import { UniversalChat } from "@/components/chat/universal-chat";
-import { DashboardTopNav } from "@/components/dashboard/top-nav";
+import { BackButton } from "@/components/dashboard/back-button";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
-import type { UserRole } from "@/types/user";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,6 @@ export default async function ChatPage() {
     loginPath: "/login",
     redirectTo: "/client/queries",
   });
-  const loginRole = session.role as (typeof LOGIN_ROLES)[number];
 
   await connectToDatabase();
   const users = await UserModel.find({
@@ -35,11 +33,14 @@ export default async function ChatPage() {
   }>;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1300px] space-y-3 p-3 lg:space-y-6 lg:p-8">
-      <DashboardTopNav
-        role={loginRole as UserRole}
-        userLabel={session.fullName ?? session.email}
-      />
+    <section className="space-y-4">
+      <div className="flex items-center gap-3">
+        <BackButton href="/dashboard" label="Dashboard" />
+        <div className="min-w-0">
+          <h1 className="text-base font-semibold leading-6 text-vega-text">Chat</h1>
+          <p className="text-[11px] text-vega-text-muted">Message anyone on the Vega team.</p>
+        </div>
+      </div>
 
       <UniversalChat
         currentUserId={session.userId}
@@ -47,6 +48,6 @@ export default async function ChatPage() {
         initialUsers={initialUsers}
         mobileMode="people"
       />
-    </main>
+    </section>
   );
 }

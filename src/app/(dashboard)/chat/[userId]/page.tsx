@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation";
 import { UniversalChat } from "@/components/chat/universal-chat";
-import { DashboardTopNav } from "@/components/dashboard/top-nav";
+import { BackButton } from "@/components/dashboard/back-button";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
-import type { UserRole } from "@/types/user";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,6 @@ export default async function ChatConversationPage({ params }: { params: Params 
     loginPath: "/login",
     redirectTo: "/client/queries",
   });
-  const loginRole = session.role as (typeof LOGIN_ROLES)[number];
   const { userId } = await params;
 
   await connectToDatabase();
@@ -43,12 +41,22 @@ export default async function ChatConversationPage({ params }: { params: Params 
     notFound();
   }
 
+  const target = initialUsers.find((item) => item._id === userId);
+
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1300px] space-y-3 p-3 lg:space-y-6 lg:p-8">
-      <DashboardTopNav
-        role={loginRole as UserRole}
-        userLabel={session.fullName ?? session.email}
-      />
+    <section className="space-y-4">
+      <div className="flex items-center gap-3">
+        {/* An explicit href, not history: this route is deep-linkable and may open in a fresh tab. */}
+        <BackButton href="/chat" label="All chats" />
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-semibold leading-6 text-vega-text">
+            {target?.fullName ?? "Conversation"}
+          </h1>
+          <p className="text-[11px] capitalize text-vega-text-muted">
+            {(target?.role ?? "").replaceAll("_", " ")}
+          </p>
+        </div>
+      </div>
 
       <UniversalChat
         currentUserId={session.userId}
@@ -58,6 +66,6 @@ export default async function ChatConversationPage({ params }: { params: Params 
         mobileMode="thread"
         mobileBackHref="/chat"
       />
-    </main>
+    </section>
   );
 }
