@@ -994,7 +994,7 @@ function WorkflowCanvas({ task, taskId, subtasks, assignableUsers, onOpenSubtask
 
   function renderExecutionList(title: string, items: ExecutionListItem[]) {
     return (
-      <div className="rounded-lg border border-border bg-white p-3">
+      <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           <Badge variant={items.length > 0 ? "accent" : "neutral"}>{items.length}</Badge>
@@ -1095,12 +1095,12 @@ function WorkflowCanvas({ task, taskId, subtasks, assignableUsers, onOpenSubtask
           <div className="space-y-3 border-b border-border/70 p-3">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
               {(["completed", "active", "ready", "blocked", "overdue", "waiting", "upcoming"] as ExecutionState[]).map((state) => (
-                <div key={state} className="rounded-lg border border-border bg-white p-3">
+                <div key={state} className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">{executionLabel(state)}</p>
                   <p className="mt-1 text-2xl font-bold text-foreground">{executionSummary?.counts[state] ?? 0}</p>
                 </div>
               ))}
-              <div className="rounded-lg border border-border bg-white p-3">
+              <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">Progress</p>
                 <p className="mt-1 text-2xl font-bold text-foreground">{executionSummary?.taskProgress ?? 0}%</p>
               </div>
@@ -1143,7 +1143,7 @@ function WorkflowCanvas({ task, taskId, subtasks, assignableUsers, onOpenSubtask
               {renderExecutionList("Overdue Tasks", executionSummary?.overdueTasks ?? [])}
               {renderExecutionList("Critical Blockers", executionSummary?.criticalBlockers ?? [])}
             </div>
-            <div className="rounded-lg border border-border bg-white p-3">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <p className="text-sm font-semibold text-foreground">Execution Activity</p>
               <div className="mt-3 grid gap-2 lg:grid-cols-2">
                 {(executionSummary?.activity ?? []).slice(0, 6).map((item) => (

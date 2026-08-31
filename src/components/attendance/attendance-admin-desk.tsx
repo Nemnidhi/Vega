@@ -548,7 +548,7 @@ export function AttendanceAdminDesk({
                       </p>
                     </div>
                     {request.reason ? (
-                      <p className="rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-muted-foreground">
+                      <p className="rounded-lg border border-border/70 bg-vega-surface-1 px-3 py-2 text-sm text-muted-foreground">
                         {request.reason}
                       </p>
                     ) : null}
@@ -637,7 +637,7 @@ export function AttendanceAdminDesk({
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-4">
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3.5 text-sm text-foreground"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3.5 text-sm text-foreground"
               value={markForm.userId}
               onChange={(event) =>
                 setMarkForm((prev) => ({ ...prev, userId: event.target.value }))
@@ -657,7 +657,7 @@ export function AttendanceAdminDesk({
               }
             />
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3.5 text-sm text-foreground"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3.5 text-sm text-foreground"
               value={markForm.dayStatus}
               onChange={(event) =>
                 setMarkForm((prev) => ({

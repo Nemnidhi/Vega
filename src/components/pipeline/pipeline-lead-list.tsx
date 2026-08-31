@@ -104,7 +104,7 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                   isActive
                     ? "border-accent bg-accent/10 text-accent-strong"
-                    : "border-border bg-white text-muted-foreground hover:border-accent/40"
+                    : "border-border bg-vega-surface-1 text-muted-foreground hover:border-accent/40"
                 }`}
               >
                 {label} {count}
@@ -122,7 +122,7 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
           />
 
           <select
-            className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+            className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
             value={stageFilter}
             onChange={(event) => setStageFilter(event.target.value)}
           >
@@ -135,7 +135,7 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
           </select>
 
           <select
-            className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+            className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
             value={priorityFilter}
             onChange={(event) => setPriorityFilter(event.target.value)}
           >
@@ -150,7 +150,7 @@ export function PipelineLeadList({ leads }: { leads: PipelineLeadRow[] }) {
           {filteredLeads.map((lead) => (
             <article
               key={lead._id}
-              className="rounded-xl border border-border bg-white p-3 shadow-sm"
+              className="rounded-xl border border-border bg-vega-surface-1 p-3 shadow-sm"
             >
               <p className="text-sm font-semibold text-foreground break-words">{lead.title}</p>
               <p className="mt-1 text-xs text-muted-foreground break-words">{lead.contactName}</p>

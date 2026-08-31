@@ -66,7 +66,7 @@ export default async function ClientsPage() {
               <Link
                 key={client._id}
                 href={`/clients/${client._id}/vault`}
-                className="block rounded-lg border border-border bg-white p-3 hover:bg-surface-soft"
+                className="block rounded-lg border border-border bg-vega-surface-1 p-3 hover:bg-surface-soft"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>

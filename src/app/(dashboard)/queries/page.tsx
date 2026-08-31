@@ -127,11 +127,11 @@ export default async function QueriesPage() {
                   </div>
 
                   <div className="mt-4 grid gap-3 lg:grid-cols-[220px_1fr]">
-                    <div className="rounded-lg border border-border bg-white p-3">
+                    <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                       <p className="text-[11px] font-semibold uppercase text-muted-foreground">Workstream</p>
                       <p className="mt-1 text-sm font-medium text-foreground">{query.projectName}</p>
                     </div>
-                    <div className="rounded-lg border border-border bg-white p-3">
+                    <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                       <p className="text-[11px] font-semibold uppercase text-muted-foreground">Message</p>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">{query.message}</p>
                     </div>

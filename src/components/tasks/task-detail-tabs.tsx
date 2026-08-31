@@ -6,8 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { TaskTimelineGantt } from "@/components/tasks/task-timeline-gantt";
-import { TaskWorkflowBuilder } from "@/components/tasks/task-workflow-builder";
+import dynamic from "next/dynamic";
+
+/**
+ * The Workflow canvas and the Gantt are the two heaviest things in the app - the canvas alone
+ * pulls @xyflow/react. Statically imported they landed in the same chunk as this component, so
+ * every Task Workspace visit paid for them even when the reader never left the Subtasks tab.
+ * Loaded on demand instead; both sit behind tabs, so nothing renders them until they are opened.
+ */
+const TaskWorkflowBuilder = dynamic(
+  () => import("@/components/tasks/task-workflow-builder").then((m) => m.TaskWorkflowBuilder),
+  { ssr: false, loading: () => <TabPanelSkeleton label="Loading workflow canvas..." /> },
+);
+
+const TaskTimelineGantt = dynamic(
+  () => import("@/components/tasks/task-timeline-gantt").then((m) => m.TaskTimelineGantt),
+  { ssr: false, loading: () => <TabPanelSkeleton label="Loading timeline..." /> },
+);
+
+/** Matches the panel shape the real content lands in, so the tab does not jump on load. */
+function TabPanelSkeleton({ label }: { label: string }) {
+  return (
+    <div className="flex h-[420px] items-center justify-center rounded-lg border border-vega-border bg-vega-surface-1">
+      <p className="text-xs text-vega-text-muted">{label}</p>
+    </div>
+  );
+}
 import { SubtaskContextDrawer, type DrawerSubtask } from "@/components/tasks/subtask-context-drawer";
 import { TaskDependenciesPanel } from "@/components/tasks/task-dependencies-panel";
 import { TaskChecklistPanel } from "@/components/tasks/task-checklist-panel";

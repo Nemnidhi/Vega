@@ -126,7 +126,7 @@ export function ClientProposalView({
           {proposal.pricing.map((line) => (
             <div
               key={line.label}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-white p-3"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-vega-surface-1 p-3"
             >
               <span className="text-foreground">{line.label}</span>
               <span className="text-sm text-muted-foreground">
@@ -142,7 +142,7 @@ export function ClientProposalView({
           href={`/api/proposals/${proposal._id}/pdf`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+          className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-vega-surface-1 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
         >
           View Full Proposal
         </a>

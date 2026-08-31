@@ -58,7 +58,7 @@ export function ClientInvitePanel({
   return (
     <div className="space-y-3">
       {invite ? (
-        <div className="rounded-lg border border-border bg-white p-3">
+        <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-muted-foreground">Invited: {invite.email}</span>
             <Badge

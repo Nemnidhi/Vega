@@ -7,7 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TasksWorkspace, type WorkspaceTask } from "@/components/tasks/tasks-workspace";
-import { TaskAnalyticsPanel } from "@/components/tasks/task-analytics-panel";
+import dynamic from "next/dynamic";
+
+// Analytics sits behind a tab and is not on the path most people take through this page.
+const TaskAnalyticsPanel = dynamic(
+  () => import("@/components/tasks/task-analytics-panel").then((m) => m.TaskAnalyticsPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[320px] items-center justify-center rounded-lg border border-vega-border bg-vega-surface-1">
+        <p className="text-xs text-vega-text-muted">Loading analytics...</p>
+      </div>
+    ),
+  },
+);
 
 type PopulatedUser = { _id: string; fullName: string; email: string; role: string };
 
@@ -595,7 +608,7 @@ export function TasksView({
                           })),
                         }))
                       }
-                      className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                      className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                     >
                       <option value={currentUserId}>Myself</option>
                       {assignableUsers
@@ -610,7 +623,7 @@ export function TasksView({
                   <select
                     value={taskForm.workflowTemplate}
                     onChange={(event) => applyWorkflowTemplate(event.target.value as WorkflowTemplate)}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     {(Object.keys(WORKFLOW_TEMPLATES) as WorkflowTemplate[]).map((template) => (
                       <option key={template} value={template}>
@@ -622,7 +635,7 @@ export function TasksView({
                     <select
                       value={taskForm.kpiId}
                       onChange={(event) => setTaskForm((form) => ({ ...form, kpiId: event.target.value }))}
-                      className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground sm:col-span-2"
+                      className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground sm:col-span-2"
                     >
                       <option value="">Not linked to a KPI</option>
                       {kpis.map((kpi) => (
@@ -639,7 +652,7 @@ export function TasksView({
                         {uploadSummary ? <p className="text-xs text-success">{uploadSummary}</p> : null}
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground shadow-sm hover:border-accent/40 hover:bg-surface-soft">
+                        <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-vega-surface-1 px-3 text-sm font-semibold text-foreground shadow-sm hover:border-accent/40 hover:bg-surface-soft">
                           Upload Excel
                           <input
                             type="file"
@@ -657,7 +670,7 @@ export function TasksView({
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {buildFlowSteps(taskForm.workflowTemplate).map((step, index, steps) => (
                         <div key={step.key} className="flex items-center gap-2">
-                          <span className="rounded-md border border-accent/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-accent-strong">
+                          <span className="rounded-md border border-accent/25 bg-vega-surface-1 px-2.5 py-1 text-[11px] font-semibold text-accent-strong">
                             {step.title}
                           </span>
                           {index < steps.length - 1 ? <span className="text-xs text-muted-foreground">-&gt;</span> : null}
@@ -670,7 +683,7 @@ export function TasksView({
                         <p className="text-xs text-muted-foreground">Add manual subtasks or upload an Excel sheet.</p>
                       ) : null}
                       {taskForm.subTasks.map((subTask, index) => (
-                        <div key={`${subTask.sourceSheet ?? "manual"}-${subTask.sourceRow ?? index}`} className="grid gap-2 rounded-lg border border-border/70 bg-white p-2 sm:grid-cols-[1.2fr_1.4fr_0.8fr_1fr_auto]">
+                        <div key={`${subTask.sourceSheet ?? "manual"}-${subTask.sourceRow ?? index}`} className="grid gap-2 rounded-lg border border-border/70 bg-vega-surface-1 p-2 sm:grid-cols-[1.2fr_1.4fr_0.8fr_1fr_auto]">
                           <Input
                             placeholder="Subtask title"
                             value={subTask.title}
@@ -690,7 +703,7 @@ export function TasksView({
                             <select
                               value={userIdOf(subTask.assignedToUserId) || taskForm.assignedToUserId}
                               onChange={(event) => updateDraftSubTask(index, { assignedToUserId: event.target.value })}
-                              className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                              className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                             >
                               <option value={taskForm.assignedToUserId}>Parent assignee</option>
                               {assignableUsers.map((user) => (
@@ -755,7 +768,7 @@ export function TasksView({
                 <div
                   key={cell.dateKey}
                   className={`min-h-20 rounded-lg border p-1.5 text-left text-[11px] ${
-                    cell.inCurrentMonth ? "border-border/70 bg-white/70" : "border-border/40 bg-muted/20 text-muted-foreground"
+                    cell.inCurrentMonth ? "border-border/70 bg-vega-surface-1" : "border-border/40 bg-muted/20 text-muted-foreground"
                   } ${cell.isToday ? "ring-2 ring-accent/60" : ""}`}
                 >
                   <div className="font-semibold">{cell.date.getDate()}</div>
@@ -824,7 +837,7 @@ export function TasksView({
                   <select
                     value={kpiForm.period}
                     onChange={(event) => setKpiForm((form) => ({ ...form, period: event.target.value as KpiPeriod }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
@@ -844,7 +857,7 @@ export function TasksView({
                   <select
                     value={kpiForm.assignedRole}
                     onChange={(event) => setKpiForm((form) => ({ ...form, assignedRole: event.target.value }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     <option value="">No role target</option>
                     {ASSIGNABLE_ROLES.map((role) => (
@@ -854,7 +867,7 @@ export function TasksView({
                   <select
                     value={kpiForm.assignedUserId}
                     onChange={(event) => setKpiForm((form) => ({ ...form, assignedUserId: event.target.value }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     <option value="">No individual target</option>
                     {assignableUsers.map((user) => (

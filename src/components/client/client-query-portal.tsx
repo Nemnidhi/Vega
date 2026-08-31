@@ -280,19 +280,19 @@ export function ClientQueryPortal({
           <CardTitle className="text-xl sm:text-2xl">Welcome, {clientName}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">Total Queries</p>
             <p className="mt-1 text-2xl font-semibold">{stats.total}</p>
           </div>
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">Open</p>
             <p className="mt-1 text-2xl font-semibold">{stats.open}</p>
           </div>
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">In Progress</p>
             <p className="mt-1 text-2xl font-semibold">{stats.inProgress}</p>
           </div>
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">Resolved</p>
             <p className="mt-1 text-2xl font-semibold">{stats.resolved}</p>
           </div>
@@ -353,7 +353,7 @@ export function ClientQueryPortal({
                 }
               />
               <select
-                className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
                 value={onboarding.preferredCommunication}
                 onChange={(event) =>
                   setOnboarding((prev) => ({
@@ -399,7 +399,7 @@ export function ClientQueryPortal({
               placeholder="Notes for your onboarding manager"
             />
 
-            <div className="rounded-xl border border-border bg-white p-3">
+            <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
               <p className="text-sm font-semibold">Onboarding Checklist</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {onboardingSteps.map((item) => (
@@ -453,7 +453,7 @@ export function ClientQueryPortal({
               required
             />
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={priority}
               onChange={(event) => setPriority(event.target.value as QueryRecord["priority"])}
             >
@@ -503,7 +503,7 @@ export function ClientQueryPortal({
               placeholder="Search by workstream, subject, message"
             />
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as "all" | QueryRecord["status"])}
             >
@@ -513,7 +513,7 @@ export function ClientQueryPortal({
               <option value="resolved">Resolved</option>
             </select>
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={priorityFilter}
               onChange={(event) =>
                 setPriorityFilter(event.target.value as "all" | QueryRecord["priority"])
@@ -532,7 +532,7 @@ export function ClientQueryPortal({
             </p>
           ) : (
             filteredQueries.map((query) => (
-              <div key={query._id} className="rounded-xl border border-border bg-white p-3">
+              <div key={query._id} className="rounded-xl border border-border bg-vega-surface-1 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold">{query.subject}</p>

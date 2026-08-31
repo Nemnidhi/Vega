@@ -77,13 +77,13 @@ function EstimateSummary({ blueprint }: { blueprint: BlueprintRecord }) {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-white p-3">
+        <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
           <p className="text-xs text-muted-foreground">One-time</p>
           <p className="mt-1 font-semibold text-foreground">
             {formatMoney(estimate.oneTimeMin, estimate.currency)} - {formatMoney(estimate.oneTimeMax, estimate.currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-white p-3">
+        <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
           <p className="text-xs text-muted-foreground">Monthly</p>
           <p className="mt-1 font-semibold text-foreground">
             {formatMoney(estimate.monthlyMin, estimate.currency)} - {formatMoney(estimate.monthlyMax, estimate.currency)}
@@ -96,7 +96,7 @@ function EstimateSummary({ blueprint }: { blueprint: BlueprintRecord }) {
 
       <div className="space-y-2">
         {blueprint.components.map((c) => (
-          <div key={c.code} className="rounded-lg border border-border bg-white p-3">
+          <div key={c.code} className="rounded-lg border border-border bg-vega-surface-1 p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="font-medium text-foreground">{c.title}</span>
               <span className="text-sm text-muted-foreground">
@@ -208,7 +208,7 @@ function QuestionnaireForm({
                     className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                       selected
                         ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-white text-foreground hover:bg-surface-soft"
+                        : "border-border bg-vega-surface-1 text-foreground hover:bg-surface-soft"
                     }`}
                   >
                     {option.label}

@@ -7,7 +7,7 @@ interface ClientAuthLayoutProps {
 export default function ClientAuthLayout({ children }: ClientAuthLayoutProps) {
   return (
     <main className="grid min-h-screen place-items-start bg-background px-3 py-4 sm:px-4 sm:py-8 lg:place-items-center">
-      <div className="w-full max-w-[1040px] rounded-lg border border-border bg-white p-3 shadow-sm md:p-4">
+      <div className="w-full max-w-[1040px] rounded-lg border border-border bg-vega-surface-1 p-3 shadow-sm md:p-4">
         <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
           <section className="order-2 rounded-lg bg-sidebar p-5 text-white sm:p-6 md:p-8 lg:order-1">
             <p className="text-[11px] font-semibold uppercase text-sidebar-muted">

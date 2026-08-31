@@ -289,7 +289,7 @@ export function TaskAnalyticsPanel({ assignableUsers, currentUserId, currentUser
           <select
             value={filters.projectId}
             onChange={(event) => updateFilter("projectId", event.target.value)}
-            className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+            className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
           >
             <option value="">All projects</option>
             {(analytics?.options.projects ?? []).map((project) => (
@@ -299,7 +299,7 @@ export function TaskAnalyticsPanel({ assignableUsers, currentUserId, currentUser
           <select
             value={filters.userId}
             onChange={(event) => updateFilter("userId", event.target.value)}
-            className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+            className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
           >
             <option value="">{canFilterTeam ? "All members" : "My work"}</option>
             {canFilterTeam ? userOptions.map((user) => (
@@ -309,7 +309,7 @@ export function TaskAnalyticsPanel({ assignableUsers, currentUserId, currentUser
           <select
             value={filters.status}
             onChange={(event) => updateFilter("status", event.target.value)}
-            className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+            className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
           >
             <option value="">All statuses</option>
             {STATUSES.map((status) => <option key={status} value={status}>{humanize(status)}</option>)}
@@ -317,7 +317,7 @@ export function TaskAnalyticsPanel({ assignableUsers, currentUserId, currentUser
           <select
             value={filters.priority}
             onChange={(event) => updateFilter("priority", event.target.value)}
-            className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+            className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
           >
             <option value="">All priorities</option>
             {PRIORITIES.map((priority) => <option key={priority} value={priority}>{humanize(priority)}</option>)}
@@ -327,7 +327,7 @@ export function TaskAnalyticsPanel({ assignableUsers, currentUserId, currentUser
           <select
             value={filters.stage}
             onChange={(event) => updateFilter("stage", event.target.value)}
-            className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground lg:col-span-2"
+            className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground lg:col-span-2"
           >
             <option value="">All stages</option>
             {(analytics?.options.stages ?? []).map((stage) => <option key={stage} value={stage}>{stage}</option>)}
@@ -444,7 +444,7 @@ export function TaskAnalyticsPanel({ assignableUsers, currentUserId, currentUser
               <CardHeader><CardTitle>Team Capacity</CardTitle></CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {analytics.workload.teams.map((team) => (
-                  <div key={team.team} className="rounded-lg border border-border/70 bg-white p-3">
+                  <div key={team.team} className="rounded-lg border border-border/70 bg-vega-surface-1 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold capitalize text-foreground">{team.team}</p>
                       <Badge variant={workloadVariant(team.capacityLabel)}>{team.capacityPercent}%</Badge>

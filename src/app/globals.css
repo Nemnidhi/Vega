@@ -86,12 +86,21 @@
   --color-vega-text-muted: var(--vega-text-muted);
   --color-vega-text-dim: var(--vega-text-dim);
   --color-vega-purple: var(--vega-purple);
+  --color-vega-purple-hover: var(--vega-purple-hover);
+  --color-vega-purple-soft: var(--vega-purple-soft);
+  --color-vega-purple-border: var(--vega-purple-border);
   --color-vega-blue: var(--vega-blue);
+  --color-vega-blue-soft: var(--vega-blue-soft);
   --color-vega-green: var(--vega-green);
+  --color-vega-green-soft: var(--vega-green-soft);
   --color-vega-yellow: var(--vega-yellow);
+  --color-vega-yellow-soft: var(--vega-yellow-soft);
   --color-vega-orange: var(--vega-orange);
+  --color-vega-orange-soft: var(--vega-orange-soft);
   --color-vega-red: var(--vega-red);
+  --color-vega-red-soft: var(--vega-red-soft);
   --color-vega-cyan: var(--vega-cyan);
+  --color-vega-cyan-soft: var(--vega-cyan-soft);
   --font-sans: var(--app-font-sans);
   --font-mono: var(--app-font-mono);
 }

@@ -55,7 +55,7 @@ export default async function LeadsPage() {
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {tierCounts.map(({ tier, count }) => (
-                <div key={tier} className="rounded-lg border border-border bg-white p-3">
+                <div key={tier} className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <Badge variant={TIER_VARIANT[tier]}>Tier {tier}</Badge>
                     <span className="text-2xl font-semibold text-foreground">{count}</span>

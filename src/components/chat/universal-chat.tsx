@@ -495,7 +495,7 @@ export function UniversalChat({
             : "",
         )}
       >
-        <CardHeader className={cn("pb-3", whatsappMobilePeople ? "border-b border-border bg-white" : "")}>
+        <CardHeader className={cn("pb-3", whatsappMobilePeople ? "border-b border-border bg-vega-surface-1" : "")}>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <CardTitle>Chats</CardTitle>
@@ -572,15 +572,15 @@ export function UniversalChat({
                     className={cn(
                       "w-full px-3 py-2.5 text-left transition-all",
                       whatsappMobilePeople
-                        ? "rounded-xl border border-border bg-white shadow-sm"
+                        ? "rounded-xl border border-border bg-vega-surface-1 shadow-sm"
                         : "rounded-2xl border",
                       isActive
                         ? whatsappMobilePeople
                           ? "border-accent/50 bg-accent-soft/70"
                           : "border-accent/50 bg-accent-soft/70"
                         : whatsappMobilePeople
-                          ? "hover:bg-white"
-                          : "border-border bg-white/75 hover:border-accent/40 hover:bg-white",
+                          ? "hover:bg-vega-surface-hover"
+                          : "border-border bg-vega-surface-1 hover:border-accent/40 hover:bg-vega-surface-hover",
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -631,7 +631,7 @@ export function UniversalChat({
             : undefined,
         )}
       >
-        <CardHeader className={cn("pb-3", whatsappMobileThread ? "border-b border-border bg-white" : "")}>
+        <CardHeader className={cn("pb-3", whatsappMobileThread ? "border-b border-border bg-vega-surface-1" : "")}>
           {selectedUser ? (
             whatsappMobileThread ? (
               <div className="flex items-center gap-3">
@@ -711,7 +711,7 @@ export function UniversalChat({
               "min-h-0 flex-1 space-y-2 overflow-y-auto p-3",
               whatsappMobileThread
                 ? "rounded-none border-0 bg-surface-soft pb-2"
-                : "rounded-2xl border border-border bg-white/65",
+                : "rounded-2xl border border-border bg-vega-surface-1",
             )}
           >
             {!selectedUser ? (
@@ -736,7 +736,7 @@ export function UniversalChat({
                         "max-w-[82%] rounded-2xl px-3 py-2 shadow-sm",
                         mine
                           ? "border border-accent bg-accent text-white"
-                          : "border border-border bg-white text-foreground",
+                          : "border border-border bg-vega-surface-1 text-foreground",
                       )}
                     >
                       <p className="whitespace-pre-wrap text-sm leading-6">{item.message}</p>
@@ -763,7 +763,7 @@ export function UniversalChat({
               "sticky bottom-0 z-10 mt-auto pt-2",
               whatsappMobileThread
                 ? "border-0 bg-surface px-2 pb-2"
-                : "border-t border-border bg-white/95",
+                : "border-t border-border bg-vega-surface-1",
             )}
           >
             <div className="flex items-end gap-2">
@@ -780,7 +780,7 @@ export function UniversalChat({
                 className={cn(
                   "min-h-12 flex-1 resize-none",
                   whatsappMobileThread
-                    ? "h-11 rounded-full bg-white px-4 py-2 shadow-sm"
+                    ? "h-11 rounded-full bg-vega-surface-1 px-4 py-2 shadow-sm"
                     : "h-12",
                 )}
                 maxLength={2000}

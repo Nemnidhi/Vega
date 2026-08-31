@@ -113,7 +113,7 @@ export function ClientSignupForm() {
               required
             />
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={preferredCommunication}
               onChange={(event) =>
                 setPreferredCommunication(

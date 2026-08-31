@@ -314,7 +314,7 @@ export function TaskTimelineGantt({ taskId, subtasks, onOpenSubtask, onRefresh }
       <CardContent className="space-y-4">
         {error ? <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{error}</div> : null}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="overflow-auto rounded-lg border border-border bg-white">
+          <div className="overflow-auto rounded-lg border border-border bg-vega-surface-1">
             <div className="grid min-w-[1120px] grid-cols-[520px_minmax(720px,1fr)]">
               <div className="sticky left-0 z-20 grid grid-cols-[170px_95px_82px_78px_72px_72px_68px_100px] border-b border-border bg-surface-soft px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
                 <span>Subtask</span><span>Assignee</span><span>Status</span><span>Priority</span><span>Start</span><span>Due</span><span>Duration</span><span>Dependencies</span>
@@ -343,7 +343,7 @@ export function TaskTimelineGantt({ taskId, subtasks, onOpenSubtask, onRefresh }
                         <button
                           type="button"
                           onClick={() => onOpenSubtask(subtask)}
-                          className="sticky left-0 z-10 grid grid-cols-[170px_95px_82px_78px_72px_72px_68px_100px] items-center gap-0 border-b border-border bg-white px-3 text-left text-xs hover:bg-surface-soft"
+                          className="sticky left-0 z-10 grid grid-cols-[170px_95px_82px_78px_72px_72px_68px_100px] items-center gap-0 border-b border-border bg-vega-surface-1 px-3 text-left text-xs hover:bg-surface-soft"
                           style={{ height: ROW_HEIGHT }}
                         >
                           <span className="truncate font-semibold text-foreground">{subtask.code ?? "NODE"} | {subtask.title}</span>
@@ -421,7 +421,7 @@ export function TaskTimelineGantt({ taskId, subtasks, onOpenSubtask, onRefresh }
           </div>
 
           <aside className="space-y-3">
-            <div className="rounded-lg border border-border bg-white p-3">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><CalendarDays size={16} /> Execution Insights</div>
               <div className="mt-3 space-y-3 text-sm">
                 <Insight title="Next Available Tasks" items={nextAvailable.map((item) => item.title)} />
@@ -430,7 +430,7 @@ export function TaskTimelineGantt({ taskId, subtasks, onOpenSubtask, onRefresh }
                 <Insight title="Workload Issues" items={workload.map((item) => `${item.assignee}: ${item.active} active`)} />
               </div>
             </div>
-            <div className="rounded-lg border border-border bg-white p-3 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
               <div className="mb-2 flex items-center gap-2 font-semibold text-foreground"><GitBranch size={16} /> Timeline Signals</div>
               <p>Critical path bars use a warning ring. Milestones render as compact diamonds. Dependency lines come from real subtask dependencies.</p>
             </div>

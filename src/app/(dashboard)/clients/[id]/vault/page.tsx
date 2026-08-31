@@ -100,7 +100,7 @@ export default async function ClientVaultPage({ params }: { params: Params }) {
               <p className="text-sm text-muted-foreground">No proposals in vault.</p>
             ) : (
               data.proposals.map((item) => (
-                <div key={item._id} className="rounded-lg border border-border bg-white p-2 text-sm">
+                <div key={item._id} className="rounded-lg border border-border bg-vega-surface-1 p-2 text-sm">
                   <p className="font-mono text-xs">{item._id}</p>
                   <div className="mt-1 flex items-center gap-2">
                     <Badge variant="neutral">{item.status}</Badge>
@@ -123,7 +123,7 @@ export default async function ClientVaultPage({ params }: { params: Params }) {
               <p className="text-sm text-muted-foreground">No scope manifests in vault.</p>
             ) : (
               data.scopes.map((item) => (
-                <div key={item._id} className="rounded-lg border border-border bg-white p-2 text-sm">
+                <div key={item._id} className="rounded-lg border border-border bg-vega-surface-1 p-2 text-sm">
                   <p className="font-mono text-xs">{item._id}</p>
                   <Badge variant={item.isCompleted ? "success" : "warning"}>
                     {item.isCompleted ? "Completed" : "Incomplete"}
@@ -143,7 +143,7 @@ export default async function ClientVaultPage({ params }: { params: Params }) {
               <p className="text-sm text-muted-foreground">No change orders in vault.</p>
             ) : (
               data.changeOrders.map((item) => (
-                <div key={item._id} className="rounded-lg border border-border bg-white p-2 text-sm">
+                <div key={item._id} className="rounded-lg border border-border bg-vega-surface-1 p-2 text-sm">
                   <p className="font-medium">{item.requestedFeature}</p>
                   <Badge variant={item.approvalStatus === "approved" ? "success" : "warning"}>
                     {item.approvalStatus}

@@ -425,7 +425,7 @@ export function PricingPackagePanel({ industries, segments, tiers, components }:
                                 ? "border-success/40 bg-success/10 text-success"
                                 : status === "addon"
                                   ? "border-warning/40 bg-warning/10 text-warning"
-                                  : "border-border/70 bg-white/70 text-muted-foreground"
+                                  : "border-border/70 bg-vega-surface-1 text-muted-foreground"
                             }`}
                           >
                             {STATUS_LABELS[status]}

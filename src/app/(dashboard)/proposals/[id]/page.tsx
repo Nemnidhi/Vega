@@ -64,7 +64,7 @@ export default async function ProposalsLeadPage({ params }: { params: Params }) 
             </p>
             <a
               href={`/scope/${leadId}`}
-              className="mt-3 inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+              className="mt-3 inline-flex h-11 items-center justify-center rounded-lg border border-border bg-vega-surface-1 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
             >
               Go To Scope-Lock
             </a>
@@ -115,7 +115,7 @@ export default async function ProposalsLeadPage({ params }: { params: Params }) 
             {serializeForJson(existingProposals).map((p: Record<string, unknown>) => (
               <div
                 key={String(p._id)}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-white p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-vega-surface-1 p-3"
               >
                 <div className="flex items-center gap-3">
                   <Badge variant={proposalStatusVariant(String(p.status))}>

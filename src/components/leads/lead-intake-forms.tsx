@@ -316,7 +316,7 @@ export function LeadIntakeForms() {
                 placeholder="Phone (optional)"
               />
               <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+                className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
                 value={form.category}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -333,7 +333,7 @@ export function LeadIntakeForms() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+                className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
                 value={form.source}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -352,7 +352,7 @@ export function LeadIntakeForms() {
               </select>
 
               <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+                className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
                 value={form.urgency}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -428,7 +428,7 @@ export function LeadIntakeForms() {
           </form>
 
           {bulkResult?.failedRows?.length ? (
-            <div className="rounded-lg border border-border bg-white p-3 text-sm">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm">
               <p className="font-semibold text-foreground">Failed Rows</p>
               <div className="mt-2 space-y-1 text-muted-foreground">
                 {bulkResult.failedRows.slice(0, 8).map((item) => (

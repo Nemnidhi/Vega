@@ -26,7 +26,7 @@ function priorityVariant(priorityBand: string): "danger" | "warning" | "accent" 
 
 export function KanbanBoard({ stages }: { stages: PipelineStage[] }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+    <div className="rounded-xl border border-border bg-vega-surface-1 p-3 shadow-sm">
       <div className="mb-3 px-2 text-xs text-muted-foreground">
         Scroll horizontally on smaller screens to see all stages.
       </div>
@@ -37,7 +37,7 @@ export function KanbanBoard({ stages }: { stages: PipelineStage[] }) {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-sm">{stageTitle(stage.stage)}</CardTitle>
-                  <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-border bg-white px-2 text-xs font-semibold text-foreground">
+                  <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-border bg-vega-surface-1 px-2 text-xs font-semibold text-foreground">
                     {stage.leads.length}
                   </span>
                 </div>
@@ -52,7 +52,7 @@ export function KanbanBoard({ stages }: { stages: PipelineStage[] }) {
                     <Link
                       key={lead._id}
                       href={`/leads/${lead._id}`}
-                      className="group block rounded-lg border border-border bg-white p-3 text-xs transition-colors duration-150 hover:bg-surface-soft"
+                      className="group block rounded-lg border border-border bg-vega-surface-1 p-3 text-xs transition-colors duration-150 hover:bg-surface-soft"
                     >
                       <p className="text-sm font-semibold leading-5 text-foreground break-words">
                         {lead.title}
@@ -64,7 +64,7 @@ export function KanbanBoard({ stages }: { stages: PipelineStage[] }) {
                         <Badge variant={priorityVariant(lead.priorityBand)}>
                           {lead.priorityBand.replaceAll("_", " ")}
                         </Badge>
-                        <span className="inline-flex min-w-[44px] items-center justify-center rounded-full border border-border bg-white px-2 py-1 font-mono text-[11px] text-muted-foreground">
+                        <span className="inline-flex min-w-[44px] items-center justify-center rounded-full border border-border bg-vega-surface-1 px-2 py-1 font-mono text-[11px] text-muted-foreground">
                           {lead.score ?? 0}
                         </span>
                       </div>
