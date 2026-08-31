@@ -24,6 +24,12 @@ import {
 } from "../src/lib/validation/task";
 import { createProjectSchema, updateProjectSchema } from "../src/lib/validation/project";
 import {
+  edgesWouldCreateCycle,
+  computeReadiness,
+  isDependencySatisfied,
+  isDependencyBranchActive,
+} from "../src/lib/tasks/dependencies";
+import {
   STATUS_TONE,
   PRIORITY_TONE,
   dueLabel,
@@ -236,6 +242,170 @@ check("near-term work counts down", dueLabel(future, "IN_PROGRESS").text === "3 
 check("closed work shows a plain date", !dueLabel(past, "COMPLETED").text.startsWith("Overdue"));
 check("missing date reads No date", dueLabel(null, "IN_PROGRESS").text === "No date");
 check("invalid date reads No date", dueLabel("not-a-date", "IN_PROGRESS").text === "No date");
+
+// --- dependency engine: cycles ---------------------------------------------------------------
+//
+// Circular dependency detection has to hold at arbitrary depth and is enforced server-side.
+
+const edge = (predecessorSubtaskId: string, successorSubtaskId: string) => ({
+  predecessorSubtaskId,
+  successorSubtaskId,
+});
+
+check("self-dependency is a cycle", edgesWouldCreateCycle([], "A", "A"));
+check("first edge on an empty graph is fine", !edgesWouldCreateCycle([], "A", "B"));
+check("A->B then B->A is a cycle", edgesWouldCreateCycle([edge("A", "B")], "B", "A"));
+check(
+  "A->B->C then C->A is a cycle",
+  edgesWouldCreateCycle([edge("A", "B"), edge("B", "C")], "C", "A"),
+);
+check(
+  "deep chain closing back is a cycle",
+  edgesWouldCreateCycle(
+    [edge("A", "B"), edge("B", "C"), edge("C", "D"), edge("D", "E"), edge("E", "F")],
+    "F",
+    "A",
+  ),
+);
+check(
+  "closing into the middle of a chain is a cycle",
+  edgesWouldCreateCycle(
+    [edge("A", "B"), edge("B", "C"), edge("C", "D"), edge("D", "E")],
+    "E",
+    "C",
+  ),
+);
+check(
+  "a diamond is not a cycle",
+  !edgesWouldCreateCycle([edge("A", "B"), edge("A", "C"), edge("B", "D")], "C", "D"),
+);
+check(
+  "converging on a shared successor is not a cycle",
+  !edgesWouldCreateCycle([edge("FRONTEND", "INTEGRATION")], "BACKEND", "INTEGRATION"),
+);
+check(
+  "a disconnected component is not a cycle",
+  !edgesWouldCreateCycle([edge("A", "B"), edge("C", "D")], "B", "C"),
+);
+check(
+  "an already-cyclic graph still terminates",
+  edgesWouldCreateCycle([edge("A", "B"), edge("B", "A"), edge("B", "C")], "C", "A"),
+);
+
+// --- dependency engine: satisfaction ---------------------------------------------------------
+
+check(
+  "finish-to-start needs completion",
+  isDependencySatisfied("COMPLETED", "FINISH_TO_START") &&
+    !isDependencySatisfied("IN_PROGRESS", "FINISH_TO_START"),
+);
+check(
+  "finish-to-start accepts legacy done",
+  isDependencySatisfied("done", "FINISH_TO_START"),
+);
+check(
+  "start-to-start clears once underway",
+  isDependencySatisfied("IN_PROGRESS", "START_TO_START"),
+);
+check(
+  "start-to-start is not satisfied by NOT_STARTED",
+  !isDependencySatisfied("NOT_STARTED", "START_TO_START"),
+);
+check(
+  "start-to-start accepts legacy in_progress",
+  isDependencySatisfied("in_progress", "START_TO_START"),
+);
+check(
+  "a cancelled predecessor never satisfies",
+  !isDependencySatisfied("CANCELLED", "FINISH_TO_START"),
+);
+
+// --- dependency engine: branch gating --------------------------------------------------------
+
+check(
+  "an unbranched edge is always active",
+  isDependencyBranchActive({ branchKey: "" }, { workflowNodeType: "CONDITION", workflowDecision: "NO" }),
+);
+check(
+  "a branch edge on a plain subtask is active",
+  isDependencyBranchActive({ branchKey: "YES" }, { workflowNodeType: "SUBTASK" }),
+);
+check(
+  "a matching branch is active",
+  isDependencyBranchActive(
+    { branchKey: "YES" },
+    { workflowNodeType: "CONDITION", workflowDecision: "YES" },
+  ),
+);
+check(
+  "a non-matching branch is inactive",
+  !isDependencyBranchActive(
+    { branchKey: "YES" },
+    { workflowNodeType: "CONDITION", workflowDecision: "NO" },
+  ),
+);
+
+// --- dependency engine: readiness ------------------------------------------------------------
+//
+// The multi-predecessor case from the phase spec: Integration depends on Frontend and Backend,
+// and stays blocked until both are satisfied.
+
+const dep = (status: string, dependencyType = "FINISH_TO_START") => ({
+  dependencyType,
+  predecessorSubtaskId: { status, workflowNodeType: "SUBTASK" },
+});
+
+const bothIncomplete = computeReadiness("NOT_STARTED", [dep("IN_PROGRESS"), dep("NOT_STARTED")]);
+check("blocked while predecessors are open", bothIncomplete.isBlockedByDependencies);
+check("not ready while blocked", !bothIncomplete.readyToStart);
+check("counts both blockers", bothIncomplete.blockingDependencyCount === 2);
+
+const onePending = computeReadiness("NOT_STARTED", [dep("COMPLETED"), dep("IN_PROGRESS")]);
+check("one satisfied predecessor is not enough", onePending.isBlockedByDependencies);
+check("counts the single remaining blocker", onePending.blockingDependencyCount === 1);
+
+const allDone = computeReadiness("NOT_STARTED", [dep("COMPLETED"), dep("COMPLETED")]);
+check("clears when every predecessor completes", allDone.dependencySatisfied);
+check("becomes ready to start", allDone.readyToStart);
+
+check(
+  "a task with no dependencies is never auto-readied",
+  !computeReadiness("NOT_STARTED", []).readyToStart,
+);
+check(
+  "work already in progress is left alone",
+  !computeReadiness("IN_PROGRESS", [dep("COMPLETED")]).readyToStart,
+);
+check(
+  "completed work is never re-readied",
+  !computeReadiness("COMPLETED", [dep("COMPLETED")]).readyToStart,
+);
+check(
+  "review work is left alone",
+  !computeReadiness("REVIEW", [dep("COMPLETED")]).readyToStart,
+);
+check(
+  "a blocked task can become ready again",
+  computeReadiness("BLOCKED", [dep("COMPLETED")]).readyToStart,
+);
+check(
+  "legacy todo can become ready",
+  computeReadiness("todo", [dep("COMPLETED")]).readyToStart,
+);
+check(
+  "an inactive branch does not block",
+  !computeReadiness("NOT_STARTED", [
+    {
+      dependencyType: "FINISH_TO_START",
+      branchKey: "YES",
+      predecessorSubtaskId: {
+        status: "COMPLETED",
+        workflowNodeType: "CONDITION",
+        workflowDecision: "NO",
+      },
+    },
+  ]).isBlockedByDependencies,
+);
 
 console.log("");
 if (failures > 0) {
