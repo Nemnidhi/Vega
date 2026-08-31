@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskTimelineGantt } from "@/components/tasks/task-timeline-gantt";
 import { TaskWorkflowBuilder } from "@/components/tasks/task-workflow-builder";
+import { SubtaskContextDrawer, type DrawerSubtask } from "@/components/tasks/subtask-context-drawer";
+import { TaskDependenciesPanel } from "@/components/tasks/task-dependencies-panel";
+import { TaskChecklistPanel } from "@/components/tasks/task-checklist-panel";
 import { isCompletedStatus } from "@/lib/tasks/status";
 
 type PopulatedUser = { _id: string; fullName: string; email: string; role?: string };
@@ -271,7 +274,18 @@ const STATUSES: SubtaskStatus[] = [
 const PRIORITIES: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const DEPENDENCY_TYPES: DependencyType[] = ["FINISH_TO_START", "START_TO_START", "FINISH_TO_FINISH"];
 const ASSIGN_OTHERS_ROLES = ["admin", "partner", "project_manager"];
-const TABS = ["Overview", "Subtasks", "Workflow", "Timeline", "AI Assistant", "Files", "Comments", "Activity"] as const;
+const TABS = [
+  "Overview",
+  "Subtasks",
+  "Dependencies",
+  "Checklist",
+  "Workflow",
+  "Timeline",
+  "Comments",
+  "Files",
+  "Activity",
+  "AI Assistant",
+] as const;
 const AI_MODES: { mode: AiAssistantMode; label: string }[] = [
   { mode: "generate_subtasks", label: "Generate Subtasks" },
   { mode: "break_down_subtask", label: "Break Down Subtask" },
@@ -476,11 +490,18 @@ export function TaskDetailTabs({
   currentUserRole,
 }: TaskDetailTabsProps) {
   const canAssignOthers = ASSIGN_OTHERS_ROLES.includes(currentUserRole);
+  // Managers, plus the task's own assignee or creator. The server enforces this too - this
+  // only decides whether to render the controls.
+  const canEdit =
+    canAssignOthers ||
+    userIdOf(task.assignedToUserId) === currentUserId ||
+    userIdOf(task.createdBy) === currentUserId;
   const defaultAssigneeId = userIdOf(task.assignedToUserId) || currentUserId;
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Subtasks");
   const [subtasks, setSubtasks] = useState<TaskRecord[]>(initialSubtasks);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [contextSubtaskId, setContextSubtaskId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>(() => blankDraft(defaultAssigneeId));
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -636,6 +657,97 @@ export function TaskDetailTabs({
     const data = await callApi<TaskRecord[]>(`/api/tasks/${task._id}/subtasks`);
     setSubtasks(data);
     setSelectedIds([]);
+  }
+
+  const contextSubtask = contextSubtaskId
+    ? (subtasks.find((subtask) => subtask._id === contextSubtaskId) ?? null)
+    : null;
+
+  /**
+   * Every dependency edge under this task, deduped.
+   *
+   * The subtask payload carries blockedBy/blocking per row, so the same edge appears twice -
+   * once on each end. Collapsing by id here avoids a second round trip for the graph.
+   */
+  const allDependencies = useMemo(() => {
+    const byId = new Map<string, SubtaskDependency>();
+    for (const subtask of subtasks) {
+      for (const dependency of subtask.blockedBy ?? []) byId.set(dependency._id, dependency);
+      for (const dependency of subtask.blocking ?? []) byId.set(dependency._id, dependency);
+    }
+    return Array.from(byId.values());
+  }, [subtasks]);
+
+  async function patchSubtask(subtaskId: string, patch: Record<string, unknown>) {
+    setBusy(subtaskId);
+    setError("");
+    try {
+      await callApi(`/api/tasks/${task._id}/subtasks/${subtaskId}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      await refreshSubtasks();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not update the subtask.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function addSubtaskComment(subtaskId: string, body: string) {
+    const subtask = subtasks.find((item) => item._id === subtaskId);
+    if (!subtask) return;
+    // The subtask PATCH replaces the comment array wholesale, so send the existing ones back.
+    const existing = (subtask.comments ?? []).map((comment) => ({ body: comment.body }));
+    await patchSubtask(subtaskId, { comments: [...existing, { body }] });
+  }
+
+  async function toggleChecklistItem(subtaskId: string, itemId: string, completed: boolean) {
+    const subtask = subtasks.find((item) => item._id === subtaskId);
+    if (!subtask) return;
+    const checklist = (subtask.checklist ?? []).map((item) => ({
+      title: item.title,
+      completed: item._id === itemId ? completed : item.completed,
+      order: item.order,
+    }));
+    await patchSubtask(subtaskId, { checklist });
+  }
+
+  async function createDependency(input: {
+    predecessorSubtaskId: string;
+    successorSubtaskId: string;
+    dependencyType: string;
+  }) {
+    setBusy("dependency");
+    setError("");
+    try {
+      await callApi(`/api/tasks/${task._id}/subtasks/dependencies`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+      await refreshSubtasks();
+    } catch (nextError) {
+      // Rethrown so the panel can surface it inline next to the form.
+      throw nextError instanceof Error ? nextError : new Error("Could not create the dependency.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveTaskChecklist(checklist: Array<{ title: string; completed: boolean; order: number }>) {
+    setBusy("checklist");
+    setError("");
+    try {
+      await callApi(`/api/tasks/${task._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ checklist }),
+      });
+      window.location.reload();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not update the checklist.");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function uploadImportFile(file: File) {
@@ -1523,13 +1635,20 @@ export function TaskDetailTabs({
                   </tr>
                 ) : (
                   visibleSubtasks.map((subtask, index) => (
-                    <tr key={subtask._id} className="h-[54px] border-t border-vega-border-soft align-middle text-vega-text-secondary transition-colors hover:bg-vega-surface-hover">
+                    <tr
+                      key={subtask._id}
+                      className={`h-[54px] border-t border-vega-border-soft align-middle text-vega-text-secondary transition-colors ${
+                        contextSubtaskId === subtask._id
+                          ? "bg-vega-surface-selected"
+                          : "hover:bg-vega-surface-hover"
+                      }`}
+                    >
                       <td className="px-3 py-3">
                         <input type="checkbox" checked={selectedIds.includes(subtask._id)} onChange={() => toggleSelected(subtask._id)} />
                       </td>
                       <td className="px-3 py-3 text-vega-text-muted">{(page - 1) * pageSize + index + 1}</td>
                       <td className="min-w-64 px-3 py-3">
-                        <button type="button" className="text-left text-xs font-medium text-vega-text hover:text-vega-purple" onClick={() => openEditDrawer(subtask)}>
+                        <button type="button" className="text-left text-xs font-medium text-vega-text hover:text-[#c4b5fd]" onClick={() => setContextSubtaskId(subtask._id)}>
                           {subtask.title}
                         </button>
                         <p className="mt-1 text-[10px] text-vega-text-muted">{subtask.code ?? "No code"}</p>
@@ -1553,6 +1672,7 @@ export function TaskDetailTabs({
                       <td className="px-3 py-3">{dependencyCell(subtask)}</td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1.5">
+                          <Button size="sm" variant="secondary" onClick={() => openEditDrawer(subtask)}>Edit</Button>
                           <Button size="sm" variant="secondary" onClick={() => void moveSubtask(subtask._id, -1)}>Up</Button>
                           <Button size="sm" variant="secondary" onClick={() => void moveSubtask(subtask._id, 1)}>Down</Button>
                           <Button size="sm" variant="secondary" disabled={busy === subtask._id} onClick={() => void duplicateSubtask(subtask._id)}>Copy</Button>
@@ -1617,7 +1737,53 @@ export function TaskDetailTabs({
           </CardContent>
         </Card>
       ) : null}
-      {activeTab === "Subtasks" ? renderSubtasks() : null}
+      {/*
+        Subtasks and the context drawer share a row. On lg and up the drawer is a sibling pane, so
+        opening it narrows the table rather than covering it (design.md 6.4); below lg the drawer
+        renders as a fixed overlay sheet and the table keeps full width.
+      */}
+      {activeTab === "Subtasks" ? (
+        <div className="flex gap-4">
+          <div className="min-w-0 flex-1">{renderSubtasks()}</div>
+          {contextSubtask ? (
+            <SubtaskContextDrawer
+              subtask={contextSubtask as unknown as DrawerSubtask}
+              assignableUsers={assignableUsers}
+              canAssignOthers={canAssignOthers}
+              canEdit={canEdit}
+              busy={Boolean(busy)}
+              onClose={() => setContextSubtaskId(null)}
+              onPatch={(patch) => patchSubtask(contextSubtask._id, patch)}
+              onAddComment={(body) => addSubtaskComment(contextSubtask._id, body)}
+              onToggleChecklistItem={(itemId, completed) =>
+                toggleChecklistItem(contextSubtask._id, itemId, completed)
+              }
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {activeTab === "Dependencies" ? (
+        <TaskDependenciesPanel
+          parentTaskId={task._id}
+          subtasks={subtasks as unknown as Parameters<typeof TaskDependenciesPanel>[0]["subtasks"]}
+          focusSubtaskId={contextSubtaskId}
+          dependencies={allDependencies}
+          canEdit={canEdit}
+          busy={Boolean(busy)}
+          onCreate={createDependency}
+          onRemove={removeDependency}
+        />
+      ) : null}
+
+      {activeTab === "Checklist" ? (
+        <TaskChecklistPanel
+          items={task.checklist ?? []}
+          canEdit={canEdit}
+          busy={busy === "checklist"}
+          onSave={saveTaskChecklist}
+        />
+      ) : null}
       {activeTab === "Workflow" ? (
         <TaskWorkflowBuilder
           task={task}

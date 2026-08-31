@@ -23,6 +23,17 @@ import {
   anyTaskStatusSchema,
 } from "../src/lib/validation/task";
 import { createProjectSchema, updateProjectSchema } from "../src/lib/validation/project";
+import {
+  STATUS_TONE,
+  PRIORITY_TONE,
+  dueLabel,
+  humanize,
+  initialsOf,
+  isOverdue,
+  priorityTone,
+  progressTone,
+  statusTone,
+} from "../src/lib/tasks/tone";
 
 let failures = 0;
 
@@ -181,6 +192,50 @@ check(
 expectThrows("createTaskSchema still requires a title", () =>
   createTaskSchema.parse({ subTasks: [{ title: "orphan" }] }),
 );
+
+// --- presentation: design.md section 2 -------------------------------------------------------
+//
+// These lock the canonical mapping. The audit found it reimplemented across eight components with
+// divergent results, so a regression here means the divergence is creeping back.
+
+check("every canonical status has a tone", Object.keys(STATUS_TONE).length === 9);
+check("every priority has a tone", Object.keys(PRIORITY_TONE).length === 4);
+
+check("IN_PROGRESS is blue, not purple", statusTone("IN_PROGRESS").includes("vega-blue"));
+check("legacy in_progress resolves to the same tone", statusTone("in_progress") === statusTone("IN_PROGRESS"));
+check("legacy done resolves to COMPLETED tone", statusTone("done") === statusTone("COMPLETED"));
+check("BLOCKED is red", statusTone("BLOCKED").includes("vega-red"));
+check("READY is green", statusTone("READY").includes("66dc91"));
+check("CLIENT_REVIEW is cyan", statusTone("CLIENT_REVIEW").includes("vega-cyan"));
+
+check("HIGH priority is orange, not yellow", priorityTone("HIGH").includes("vega-orange"));
+check("URGENT priority is red", priorityTone("URGENT").includes("vega-red"));
+check("unknown priority falls back to MEDIUM", priorityTone("NONSENSE") === priorityTone("MEDIUM"));
+
+check("completed progress bar is green", progressTone("COMPLETED").includes("vega-green"));
+check("blocked progress bar is red", progressTone("BLOCKED").includes("vega-red"));
+check("in-progress bar is blue", progressTone("IN_PROGRESS").includes("vega-blue"));
+
+check("humanize formats an enum", humanize("CLIENT_REVIEW") === "Client Review");
+check("initials take two parts", initialsOf("Abhishek Prajapat") === "AP");
+check("initials handle a single name", initialsOf("Vega") === "V");
+check("initials handle empty input", initialsOf("   ") === "?");
+
+const past = new Date(Date.now() - 3 * 86_400_000).toISOString();
+const future = new Date(Date.now() + 3 * 86_400_000).toISOString();
+
+check("overdue work is flagged", isOverdue(past, "IN_PROGRESS"));
+check("completed work is never overdue", !isOverdue(past, "COMPLETED"));
+check("cancelled work is never overdue", !isOverdue(past, "CANCELLED"));
+check("future work is not overdue", !isOverdue(future, "IN_PROGRESS"));
+check("undated work is not overdue", !isOverdue(null, "IN_PROGRESS"));
+
+check("overdue label reads Overdue", dueLabel(past, "IN_PROGRESS").text.startsWith("Overdue"));
+check("overdue label is red", dueLabel(past, "IN_PROGRESS").tone.includes("vega-red"));
+check("near-term work counts down", dueLabel(future, "IN_PROGRESS").text === "3 days left");
+check("closed work shows a plain date", !dueLabel(past, "COMPLETED").text.startsWith("Overdue"));
+check("missing date reads No date", dueLabel(null, "IN_PROGRESS").text === "No date");
+check("invalid date reads No date", dueLabel("not-a-date", "IN_PROGRESS").text === "No date");
 
 console.log("");
 if (failures > 0) {

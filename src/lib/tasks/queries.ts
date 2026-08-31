@@ -70,6 +70,7 @@ export async function getTaskDetailForUser(taskId: string, userId: string, role:
     TaskModel.findOne({ _id: taskId, parentTaskId: null })
       .populate("subTasks.assignedToUserId", "fullName email role")
       .populate("leadId", "title status")
+      .populate("projectId", "title status code")
       .populate("clientId", "businessName contactName email"),
   ).lean();
 

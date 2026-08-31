@@ -53,6 +53,13 @@ export const taskFlowStepSchema = z.object({
   order: z.coerce.number().int().min(0).optional(),
 });
 
+export const checklistItemSchema = z.object({
+  _id: objectIdSchema.optional(),
+  title: z.string().trim().min(1).max(240),
+  completed: z.coerce.boolean().optional(),
+  order: z.coerce.number().int().min(0).optional(),
+});
+
 export const createTaskSchema = z
   .object({
     title: z.string().trim().min(3).max(200),
@@ -103,6 +110,7 @@ export const updateTaskSchema = z
     parentTaskId: objectIdSchema.nullable().optional(),
     workflowTemplate: workflowTemplateSchema.optional(),
     flowSteps: z.array(taskFlowStepSchema).max(20).optional(),
+    checklist: z.array(checklistItemSchema).max(300).optional(),
     /** @deprecated Ignored on write - use the subtask routes. */
     subTasks: z.array(subTaskSchema).max(300).optional(),
   })
@@ -145,13 +153,6 @@ export const taskAttachmentSchema = z.object({
 export const taskCommentInputSchema = z.object({
   _id: objectIdSchema.optional(),
   body: z.string().trim().min(1).max(5000),
-});
-
-export const checklistItemSchema = z.object({
-  _id: objectIdSchema.optional(),
-  title: z.string().trim().min(1).max(240),
-  completed: z.coerce.boolean().optional(),
-  order: z.coerce.number().int().min(0).optional(),
 });
 
 const tagsSchema = z

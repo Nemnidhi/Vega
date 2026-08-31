@@ -18,7 +18,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
-import { normalizeTaskStatus, type CanonicalTaskStatus } from "@/lib/tasks/status";
+import { normalizeTaskStatus } from "@/lib/tasks/status";
+import {
+  PRIORITY_OPTIONS,
+  STATUS_OPTIONS,
+  dueLabel,
+  humanize,
+  initialsOf,
+  isOverdue as isTaskOverdue,
+  priorityTone,
+  progressTone,
+  statusTone,
+} from "@/lib/tasks/tone";
 
 /**
  * The Tasks page table experience, per design.md.
@@ -61,49 +72,6 @@ const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: "completed", label: "Completed" },
 ];
 
-const STATUS_OPTIONS: CanonicalTaskStatus[] = [
-  "NOT_STARTED",
-  "READY",
-  "IN_PROGRESS",
-  "WAITING",
-  "BLOCKED",
-  "REVIEW",
-  "CLIENT_REVIEW",
-  "COMPLETED",
-  "CANCELLED",
-];
-
-const PRIORITY_OPTIONS = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
-
-/** design.md section 2.1. Blue is in-progress; green covers ready and completed. */
-const STATUS_TONE: Record<CanonicalTaskStatus, string> = {
-  NOT_STARTED: "border-vega-border bg-vega-surface-2 text-vega-text-muted",
-  READY: "border-vega-green/45 bg-transparent text-[#66dc91]",
-  IN_PROGRESS: "border-vega-blue/30 bg-vega-blue-soft text-[#93c5fd]",
-  WAITING: "border-vega-yellow/30 bg-vega-yellow/10 text-vega-yellow",
-  BLOCKED: "border-vega-red/30 bg-vega-red/10 text-vega-red",
-  REVIEW: "border-vega-yellow/30 bg-vega-yellow/10 text-vega-yellow",
-  CLIENT_REVIEW: "border-vega-cyan/30 bg-vega-cyan/10 text-vega-cyan",
-  COMPLETED: "border-vega-green/35 bg-vega-green/10 text-[#66dc91]",
-  CANCELLED: "border-vega-red/25 bg-transparent text-vega-red/70",
-};
-
-/** design.md section 2.2. HIGH is orange, not yellow. */
-const PRIORITY_TONE: Record<string, string> = {
-  URGENT: "border-vega-red/30 bg-vega-red/10 text-vega-red",
-  HIGH: "border-vega-orange/30 bg-vega-orange/10 text-vega-orange",
-  MEDIUM: "border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]",
-  LOW: "border-vega-border bg-vega-surface-2 text-vega-text-muted",
-};
-
-function humanize(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function displayName(user: PopulatedUser | string | null | undefined) {
   if (!user) return "Unassigned";
   return typeof user === "string" ? "Unknown" : user.fullName;
@@ -114,51 +82,9 @@ function userIdOf(user: PopulatedUser | string | null | undefined) {
   return typeof user === "string" ? user : user._id;
 }
 
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  if (parts.length === 0 || !parts[0]) return "?";
-  return parts.map((part) => part.charAt(0).toUpperCase()).join("");
-}
-
 function projectOf(project: PopulatedProject | string | null | undefined) {
   if (!project || typeof project === "string") return null;
   return project;
-}
-
-function startOfToday() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-/** Relative due-date copy: Overdue / Today / N days left, per design.md. */
-function dueLabel(dueAt: string | null, status: CanonicalTaskStatus) {
-  if (!dueAt) return { text: "No date", tone: "text-vega-text-dim" };
-
-  const due = new Date(dueAt);
-  if (Number.isNaN(due.getTime())) return { text: "No date", tone: "text-vega-text-dim" };
-
-  const closed = status === "COMPLETED" || status === "CANCELLED";
-  const dueDay = new Date(due);
-  dueDay.setHours(0, 0, 0, 0);
-  const days = Math.round((dueDay.getTime() - startOfToday().getTime()) / 86_400_000);
-
-  const formatted = due.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  if (closed) return { text: formatted, tone: "text-vega-text-muted" };
-  if (days < 0) return { text: `Overdue · ${formatted}`, tone: "text-vega-red" };
-  if (days === 0) return { text: "Today", tone: "text-vega-orange" };
-  if (days === 1) return { text: "1 day left", tone: "text-vega-yellow" };
-  if (days <= 7) return { text: `${days} days left`, tone: "text-vega-yellow" };
-  return { text: formatted, tone: "text-vega-text-secondary" };
-}
-
-function isOverdue(task: WorkspaceTask) {
-  const status = normalizeTaskStatus(task.status);
-  if (status === "COMPLETED" || status === "CANCELLED" || !task.dueAt) return false;
-  const due = new Date(task.dueAt);
-  if (Number.isNaN(due.getTime())) return false;
-  due.setHours(23, 59, 59, 999);
-  return due.getTime() < Date.now();
 }
 
 interface TasksWorkspaceProps {
@@ -219,7 +145,7 @@ export function TasksWorkspace({
       if (status === "READY") ready += 1;
       if (status === "BLOCKED") blocked += 1;
       if (status === "COMPLETED") completed += 1;
-      if (isOverdue(task)) overdue += 1;
+      if (isTaskOverdue(task.dueAt, task.status)) overdue += 1;
     }
 
     return { mine, inProgress, ready, blocked, overdue, completed };
@@ -227,7 +153,8 @@ export function TasksWorkspace({
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const today = startOfToday();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const rows = tasks.filter((task) => {
       const status = normalizeTaskStatus(task.status);
@@ -239,7 +166,7 @@ export function TasksWorkspace({
         return false;
       }
       if (view === "blocked" && status !== "BLOCKED") return false;
-      if (view === "overdue" && !isOverdue(task)) return false;
+      if (view === "overdue" && !isTaskOverdue(task.dueAt, task.status)) return false;
       if (view === "completed" && status !== "COMPLETED") return false;
 
       if (term) {
@@ -261,7 +188,7 @@ export function TasksWorkspace({
         if (Number.isNaN(due.getTime())) return false;
         due.setHours(0, 0, 0, 0);
         const days = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-        if (dueFilter === "overdue" && !isOverdue(task)) return false;
+        if (dueFilter === "overdue" && !isTaskOverdue(task.dueAt, task.status)) return false;
         if (dueFilter === "today" && days !== 0) return false;
         if (dueFilter === "week" && (days < 0 || days > 7)) return false;
         if (dueFilter === "none") return false;
@@ -715,7 +642,7 @@ export function TasksWorkspace({
                   const priority = task.priority ?? "MEDIUM";
                   const project = projectOf(task.projectId);
                   const assignee = displayName(task.assignedToUserId);
-                  const due = dueLabel(task.dueAt, status);
+                  const due = dueLabel(task.dueAt, task.status);
                   const progress = task.progressPercent ?? 0;
                   const isSelected = selected.has(task._id);
 
@@ -775,7 +702,7 @@ export function TasksWorkspace({
                         <span
                           className={cn(
                             "inline-flex h-[22px] items-center rounded-md border px-2 text-[10px] font-medium",
-                            STATUS_TONE[status],
+                            statusTone(task.status),
                           )}
                         >
                           {humanize(status)}
@@ -786,7 +713,7 @@ export function TasksWorkspace({
                         <span
                           className={cn(
                             "inline-flex h-[22px] items-center rounded-md border px-2 text-[10px] font-medium",
-                            PRIORITY_TONE[priority] ?? PRIORITY_TONE.MEDIUM,
+                            priorityTone(priority),
                           )}
                         >
                           {humanize(priority)}
@@ -817,7 +744,7 @@ export function TasksWorkspace({
                             <div
                               className={cn(
                                 "h-full rounded-sm",
-                                status === "COMPLETED" ? "bg-vega-green" : "bg-vega-blue",
+                                progressTone(task.status),
                               )}
                               style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                             />

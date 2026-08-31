@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { DashboardHeader } from "@/components/dashboard/header";
+import { TaskWorkspaceHeader } from "@/components/tasks/task-workspace-header";
 import { TaskDetailTabs } from "@/components/tasks/task-detail-tabs";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { getAssignableUsers, getTaskDetailForUser } from "@/lib/tasks/queries";
@@ -29,12 +29,20 @@ export default async function TaskDetailPage({ params }: { params: Params }) {
   }
 
   return (
-    <section className="space-y-6">
-      <DashboardHeader
+    <section className="space-y-4">
+      <TaskWorkspaceHeader
         title={detail.task.title}
-        subtitle="Task details, subtasks, files, comments, and activity."
-        showLeadCta={false}
-        action={{ label: "Back To Tasks", href: "/tasks" }}
+        code={detail.task.code}
+        status={detail.task.status}
+        priority={detail.task.priority}
+        assignee={detail.task.assignedToUserId}
+        dueAt={detail.task.dueAt}
+        projectTitle={
+          detail.task.projectId && typeof detail.task.projectId === "object"
+            ? (detail.task.projectId as { title?: string }).title
+            : null
+        }
+        progressPercent={detail.task.progressPercent}
       />
       <TaskDetailTabs
         task={detail.task}

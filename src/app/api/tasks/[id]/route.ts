@@ -7,6 +7,7 @@ import { TaskDependencyModel, TaskModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { logActivity } from "@/lib/activity/logging";
 import { getCompletionFields, normalizeTaskStatus } from "@/lib/tasks/status";
+import { normalizeChecklist } from "@/lib/tasks/subtasks";
 import {
   assertValidParent,
   assertValidProject,
@@ -121,6 +122,9 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (payload.clientId !== undefined) task.clientId = payload.clientId as unknown as typeof task.clientId;
     if (payload.workflowTemplate !== undefined) task.workflowTemplate = payload.workflowTemplate;
     if (payload.flowSteps !== undefined) task.flowSteps = normalizeFlowSteps(payload.flowSteps) as typeof task.flowSteps;
+    if (payload.checklist !== undefined) {
+      task.checklist = normalizeChecklist(payload.checklist, actor) as typeof task.checklist;
+    }
     // payload.subTasks is deliberately ignored - the embedded array is frozen. See models/Task.ts.
 
     if (payload.status !== undefined) {
