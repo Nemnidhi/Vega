@@ -1,29 +1,14 @@
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { getServerEnv } from "@/lib/env/server";
+import { assertValidDashboardSecret } from "@/lib/auth/dashboard-actor";
 import { dashboardEventSchema } from "@/lib/validation/integrations";
 import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { ClientModel } from "@/models";
 import { logActivity } from "@/lib/activity/logging";
 import { serializeForJson } from "@/lib/utils/serialize";
 
-// Server-to-server only - Dashboard's backend calls this directly, no browser involved, so this
-// is authenticated with a shared secret header rather than the session cookie every other route
-// here uses. Not registered under (dashboard) or any session-guarded route group.
-function assertValidSecret(request: Request) {
-  const { DASHBOARD_INTEGRATION_SECRET } = getServerEnv();
-  if (!DASHBOARD_INTEGRATION_SECRET) {
-    throw new Error("Not configured: DASHBOARD_INTEGRATION_SECRET is unset");
-  }
-
-  const provided = request.headers.get("x-integration-secret");
-  if (provided !== DASHBOARD_INTEGRATION_SECRET) {
-    throw new Error("Unauthorized: invalid integration secret");
-  }
-}
-
 export async function POST(request: Request) {
   try {
-    assertValidSecret(request);
+    assertValidDashboardSecret(request);
     await connectToDatabase();
 
     const payload = dashboardEventSchema.parse(await request.json());
