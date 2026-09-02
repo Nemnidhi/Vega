@@ -27,26 +27,26 @@ export function DashboardHeader({
       : null;
 
   return (
-    <header className="mb-6 rounded-2xl border border-white/75 bg-white/90 p-5 shadow-sm md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Operations</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+    <header className="mb-4 border-b border-vega-border-soft pb-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-vega-text-muted">Operations</p>
+          <h2 className="mt-1 text-[28px] font-semibold leading-[34px] tracking-normal text-vega-text">
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+            <p className="mt-1 max-w-3xl text-sm leading-5 text-vega-text-muted">
               {subtitle}
             </p>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Badge variant="accent">Command Active</Badge>
           {cta ? (
             <Link
               href={cta.href}
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-accent/24 bg-white/94 px-4 text-sm font-semibold tracking-wide text-foreground shadow-sm transition-all duration-150 hover:border-accent/40 hover:bg-white"
+              className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors duration-150 hover:border-vega-purple-border hover:bg-vega-purple-soft hover:text-vega-text"
             >
               {cta.label}
             </Link>

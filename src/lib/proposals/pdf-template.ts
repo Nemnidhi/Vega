@@ -61,7 +61,7 @@ export function buildProposalHtml(input: {
   </head>
   <body>
     <div class="block">
-      <h1>Project Proposal</h1>
+      <h1>Proposal</h1>
       <p class="muted">Status: ${escapeHtml(proposal.status)} | Version: ${proposal.version}</p>
     </div>
 
@@ -73,7 +73,7 @@ export function buildProposalHtml(input: {
     </div>
 
     <div class="block">
-      <h2>Project Summary</h2>
+      <h2>Proposal Summary</h2>
       <p>${escapeHtml(proposal.projectSummary)}</p>
     </div>
 

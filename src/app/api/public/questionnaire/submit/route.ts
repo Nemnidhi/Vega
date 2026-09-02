@@ -8,7 +8,7 @@ import {
   extractLeadSourceTracking,
   isAllowedLeadCaptureOrigin,
 } from "@/lib/leads/source-tracking";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   answerToStorage,
   buildSelfServiceQuestionnaire,
@@ -46,12 +46,6 @@ function assertAllowedOrigin(request: Request) {
     throw new Error("Forbidden for this origin");
   }
   return requestOrigin;
-}
-
-function getClientIp(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) return forwardedFor.split(",")[0]?.trim() ?? "unknown";
-  return request.headers.get("x-real-ip") ?? "unknown";
 }
 
 /**

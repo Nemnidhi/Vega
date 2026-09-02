@@ -59,7 +59,7 @@ export function LeadStatusSelect({
         value={status}
         disabled={loading}
         onChange={(event) => updateStatus(event.target.value)}
-        className="h-10 min-w-[11rem] rounded-md border border-border bg-white px-3 text-sm"
+        className="h-10 min-w-[11rem] rounded-md border border-border bg-vega-surface-1 px-3 text-sm"
       >
         {statusOptions.map((option) => (
           <option key={option} value={option}>

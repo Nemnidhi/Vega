@@ -7,6 +7,13 @@ export interface SessionTokenPayload {
   email: string;
   role: UserRole;
   fullName?: string;
+  /**
+   * Snapshot of User.sessionVersion at mint time. getCurrentSession rejects the token when
+   * it no longer matches, which is how deactivation and role changes revoke live sessions.
+   * Optional because tokens issued before this existed have no value; both sides read a
+   * missing value as 0.
+   */
+  sessionVersion?: number;
   iat: number;
   exp: number;
 }

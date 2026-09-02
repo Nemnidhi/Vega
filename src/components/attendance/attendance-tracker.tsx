@@ -356,25 +356,25 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border bg-white p-3">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Check-in</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {formatTime(todayEntry?.checkInAt)}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-white p-3">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Check-out</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {formatTime(todayEntry?.checkOutAt)}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-white p-3">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Worked Time</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {formatMinutesAsHours(liveTodayWorkedMinutes)}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-white p-3">
+            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Break Time</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {formatMinutesAsHours(todayEntry?.totalBreakMinutes ?? 0)}

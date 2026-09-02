@@ -1,4 +1,5 @@
 import { getServerEnv } from "@/lib/env/server";
+import { secretsMatch } from "@/lib/auth/secrets";
 import { UserModel } from "@/models";
 import type { AuthSession } from "@/lib/auth/session";
 
@@ -13,7 +14,7 @@ export function assertValidClientPortalSecret(request: Request) {
   }
 
   const provided = request.headers.get("x-client-portal-secret");
-  if (provided !== CLIENT_PORTAL_INTEGRATION_SECRET) {
+  if (!secretsMatch(provided, CLIENT_PORTAL_INTEGRATION_SECRET)) {
     throw new Error("Unauthorized: invalid client portal secret");
   }
 }

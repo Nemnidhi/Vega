@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vega",
-  description: "Lead-to-delivery strategic operations dashboard.",
+  title: "HRMS Command Center",
+  description: "Lead-to-delivery operations dashboard.",
 };
 
 export default function RootLayout({

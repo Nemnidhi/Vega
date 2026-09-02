@@ -125,7 +125,7 @@ export async function checkTechnicalSeo(
     return notChecked(`PageSpeed request failed: ${transportError}`);
   }
   if (status < 200 || status >= 300) {
-    // 403 here almost always means the API is not enabled on the project, or
+    // 403 here almost always means the API is not enabled in Google Cloud, or
     // the key's API restrictions exclude PageSpeed Insights.
     return notChecked(
       `PageSpeed HTTP ${status}${data.error?.message ? `: ${data.error.message}` : ""}`,

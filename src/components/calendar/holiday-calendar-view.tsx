@@ -160,7 +160,7 @@ function getLeaveStatusPillClass(status: LeaveStatus) {
   if (status === "rejected") {
     return "border border-[#e2b3ae] bg-[#faecea] text-[#a43c35]";
   }
-  return "border border-border bg-white text-muted-foreground";
+  return "border border-border bg-vega-surface-1 text-muted-foreground";
 }
 
 function getAttendanceStatusBadge(status: AttendanceDayStatus) {
@@ -747,7 +747,7 @@ export function HolidayCalendarView({
                   className={cn(
                     "min-h-[96px] border-b border-r border-border p-1.5 text-left transition-colors md:min-h-[112px] md:p-2",
                     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
-                    cell.inCurrentMonth ? "bg-white" : "bg-[#fafafa] text-muted-foreground/80",
+                    cell.inCurrentMonth ? "bg-vega-surface-1" : "bg-[#fafafa] text-muted-foreground/80",
                     isInSelectedRange && !isSelected ? "bg-accent/5" : null,
                     isSelected ? "bg-accent/10" : "hover:bg-surface-soft",
                   )}
@@ -845,14 +845,14 @@ export function HolidayCalendarView({
           </CardHeader>
           <CardContent className="space-y-2">
             {selectedDayHolidays.length === 0 ? (
-              <p className="rounded-lg border border-border bg-white p-3 text-sm text-muted-foreground">
+              <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
                 No holiday on this date.
               </p>
             ) : (
               selectedDayHolidays.map((holiday) => (
                 <div
                   key={holiday.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-white p-3"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-vega-surface-1 p-3"
                 >
                   <p className="text-sm font-semibold text-foreground">{holiday.name}</p>
                   <div className="flex items-center gap-2">
@@ -867,7 +867,7 @@ export function HolidayCalendarView({
 
             {supportsAttendance ? (
               selectedDayAttendanceStatus ? (
-                <div className="rounded-lg border border-border bg-white p-3">
+                <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-foreground">Attendance Status</p>
                     <Badge variant={getAttendanceStatusBadge(selectedDayAttendanceStatus).variant}>
@@ -879,7 +879,7 @@ export function HolidayCalendarView({
                   </p>
                 </div>
               ) : (
-                <p className="rounded-lg border border-border bg-white p-3 text-sm text-muted-foreground">
+                <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
                   Attendance status not marked for this date.
                 </p>
               )
@@ -891,7 +891,7 @@ export function HolidayCalendarView({
                   Your leave status on selected date
                 </p>
                 {selectedDayLeaveRequests.length === 0 ? (
-                  <p className="rounded-lg border border-border bg-white p-3 text-sm text-muted-foreground">
+                  <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
                     No leave mapped on this date.
                   </p>
                 ) : (
@@ -900,7 +900,7 @@ export function HolidayCalendarView({
                     const canCancel = request.status === "pending";
 
                     return (
-                      <div key={request._id} className="rounded-lg border border-border bg-white p-3">
+                      <div key={request._id} className="rounded-lg border border-border bg-vega-surface-1 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-sm font-semibold text-foreground">
                             {request.leaveType} leave ({request.totalDays} day{request.totalDays > 1 ? "s" : ""})
@@ -937,12 +937,12 @@ export function HolidayCalendarView({
           </CardHeader>
           <CardContent className="space-y-2">
             {visibleMonthHolidays.length === 0 ? (
-              <p className="rounded-lg border border-border bg-white p-3 text-sm text-muted-foreground">
+              <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
                 No listed holidays in this month.
               </p>
             ) : (
               visibleMonthHolidays.map((holiday) => (
-                <div key={holiday.id} className="rounded-lg border border-border bg-white p-3">
+                <div key={holiday.id} className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-foreground">{holiday.name}</p>
                     <Badge variant={holiday.category === "national" ? "accent" : "warning"}>
@@ -969,19 +969,19 @@ export function HolidayCalendarView({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-border bg-white p-3">
+                <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Available</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">
                     {leaveData?.balance.availableDays ?? 0}
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-white p-3">
+                <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Pending Days</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">
                     {leaveData?.balance.pendingRequestedDays ?? 0}
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-white p-3">
+                <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Monthly Credit</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">
                     +{leaveData?.balance.monthlyAccrualDays ?? 0}
@@ -1046,7 +1046,7 @@ export function HolidayCalendarView({
 
               <div className="grid gap-3 md:grid-cols-2">
                 <select
-                  className="h-11 w-full rounded-lg border border-border bg-white px-3.5 text-sm text-foreground"
+                  className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   value={leaveForm.leaveType}
                   onChange={(event) =>
                     setLeaveForm((previous) => ({
@@ -1138,7 +1138,7 @@ export function HolidayCalendarView({
             </CardHeader>
             <CardContent className="space-y-2">
               {latestLeaveRequests.length === 0 ? (
-                <p className="rounded-lg border border-border bg-white p-3 text-sm text-muted-foreground">
+                <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
                   No leave requests yet.
                 </p>
               ) : (
@@ -1147,7 +1147,7 @@ export function HolidayCalendarView({
                   const canCancel = request.status === "pending";
 
                   return (
-                    <div key={request._id} className="rounded-lg border border-border bg-white p-3">
+                    <div key={request._id} className="rounded-lg border border-border bg-vega-surface-1 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-foreground">
                           {request.leaveType} leave ({request.totalDays} day{request.totalDays > 1 ? "s" : ""})

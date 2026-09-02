@@ -107,7 +107,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
     `rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
       active
         ? "border-accent bg-accent/10 text-accent-strong"
-        : "border-border bg-white text-muted-foreground hover:border-accent/40"
+        : "border-border bg-vega-surface-1 text-muted-foreground hover:border-accent/40"
     }`;
 
   return (

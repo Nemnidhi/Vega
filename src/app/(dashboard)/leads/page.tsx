@@ -1,5 +1,5 @@
 import { DashboardHeader } from "@/components/dashboard/header";
-import { LeadIntakeForms } from "@/components/leads/lead-intake-forms";
+import { LeadIntakeLauncher } from "@/components/leads/lead-intake-launcher";
 import { LeadListWithStatusTabs } from "@/components/leads/lead-list-with-status-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,10 +38,13 @@ export default async function LeadsPage() {
 
   return (
     <section className="space-y-6">
-      <DashboardHeader
-        title="Leads"
-        subtitle="Create, update, and track leads in a simple CRM flow."
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <DashboardHeader
+          title="Leads"
+          subtitle="Create, update, and track leads in a simple CRM flow."
+        />
+        <LeadIntakeLauncher />
+      </div>
 
       {prospects.length > 0 ? (
         <Card>
@@ -55,7 +58,7 @@ export default async function LeadsPage() {
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {tierCounts.map(({ tier, count }) => (
-                <div key={tier} className="rounded-lg border border-border bg-white p-3">
+                <div key={tier} className="rounded-lg border border-border bg-vega-surface-1 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <Badge variant={TIER_VARIANT[tier]}>Tier {tier}</Badge>
                     <span className="text-2xl font-semibold text-foreground">{count}</span>
@@ -76,8 +79,6 @@ export default async function LeadsPage() {
           </CardContent>
         </Card>
       ) : null}
-
-      <LeadIntakeForms />
 
       <Card>
         <CardHeader>

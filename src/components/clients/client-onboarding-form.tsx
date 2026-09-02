@@ -137,7 +137,7 @@ export function ClientOnboardingForm() {
               placeholder="Primary contact phone (optional)"
             />
             <select
-              className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+              className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
               value={form.preferredCommunication}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -187,7 +187,7 @@ export function ClientOnboardingForm() {
           />
 
           <select
-            className="h-11 rounded-lg border border-border bg-white px-3 text-sm md:max-w-xs"
+            className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm md:max-w-xs"
             value={form.onboardingStatus}
             onChange={(event) =>
               setForm((prev) => ({

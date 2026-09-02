@@ -1,15 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TasksWorkspace, type WorkspaceTask } from "@/components/tasks/tasks-workspace";
+import dynamic from "next/dynamic";
+
+// Analytics sits behind a tab and is not on the path most people take through this page.
+const TaskAnalyticsPanel = dynamic(
+  () => import("@/components/tasks/task-analytics-panel").then((m) => m.TaskAnalyticsPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[320px] items-center justify-center rounded-lg border border-vega-border bg-vega-surface-1">
+        <p className="text-xs text-vega-text-muted">Loading analytics...</p>
+      </div>
+    ),
+  },
+);
 
 type PopulatedUser = { _id: string; fullName: string; email: string; role: string };
 
 type TaskStatus = "todo" | "in_progress" | "done";
+type WorkflowTemplate = "custom" | "client_delivery" | "lead_to_delivery" | "marketing_campaign" | "n8n_automation";
+
+type TaskFlowStep = {
+  key: string;
+  title: string;
+  status: TaskStatus;
+  order: number;
+};
 
 type Task = {
   _id: string;
@@ -20,6 +43,17 @@ type Task = {
   assignedToUserId: PopulatedUser | string;
   createdBy: PopulatedUser | string;
   kpiId: string | null;
+  workflowTemplate: WorkflowTemplate;
+  flowSteps: TaskFlowStep[];
+  // Supplied by getTasksWorkspace. Optional so older callers still typecheck.
+  code?: string | null;
+  priority?: string;
+  progressPercent?: number;
+  stage?: string;
+  projectId?: { _id: string; title: string; status?: string } | string | null;
+  subtaskCount?: number;
+  subtaskCompletedCount?: number;
+  dependencyCount?: number;
 };
 
 type KpiPeriod = "weekly" | "monthly" | "quarterly" | "yearly";
@@ -37,21 +71,17 @@ type Kpi = {
   progress: { completed: number; target: number; progress: number };
 };
 
+type TaskFormState = {
+  title: string;
+  description: string;
+  dueAt: string;
+  assignedToUserId: string;
+  kpiId: string;
+};
+
 const ASSIGNABLE_ROLES = ["admin", "partner", "sales", "digital_marketing", "project_manager", "developer"] as const;
 const MANAGE_KPI_ROLES = ["admin", "partner", "project_manager"];
 const ASSIGN_OTHERS_ROLES = ["admin", "partner", "project_manager"];
-
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: "To Do",
-  in_progress: "In Progress",
-  done: "Done",
-};
-
-const STATUS_VARIANT: Record<TaskStatus, "neutral" | "accent" | "success"> = {
-  todo: "neutral",
-  in_progress: "accent",
-  done: "success",
-};
 
 function displayName(user: PopulatedUser | string | null | undefined) {
   if (!user) return "Unassigned";
@@ -117,16 +147,31 @@ export function TasksView({
   initialKpis,
   assignableUsers,
 }: TasksViewProps) {
-  const [activeTab, setActiveTab] = useState<"tasks" | "calendar" | "kpis">("tasks");
+  const [activeTab, setActiveTab] = useState<"tasks" | "calendar" | "analytics" | "kpis">("tasks");
+  const [createOpen, setCreateOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [kpis, setKpis] = useState<Kpi[]>(initialKpis);
   const [error, setError] = useState("");
-  const [busyTaskId, setBusyTaskId] = useState("");
 
   const canAssignOthers = ASSIGN_OTHERS_ROLES.includes(currentUserRole);
+
+  /**
+   * Re-pull the task list after a mutation made elsewhere (bulk bar, row menu).
+   *
+   * `all=1` is only honoured server-side for roles that may see everyone's work; for everyone
+   * else the route narrows the result to their own tasks regardless of the flag.
+   */
+  const refreshTasks = useCallback(async () => {
+    try {
+      const refreshed = await callApi<Task[]>(canAssignOthers ? "/api/tasks?all=1" : "/api/tasks");
+      setTasks(refreshed);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "Could not refresh tasks.");
+    }
+  }, [canAssignOthers]);
   const canManageKpis = MANAGE_KPI_ROLES.includes(currentUserRole);
 
-  const [taskForm, setTaskForm] = useState({
+  const [taskForm, setTaskForm] = useState<TaskFormState>({
     title: "",
     description: "",
     dueAt: "",
@@ -184,7 +229,13 @@ export function TasksView({
         }),
       });
       setTasks((current) => [created, ...current]);
-      setTaskForm({ title: "", description: "", dueAt: "", assignedToUserId: currentUserId, kpiId: "" });
+      setTaskForm({
+        title: "",
+        description: "",
+        dueAt: "",
+        assignedToUserId: currentUserId,
+        kpiId: "",
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Could not create task.");
     } finally {
@@ -192,41 +243,6 @@ export function TasksView({
     }
   }
 
-  async function toggleTaskDone(task: Task) {
-    setBusyTaskId(task._id);
-    setError("");
-    try {
-      const nextStatus: TaskStatus = task.status === "done" ? "todo" : "done";
-      const updated = await callApi<Task>(`/api/tasks/${task._id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      setTasks((current) => current.map((item) => (item._id === task._id ? updated : item)));
-      if (task.kpiId) {
-        // Completing/reopening a linked task changes KPI progress - refetch KPIs rather than
-        // trying to recompute the aggregate client-side.
-        const refreshed = await callApi<Kpi[]>("/api/kpis");
-        setKpis(refreshed);
-      }
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Could not update task.");
-    } finally {
-      setBusyTaskId("");
-    }
-  }
-
-  async function deleteTask(taskId: string) {
-    setBusyTaskId(taskId);
-    setError("");
-    try {
-      await callApi(`/api/tasks/${taskId}`, { method: "DELETE" });
-      setTasks((current) => current.filter((item) => item._id !== taskId));
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Could not delete task.");
-    } finally {
-      setBusyTaskId("");
-    }
-  }
 
   async function handleCreateKpi(event: React.FormEvent) {
     event.preventDefault();
@@ -274,16 +290,16 @@ export function TasksView({
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 border-b border-border/70">
-        {(["tasks", "calendar", "kpis"] as const).map((tab) => (
+      <div className="flex gap-1 overflow-x-auto border-b border-vega-border-soft no-scrollbar">
+        {(["tasks", "calendar", "analytics", "kpis"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-semibold capitalize transition-colors ${
+            className={`whitespace-nowrap px-3 py-3 text-xs font-medium capitalize transition-colors ${
               activeTab === tab
-                ? "border-b-2 border-accent text-accent-strong"
-                : "text-muted-foreground hover:text-foreground"
+                ? "border-b-2 border-vega-purple text-[#c4b5fd]"
+                : "text-vega-text-muted hover:text-vega-text-secondary"
             }`}
           >
             {tab === "kpis" ? "KPIs" : tab}
@@ -299,112 +315,85 @@ export function TasksView({
 
       {activeTab === "tasks" && (
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>New task</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateTask} className="grid gap-3 sm:grid-cols-2">
-                <Input
-                  placeholder="Task title"
-                  value={taskForm.title}
-                  onChange={(event) => setTaskForm((form) => ({ ...form, title: event.target.value }))}
-                  className="sm:col-span-2"
-                />
-                <Textarea
-                  placeholder="Description (optional)"
-                  value={taskForm.description}
-                  onChange={(event) => setTaskForm((form) => ({ ...form, description: event.target.value }))}
-                  className="sm:col-span-2 min-h-20"
-                />
-                <Input
-                  type="date"
-                  value={taskForm.dueAt}
-                  onChange={(event) => setTaskForm((form) => ({ ...form, dueAt: event.target.value }))}
-                />
-                {canAssignOthers ? (
-                  <select
-                    value={taskForm.assignedToUserId}
-                    onChange={(event) => setTaskForm((form) => ({ ...form, assignedToUserId: event.target.value }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
-                  >
-                    <option value={currentUserId}>Myself</option>
-                    {assignableUsers
-                      .filter((user) => user._id !== currentUserId)
-                      .map((user) => (
-                        <option key={user._id} value={user._id}>
-                          {user.fullName} ({user.role})
+          {createOpen ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>New task</CardTitle>
+                <CardDescription>
+                  Subtasks, dependencies and workflow are set up inside the task once it exists.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateTask} className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    placeholder="Task title"
+                    value={taskForm.title}
+                    onChange={(event) => setTaskForm((form) => ({ ...form, title: event.target.value }))}
+                    className="sm:col-span-2"
+                  />
+                  <Textarea
+                    placeholder="Description (optional)"
+                    value={taskForm.description}
+                    onChange={(event) => setTaskForm((form) => ({ ...form, description: event.target.value }))}
+                    className="min-h-20 sm:col-span-2"
+                  />
+                  <Input
+                    type="date"
+                    value={taskForm.dueAt}
+                    onChange={(event) => setTaskForm((form) => ({ ...form, dueAt: event.target.value }))}
+                  />
+                  {canAssignOthers ? (
+                    <select
+                      value={taskForm.assignedToUserId}
+                      onChange={(event) =>
+                        setTaskForm((form) => ({ ...form, assignedToUserId: event.target.value }))
+                      }
+                      className="text-xs"
+                      aria-label="Assignee"
+                    >
+                      <option value={currentUserId}>Myself</option>
+                      {assignableUsers
+                        .filter((user) => user._id !== currentUserId)
+                        .map((user) => (
+                          <option key={user._id} value={user._id}>
+                            {user.fullName} ({user.role})
+                          </option>
+                        ))}
+                    </select>
+                  ) : null}
+                  {kpis.length > 0 ? (
+                    <select
+                      value={taskForm.kpiId}
+                      onChange={(event) => setTaskForm((form) => ({ ...form, kpiId: event.target.value }))}
+                      className="text-xs sm:col-span-2"
+                      aria-label="Linked KPI"
+                    >
+                      <option value="">Not linked to a KPI</option>
+                      {kpis.map((kpi) => (
+                        <option key={kpi._id} value={kpi._id}>
+                          Counts toward: {kpi.title}
                         </option>
                       ))}
-                  </select>
-                ) : null}
-                {kpis.length > 0 ? (
-                  <select
-                    value={taskForm.kpiId}
-                    onChange={(event) => setTaskForm((form) => ({ ...form, kpiId: event.target.value }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground sm:col-span-2"
-                  >
-                    <option value="">Not linked to a KPI</option>
-                    {kpis.map((kpi) => (
-                      <option key={kpi._id} value={kpi._id}>
-                        Counts toward: {kpi.title}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                <Button type="submit" disabled={creatingTask} className="sm:col-span-2 justify-self-start">
-                  {creatingTask ? "Adding..." : "Add task"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                    </select>
+                  ) : null}
+                  <div className="sm:col-span-2">
+                    <Button type="submit" disabled={creatingTask || !taskForm.title.trim()}>
+                      {creatingTask ? "Creating..." : "Create task"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          ) : null}
 
-          <div className="space-y-2">
-            {tasks.length === 0 && (
-              <p className="text-sm text-muted-foreground">No tasks yet.</p>
-            )}
-            {tasks.map((task) => (
-              <Card key={task._id}>
-                <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                        {task.title}
-                      </span>
-                      <Badge variant={STATUS_VARIANT[task.status]}>{STATUS_LABEL[task.status]}</Badge>
-                      {task.dueAt ? (
-                        <Badge variant="neutral">Due {new Date(task.dueAt).toLocaleDateString()}</Badge>
-                      ) : null}
-                    </div>
-                    {task.description ? (
-                      <p className="mt-1 text-xs text-muted-foreground">{task.description}</p>
-                    ) : null}
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Assigned to {displayName(task.assignedToUserId)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={busyTaskId === task._id}
-                      onClick={() => toggleTaskDone(task)}
-                    >
-                      {task.status === "done" ? "Reopen" : "Mark done"}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      disabled={busyTaskId === task._id}
-                      onClick={() => deleteTask(task._id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <TasksWorkspace
+            tasks={tasks as unknown as WorkspaceTask[]}
+            currentUserId={currentUserId}
+            canAssignOthers={canAssignOthers}
+            assignableUsers={assignableUsers}
+            onRefresh={refreshTasks}
+            onCreateTask={() => setCreateOpen((open) => !open)}
+          />
         </div>
       )}
 
@@ -437,7 +426,7 @@ export function TasksView({
                 <div
                   key={cell.dateKey}
                   className={`min-h-20 rounded-lg border p-1.5 text-left text-[11px] ${
-                    cell.inCurrentMonth ? "border-border/70 bg-white/70" : "border-border/40 bg-muted/20 text-muted-foreground"
+                    cell.inCurrentMonth ? "border-border/70 bg-vega-surface-1" : "border-border/40 bg-muted/20 text-muted-foreground"
                   } ${cell.isToday ? "ring-2 ring-accent/60" : ""}`}
                 >
                   <div className="font-semibold">{cell.date.getDate()}</div>
@@ -465,6 +454,14 @@ export function TasksView({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {activeTab === "analytics" && (
+        <TaskAnalyticsPanel
+          assignableUsers={assignableUsers}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+        />
       )}
 
       {activeTab === "kpis" && (
@@ -498,7 +495,7 @@ export function TasksView({
                   <select
                     value={kpiForm.period}
                     onChange={(event) => setKpiForm((form) => ({ ...form, period: event.target.value as KpiPeriod }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
@@ -518,7 +515,7 @@ export function TasksView({
                   <select
                     value={kpiForm.assignedRole}
                     onChange={(event) => setKpiForm((form) => ({ ...form, assignedRole: event.target.value }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     <option value="">No role target</option>
                     {ASSIGNABLE_ROLES.map((role) => (
@@ -528,7 +525,7 @@ export function TasksView({
                   <select
                     value={kpiForm.assignedUserId}
                     onChange={(event) => setKpiForm((form) => ({ ...form, assignedUserId: event.target.value }))}
-                    className="h-11 rounded-xl border border-border/90 bg-white/92 px-3.5 text-sm text-foreground"
+                    className="h-11 rounded-xl border border-border/90 bg-vega-surface-1 px-3.5 text-sm text-foreground"
                   >
                     <option value="">No individual target</option>
                     {assignableUsers.map((user) => (

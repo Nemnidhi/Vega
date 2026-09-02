@@ -1,62 +1,29 @@
-import { model, models, Schema, type InferSchemaType } from "mongoose";
+import { deleteModel, model, models, Schema, type InferSchemaType } from "mongoose";
 
-const taskHistorySchema = new Schema(
+/**
+ * Project is a thin delivery container. It deliberately carries NO embedded task array.
+ *
+ * The version of this model that existed at 4c919d5 had a `tasks[]` subdocument array with its own
+ * assignee, completion and history fields, which duplicated the Task collection and was invisible
+ * to the dependency engine and the workflow canvas. That array is not coming back - execution work
+ * lives in Task documents that point here via `Task.projectId`, and nowhere else.
+ */
+
+const projectStatusValues = [
+  "planned",
+  "in_progress",
+  "on_hold",
+  "completed",
+  "cancelled",
+] as const;
+
+const projectTeamMemberSchema = new Schema(
   {
-    action: {
-      type: String,
-      enum: ["assigned", "status_changed", "completion_alert_acknowledged"],
-      required: true,
-    },
-    actorId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    assignedDeveloperId: { type: Schema.Types.ObjectId, ref: "User", default: null },
-    fromStatus: {
-      type: String,
-      enum: ["todo", "in_progress", "blocked", "done"],
-      default: null,
-    },
-    toStatus: {
-      type: String,
-      enum: ["todo", "in_progress", "blocked", "done"],
-      default: null,
-    },
-    note: { type: String, trim: true, maxlength: 300, default: "" },
-    changedAt: { type: Date, default: Date.now, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    role: { type: String, trim: true, maxlength: 80, default: "" },
+    addedAt: { type: Date, default: Date.now, required: true },
   },
   { _id: false },
-);
-
-const projectTaskSchema = new Schema(
-  {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-      minlength: 3,
-      maxlength: 200,
-    },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: 2000,
-      default: "",
-    },
-    status: {
-      type: String,
-      enum: ["todo", "in_progress", "blocked", "done"],
-      default: "todo",
-      required: true,
-      index: true,
-    },
-    assignedDeveloperId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    completedAt: { type: Date, default: null },
-    completedByDeveloperId: { type: Schema.Types.ObjectId, ref: "User", default: null },
-    completionAlertPending: { type: Boolean, default: false, index: true },
-    history: { type: [taskHistorySchema], default: [] },
-  },
-  {
-    timestamps: true,
-  },
 );
 
 const projectSchema = new Schema(
@@ -75,36 +42,52 @@ const projectSchema = new Schema(
       maxlength: 2000,
       default: "",
     },
+    code: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 80,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     status: {
       type: String,
-      enum: ["planned", "in_progress", "on_hold", "completed"],
+      enum: projectStatusValues,
       default: "planned",
       required: true,
       index: true,
     },
-    assignedDeveloperId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Commercial spine. All optional: a project can be created before every upstream record
+    // exists, and the business gates are enforced in the workflow layer, not by requiring these.
+    clientId: { type: Schema.Types.ObjectId, ref: "Client", default: null, index: true },
+    leadId: { type: Schema.Types.ObjectId, ref: "Lead", default: null, index: true },
+    scopeManifestId: { type: Schema.Types.ObjectId, ref: "ScopeManifest", default: null, index: true },
+    proposalId: { type: Schema.Types.ObjectId, ref: "Proposal", default: null, index: true },
+    projectManagerId: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
+    team: { type: [projectTeamMemberSchema], default: [] },
+    startDate: { type: Date, default: null },
+    targetEndDate: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    archivedAt: { type: Date, default: null, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    tasks: { type: [projectTaskSchema], default: [] },
   },
   {
     timestamps: true,
   },
 );
 
-projectSchema.index({ assignedDeveloperId: 1, updatedAt: -1 });
 projectSchema.index({ status: 1, updatedAt: -1 });
+projectSchema.index({ clientId: 1, status: 1 });
+projectSchema.index({ projectManagerId: 1, status: 1 });
+projectSchema.index({ "team.userId": 1, status: 1 });
 
 export type ProjectDocument = InferSchemaType<typeof projectSchema>;
 
-const existingProjectModel = models.Project;
-
-// In dev HMR, an older cached model can miss newly added task fields and break populate().
-if (
-  existingProjectModel &&
-  (!existingProjectModel.schema.path("tasks.completedByDeveloperId") ||
-    !existingProjectModel.schema.path("tasks.history"))
-) {
-  delete models.Project;
+// In dev HMR an older cached model can survive with the legacy embedded tasks[] path, which would
+// silently resurrect the duplicated task system. Drop it if we see that shape.
+if (process.env.NODE_ENV !== "production" && models.Project && models.Project.schema.path("tasks")) {
+  deleteModel("Project");
 }
 
 export const ProjectModel = models.Project || model("Project", projectSchema);

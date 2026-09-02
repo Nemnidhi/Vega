@@ -253,9 +253,20 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     `Hi ${greetingName},\n\nThis is a follow-up regarding: ${lead.title}.\n\nRegards,\nNemnidhi Team`,
   );
   const mailHref = lead.email ? `mailto:${lead.email}?subject=${mailSubject}&body=${mailBody}` : "";
+  const leadStages = [
+    { label: "Lead", state: "Captured", variant: "success" as const },
+    { label: "Scope", state: hasSignedScope ? "Signed" : latestBlueprint ? "In Review" : "Pending", variant: hasSignedScope ? "success" as const : latestBlueprint ? "accent" as const : "neutral" as const },
+    {
+      label: "Proposal",
+      state: latestProposal ? humanize(latestProposal.status) : "Pending",
+      variant: latestProposal?.status === "signed" ? "success" as const : latestProposal ? "warning" as const : "neutral" as const,
+    },
+    { label: "Project", state: latestProposal?.status === "signed" ? "Ready" : "Locked", variant: latestProposal?.status === "signed" ? "accent" as const : "neutral" as const },
+    { label: "Delivery", state: "Queued", variant: "neutral" as const },
+  ];
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <DashboardHeader
         title={lead.title}
         subtitle="Structured lead profile with quick actions and pipeline controls."
@@ -263,7 +274,71 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         action={{ label: "Back To Leads", href: "/leads" }}
       />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <Card className="border-vega-purple-border">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-vega-purple-border bg-vega-purple-soft text-sm font-semibold text-[#c4b5fd]">
+                {lead.title.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <h3 className="truncate text-[22px] font-semibold leading-7 text-vega-text">{lead.title}</h3>
+                <p className="mt-1 text-xs text-vega-text-muted">
+                  {lead.contactName || "No contact sourced"} / {lead.source.replaceAll("_", " ")}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+              {[
+                ["Lead Score", lead.score ?? 0],
+                ["Source", humanize(lead.source)],
+                ["Budget", formatBudget(lead.budget)],
+                ["Owner", "Sales"],
+                ["Status", humanize(lead.status)],
+                ["Next Follow-up", formatDateTime(lead.updatedAt)],
+              ].map(([label, value]) => (
+                <div key={label} className="border-l border-vega-border-soft pl-3 first:border-l-0 first:pl-0">
+                  <p className="text-[10px] leading-4 text-vega-text-dim">{label}</p>
+                  <p className="mt-0.5 max-w-40 truncate font-medium text-vega-text-secondary">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex overflow-x-auto border-b border-vega-border-soft">
+        {["Overview", "Discovery", "Scope Lock", "Blueprint", "Proposal", "Activity"].map((tab, index) => (
+          <span
+            key={tab}
+            className={`whitespace-nowrap px-3 py-3 text-xs font-medium ${index === 0 ? "border-b-2 border-vega-purple text-[#c4b5fd]" : "text-vega-text-muted"}`}
+          >
+            {tab}
+          </span>
+        ))}
+      </div>
+
+      <Card>
+        <CardContent className="p-3">
+          <div className="grid gap-2 md:grid-cols-5">
+            {leadStages.map((stage, index) => (
+              <div key={stage.label} className="flex items-center gap-2">
+                <div className="min-w-0 flex-1 rounded-md border border-vega-border-soft bg-vega-surface-2 p-2.5">
+                  <p className="text-xs font-medium text-vega-text">{stage.label}</p>
+                  <div className="mt-1">
+                    <Badge variant={stage.variant}>{stage.state}</Badge>
+                  </div>
+                </div>
+                {index < leadStages.length - 1 ? (
+                  <span className="hidden text-vega-text-dim md:block">-&gt;</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -272,21 +347,21 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-border bg-surface-soft p-3">
-                  <p className="text-xs text-muted-foreground">Contact Name</p>
-                  <p className="mt-1 font-semibold text-foreground">
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Contact Name</p>
+                  <p className="mt-1 text-xs font-medium text-vega-text">
                     {lead.contactName || "Not sourced"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-surface-soft p-3">
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="mt-1 font-semibold text-foreground break-all">
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Email</p>
+                  <p className="mt-1 break-all text-xs font-medium text-vega-text">
                     {lead.email || "Not sourced"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-surface-soft p-3 md:col-span-2">
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  <p className="mt-1 font-semibold text-foreground">{resolvedPhone || "Not shared"}</p>
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3 md:col-span-2">
+                  <p className="text-[10px] text-vega-text-muted">Phone</p>
+                  <p className="mt-1 text-xs font-medium text-vega-text">{resolvedPhone || "Not shared"}</p>
                 </div>
               </div>
 
@@ -294,7 +369,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 {callHref ? (
                   <a
                     href={callHref}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+                    className="inline-flex h-[34px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
                   >
                     <span className="text-[#1d7a46]">
                       <PhoneIcon />
@@ -302,7 +377,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                     Call
                   </a>
                 ) : (
-                  <span className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-surface-soft px-4 text-sm font-semibold tracking-wide text-muted-foreground">
+                  <span className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-2 px-3 text-xs font-medium text-vega-text-muted">
                     Call Unavailable
                   </span>
                 )}
@@ -312,7 +387,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                     href={messageHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+                    className="inline-flex h-[34px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
                   >
                     <span className="text-[#25d366]">
                       <WhatsAppIcon />
@@ -320,7 +395,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                     WhatsApp
                   </a>
                 ) : (
-                  <span className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-surface-soft px-4 text-sm font-semibold tracking-wide text-muted-foreground">
+                  <span className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-2 px-3 text-xs font-medium text-vega-text-muted">
                     Message Unavailable
                   </span>
                 )}
@@ -328,20 +403,20 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 {mailHref ? (
                   <a
                     href={mailHref}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-surface-soft"
+                    className="inline-flex h-[34px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
                   >
                     <MailIcon />
                     Mail
                   </a>
                 ) : (
-                  <span className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-surface-soft px-4 text-sm font-semibold tracking-wide text-muted-foreground">
+                  <span className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-2 px-3 text-xs font-medium text-vega-text-muted">
                     Mail Unavailable
                   </span>
                 )}
               </div>
 
               {!resolvedPhone || !lead.email ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-vega-text-muted">
                   {lead.source === "cold_outreach"
                     ? "Cold prospects are sourced from public records and often carry no contact details. Source a phone or email before any outreach."
                     : "Add phone number in lead record to enable direct call and message actions."}
@@ -404,11 +479,11 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   v{latestBlueprint.version} - {latestBlueprint.status}
                 </Badge>
               ) : (
-                <span className="text-sm text-muted-foreground">No blueprint created yet.</span>
+                <span className="text-xs text-vega-text-muted">No blueprint created yet.</span>
               )}
               <a
                 href={`/blueprint/${lead._id}`}
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+                className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
               >
                 {latestBlueprint ? "Open Blueprint" : "Start Blueprint"}
               </a>
@@ -428,13 +503,13 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   v{latestProposal.version} - {latestProposal.status}
                 </Badge>
               ) : hasSignedScope ? (
-                <span className="text-sm text-muted-foreground">No proposal generated yet.</span>
+                <span className="text-xs text-vega-text-muted">No proposal generated yet.</span>
               ) : (
-                <span className="text-sm text-muted-foreground">Lock scope first.</span>
+                <span className="text-xs text-vega-text-muted">Lock scope first.</span>
               )}
               <a
                 href={`/proposals/${lead._id}`}
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+                className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
               >
                 {latestProposal ? "Open Proposal" : "Start Proposal"}
               </a>
@@ -458,36 +533,36 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-border bg-white p-3">
-                  <p className="text-xs text-muted-foreground">Source</p>
-                  <p className="mt-1 font-semibold text-foreground">{humanize(lead.source)}</p>
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Source</p>
+                  <p className="mt-1 text-xs font-medium text-vega-text">{humanize(lead.source)}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-white p-3">
-                  <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="mt-1 font-semibold text-foreground">
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Category</p>
+                  <p className="mt-1 text-xs font-medium text-vega-text">
                     {lead.category ? humanize(lead.category) : "Not qualified yet"}
                   </p>
                 </div>
-                <div className="rounded-lg border border-border bg-white p-3">
-                  <p className="text-xs text-muted-foreground">Budget</p>
-                  <p className="mt-1 font-semibold text-foreground">{formatBudget(lead.budget)}</p>
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Budget</p>
+                  <p className="mt-1 text-xs font-medium text-vega-text">{formatBudget(lead.budget)}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-white p-3">
-                  <p className="text-xs text-muted-foreground">Last Updated</p>
-                  <p className="mt-1 font-semibold text-foreground">{formatDateTime(lead.updatedAt)}</p>
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Last Updated</p>
+                  <p className="mt-1 text-xs font-medium text-vega-text">{formatDateTime(lead.updatedAt)}</p>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border bg-surface-soft p-3">
-                <p className="text-xs text-muted-foreground">Requirement Description</p>
-                <p className="mt-1 whitespace-pre-wrap leading-6 text-foreground">
+              <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                <p className="text-[10px] text-vega-text-muted">Requirement Description</p>
+                <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-vega-text-secondary">
                   {lead.description || "No requirement captured - this lead has not spoken to us yet."}
                 </p>
               </div>
 
               {lead.tags?.length ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Tags</p>
+                  <p className="text-xs text-vega-text-muted">Tags</p>
                   <div className="flex flex-wrap gap-2">
                     {lead.tags.map((tag) => (
                       <Badge key={tag} variant="neutral">
@@ -498,22 +573,22 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-border bg-white p-3">
-                <p className="text-xs text-muted-foreground">Source Tracking</p>
+              <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                <p className="text-[10px] text-vega-text-muted">Source Tracking</p>
                 <div className="mt-2 space-y-1 text-sm">
                   <p>
-                    <span className="text-muted-foreground">Domain:</span>{" "}
+                    <span className="text-vega-text-muted">Domain:</span>{" "}
                     {lead.sourceDomain || "Not captured"}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Path:</span> {lead.sourcePath || "Not captured"}
+                    <span className="text-vega-text-muted">Path:</span> {lead.sourcePath || "Not captured"}
                   </p>
                   <p className="break-all">
-                    <span className="text-muted-foreground">Referrer:</span>{" "}
+                    <span className="text-vega-text-muted">Referrer:</span>{" "}
                     {lead.sourceReferrer || "Not captured"}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Created:</span> {formatDateTime(lead.createdAt)}
+                    <span className="text-vega-text-muted">Created:</span> {formatDateTime(lead.createdAt)}
                   </p>
                 </div>
               </div>
@@ -558,26 +633,26 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-lg border border-border bg-white p-3">
-                  <p className="text-xs text-muted-foreground">Current Status</p>
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Current Status</p>
                   <div className="mt-1">
                     <Badge variant={statusVariant(lead.status)}>{humanize(lead.status)}</Badge>
                   </div>
                 </div>
-                <div className="rounded-lg border border-border bg-white p-3">
-                  <p className="text-xs text-muted-foreground">Urgency</p>
+                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                  <p className="text-[10px] text-vega-text-muted">Urgency</p>
                   <div className="mt-1">
                     {lead.urgency ? (
                       <Badge variant={urgencyVariant(lead.urgency)}>{humanize(lead.urgency)}</Badge>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
+                      <span className="text-xs text-vega-text-muted">Not set</span>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Change Status</p>
+                <p className="text-xs text-vega-text-muted">Change Status</p>
                 <LeadStatusSelect
                   key={`${lead._id}-${lead.status}`}
                   leadId={lead._id}
@@ -594,7 +669,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             <CardContent className="space-y-3">
               <p className="text-4xl font-semibold leading-none">{lead.score ?? 0}</p>
               <Badge variant={priorityVariant(lead.priorityBand)}>{humanize(lead.priorityBand)}</Badge>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs leading-5 text-vega-text-muted">
                 {lead.priorityFlag
                   ? "Flagged as high-priority lead for fast follow-up."
                   : "This lead is currently in the standard follow-up path."}
@@ -606,7 +681,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             <CardHeader>
               <CardTitle>Follow-up Guide</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <CardContent className="space-y-2 text-xs leading-5 text-vega-text-muted">
               <p>1. Use Call for immediate discussion and qualification.</p>
               <p>2. Use Message to send a quick acknowledgement and next step.</p>
               <p>3. Use Mail for detailed scope or document-based follow-up.</p>

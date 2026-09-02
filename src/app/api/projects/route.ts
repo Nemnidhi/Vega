@@ -1,73 +1,48 @@
-import { type NextRequest } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
-import { createProjectSchema } from "@/lib/validation/project";
-import { fail, handleApiError, ok } from "@/lib/api/responses";
-import { ProjectModel, UserModel } from "@/models";
+import { createProjectSchema, listProjectsQuerySchema } from "@/lib/validation/project";
+import { handleApiError, ok } from "@/lib/api/responses";
+import { ProjectModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
-import { sendProjectAssignmentEmail } from "@/lib/notifications/assignment-email";
+import { logActivity } from "@/lib/activity/logging";
 
-async function getActiveDeveloper(userId: string) {
-  return UserModel.findOne({
-    _id: userId,
-    role: "developer",
-    status: "active",
-  })
-    .select("_id fullName email")
-    .lean();
+function canManageProjects(role: string) {
+  return (permissionRules.assignTasksToOthers as string[]).includes(role);
 }
 
-type ProjectPopulationQuery<TSelf> = {
-  select(fields: string): TSelf;
-  populate(path: string, select: string): TSelf;
-};
-
-function applyProjectPopulation<T extends ProjectPopulationQuery<T>>(
-  query: T,
-  includeHistory: boolean,
-) {
-  let populated = query
-    .select("title description status assignedDeveloperId createdBy tasks updatedAt")
-    .populate("assignedDeveloperId", "fullName email role status")
-    .populate("createdBy", "fullName email role")
-    .populate("tasks.assignedDeveloperId", "fullName email role status")
-    .populate("tasks.completedByDeveloperId", "fullName email role status")
-    .populate("tasks.createdBy", "fullName email role");
-
-  if (includeHistory) {
-    populated = populated
-      .populate("tasks.history.actorId", "fullName email role status")
-      .populate("tasks.history.assignedDeveloperId", "fullName email role status");
-  }
-
-  return populated;
-}
-
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
-    assertRoleAccess(actor.role, { oneOf: permissionRules.accessProjectAssignments });
-    const includeHistory = request.nextUrl.searchParams.get("includeHistory") !== "0";
-    const limitParam = Number(request.nextUrl.searchParams.get("limit") ?? 150);
-    const limit = Number.isFinite(limitParam)
-      ? Math.min(Math.max(Math.trunc(limitParam), 1), 300)
-      : 150;
 
-    const query =
-      actor.role === "developer"
-        ? {
-            $or: [
-              { assignedDeveloperId: actor.userId },
-              { "tasks.assignedDeveloperId": actor.userId },
-            ],
-          }
-        : {};
+    const { searchParams } = new URL(request.url);
+    const filters = listProjectsQuerySchema.parse({
+      status: searchParams.get("status") ?? undefined,
+      clientId: searchParams.get("clientId") ?? undefined,
+      includeArchived: searchParams.get("includeArchived") ?? undefined,
+    });
 
-    const projects = await applyProjectPopulation(
-      ProjectModel.find(query).sort({ updatedAt: -1 }).limit(limit),
-      includeHistory,
-    ).lean();
+    const query: Record<string, unknown> = {};
+    if (filters.status) query.status = filters.status;
+    if (filters.clientId) query.clientId = filters.clientId;
+    if (!filters.includeArchived) query.archivedAt = null;
+
+    // Managers see every project; everyone else sees only the ones they run or are on the team of.
+    if (!canManageProjects(actor.role)) {
+      query.$or = [
+        { projectManagerId: actor.userId },
+        { "team.userId": actor.userId },
+        { createdBy: actor.userId },
+      ];
+    }
+
+    const projects = await ProjectModel.find(query)
+      .sort({ updatedAt: -1 })
+      .limit(500)
+      .populate("clientId", "legalName primaryContactName primaryContactEmail")
+      .populate("projectManagerId", "fullName email role")
+      .populate("createdBy", "fullName email role")
+      .lean();
 
     return ok(serializeForJson(projects));
   } catch (error) {
@@ -79,46 +54,30 @@ export async function POST(request: Request) {
   try {
     await connectToDatabase();
     const actor = await getActorContext();
-    assertRoleAccess(actor.role, { oneOf: permissionRules.manageProjectAssignments });
+
+    assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
 
     const payload = createProjectSchema.parse(await request.json());
-    const developer = await getActiveDeveloper(payload.assignedDeveloperId);
-    if (!developer) {
-      return fail("Assigned developer not found or inactive.", 404);
-    }
-    const actorUser = await UserModel.findById(actor.userId).select("fullName email").lean();
 
     const project = await ProjectModel.create({
-      title: payload.title,
-      description: payload.description ?? "",
-      assignedDeveloperId: payload.assignedDeveloperId,
+      ...payload,
+      team: payload.team.map((member) => ({ ...member, addedAt: new Date() })),
       createdBy: actor.userId,
-      status: "planned",
-      tasks: [],
     });
 
-    try {
-      const emailResult = await sendProjectAssignmentEmail({
-        developerEmail: developer.email,
-        developerName: developer.fullName,
-        assignedByName: actorUser?.fullName ?? actorUser?.email ?? "Admin",
-        projectId: String(project._id),
-        projectTitle: project.title,
-        projectDescription: project.description,
-        requestOrigin: new URL(request.url).origin,
-        requestHeaders: request.headers,
-      });
-      if (!emailResult.sent) {
-        console.warn("Project assignment email skipped due to missing SMTP configuration.");
-      }
-    } catch (notificationError) {
-      console.error("Failed to send project assignment email.", notificationError);
-    }
+    await logActivity({
+      action: "project_created",
+      actorId: actor.userId,
+      entityType: "project",
+      entityId: String(project._id),
+      details: { title: payload.title, status: payload.status, clientId: payload.clientId ?? null },
+    });
 
-    const hydrated = await applyProjectPopulation(
-      ProjectModel.findById(project._id),
-      true,
-    ).lean();
+    const hydrated = await ProjectModel.findById(project._id)
+      .populate("clientId", "legalName primaryContactName primaryContactEmail")
+      .populate("projectManagerId", "fullName email role")
+      .populate("createdBy", "fullName email role")
+      .lean();
 
     return ok(serializeForJson(hydrated), { status: 201 });
   } catch (error) {

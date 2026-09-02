@@ -116,7 +116,7 @@ export function ClientQueryPortal({
     ...initialOnboarding,
     kickoffDate: toDateInputValue(initialOnboarding.kickoffDate),
   });
-  const [projectName, setProjectName] = useState("");
+  const [workstreamName, setWorkstreamName] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState<QueryRecord["priority"]>("medium");
@@ -131,10 +131,10 @@ export function ClientQueryPortal({
 
   const canSubmit = useMemo(
     () =>
-      projectName.trim().length >= 2 &&
+      workstreamName.trim().length >= 2 &&
       subject.trim().length >= 3 &&
       message.trim().length >= 10,
-    [message, projectName, subject],
+    [message, subject, workstreamName],
   );
 
   const stats = useMemo(() => {
@@ -252,7 +252,7 @@ export function ClientQueryPortal({
       const response = await fetch("/api/client/queries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectName, subject, message, priority }),
+        body: JSON.stringify({ projectName: workstreamName, subject, message, priority }),
       });
 
       const data = await response.json();
@@ -261,7 +261,7 @@ export function ClientQueryPortal({
       }
 
       setQueries((prev) => [data.data as QueryRecord, ...prev]);
-      setProjectName("");
+      setWorkstreamName("");
       setSubject("");
       setMessage("");
       setPriority("medium");
@@ -280,19 +280,19 @@ export function ClientQueryPortal({
           <CardTitle className="text-xl sm:text-2xl">Welcome, {clientName}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">Total Queries</p>
             <p className="mt-1 text-2xl font-semibold">{stats.total}</p>
           </div>
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">Open</p>
             <p className="mt-1 text-2xl font-semibold">{stats.open}</p>
           </div>
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">In Progress</p>
             <p className="mt-1 text-2xl font-semibold">{stats.inProgress}</p>
           </div>
-          <div className="rounded-xl border border-border bg-white p-3">
+          <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
             <p className="text-xs text-muted-foreground">Resolved</p>
             <p className="mt-1 text-2xl font-semibold">{stats.resolved}</p>
           </div>
@@ -353,7 +353,7 @@ export function ClientQueryPortal({
                 }
               />
               <select
-                className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
                 value={onboarding.preferredCommunication}
                 onChange={(event) =>
                   setOnboarding((prev) => ({
@@ -388,7 +388,7 @@ export function ClientQueryPortal({
               onChange={(event) =>
                 setOnboarding((prev) => ({ ...prev, projectBrief: event.target.value }))
               }
-              placeholder="Project brief and onboarding context"
+              placeholder="Requirement brief and onboarding context"
             />
             <Textarea
               className="min-h-[96px] sm:min-h-[110px]"
@@ -399,7 +399,7 @@ export function ClientQueryPortal({
               placeholder="Notes for your onboarding manager"
             />
 
-            <div className="rounded-xl border border-border bg-white p-3">
+            <div className="rounded-xl border border-border bg-vega-surface-1 p-3">
               <p className="text-sm font-semibold">Onboarding Checklist</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {onboardingSteps.map((item) => (
@@ -441,9 +441,9 @@ export function ClientQueryPortal({
         <CardContent>
           <form className="grid gap-3.5 sm:gap-4" onSubmit={submitQuery}>
             <Input
-              value={projectName}
-              onChange={(event) => setProjectName(event.target.value)}
-              placeholder="Project name"
+              value={workstreamName}
+              onChange={(event) => setWorkstreamName(event.target.value)}
+              placeholder="Workstream name"
               required
             />
             <Input
@@ -453,7 +453,7 @@ export function ClientQueryPortal({
               required
             />
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={priority}
               onChange={(event) => setPriority(event.target.value as QueryRecord["priority"])}
             >
@@ -465,7 +465,7 @@ export function ClientQueryPortal({
               className="min-h-[120px] sm:min-h-[132px]"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="Describe your project query in detail..."
+              placeholder="Describe your service query in detail..."
               required
             />
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
@@ -500,10 +500,10 @@ export function ClientQueryPortal({
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by project, subject, message"
+              placeholder="Search by workstream, subject, message"
             />
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as "all" | QueryRecord["status"])}
             >
@@ -513,7 +513,7 @@ export function ClientQueryPortal({
               <option value="resolved">Resolved</option>
             </select>
             <select
-              className="h-11 w-full rounded-lg border border-border bg-white px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
               value={priorityFilter}
               onChange={(event) =>
                 setPriorityFilter(event.target.value as "all" | QueryRecord["priority"])
@@ -532,11 +532,11 @@ export function ClientQueryPortal({
             </p>
           ) : (
             filteredQueries.map((query) => (
-              <div key={query._id} className="rounded-xl border border-border bg-white p-3">
+              <div key={query._id} className="rounded-xl border border-border bg-vega-surface-1 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="font-semibold">{query.subject}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Project: {query.projectName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Workstream: {query.projectName}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={priorityVariant(query.priority)}>{humanize(query.priority)}</Badge>

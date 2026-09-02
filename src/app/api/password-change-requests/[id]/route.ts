@@ -33,6 +33,8 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
         return fail("Requesting user not found.", 404);
       }
       user.passwordHash = passwordRequest.requestedPasswordHash;
+      // A new password signs out everywhere - that is the point of changing it.
+      user.sessionVersion = (user.sessionVersion ?? 0) + 1;
       await user.save();
       passwordRequest.status = "approved";
     } else {
