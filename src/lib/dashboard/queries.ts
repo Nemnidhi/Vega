@@ -7,13 +7,17 @@ import {
   LeadModel,
   PasswordChangeRequestModel,
   PricingComponentModel,
+  ProjectModel,
   ProposalModel,
   ScopeManifestModel,
+  TaskModel,
   UserModel,
 } from "@/models";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
+import { permissionRules } from "@/lib/auth/permissions";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { computeAccountHealth } from "@/lib/clients/health";
+import type { UserRole } from "@/types/user";
 
 function clampLimit(value: number | undefined, fallback: number, max: number) {
   return Math.min(Math.max(value ?? fallback, 1), max);
@@ -252,5 +256,143 @@ export async function getClientQueries(options?: { limit?: number }) {
     .lean();
 
   return serializeForJson(queries);
+}
+
+// Lead.status doubles as the pipeline stage - grouping by it (rather than a separate stage field)
+// keeps this in sync with the same status every other lead view already reads/writes.
+const pipelineStages = [
+  "new",
+  "contacted",
+  "qualified",
+  "proposal_sent",
+  "negotiation",
+  "closed_won",
+  "closed_lost",
+] as const;
+
+export async function getPipelineBoard(options?: { limitPerStage?: number }) {
+  await connectToDatabase();
+  const limitPerStage = clampLimit(options?.limitPerStage, 50, 200);
+
+  const stages = await Promise.all(
+    pipelineStages.map(async (stage) => {
+      const leads = await LeadModel.find({ status: stage })
+        .sort({ score: -1, updatedAt: -1 })
+        .limit(limitPerStage)
+        .select("title contactName status priorityBand score")
+        .lean();
+      return { stage, leads: serializeForJson(leads) };
+    }),
+  );
+
+  return stages;
+}
+
+export async function getDevelopers() {
+  await connectToDatabase();
+  const developers = await UserModel.find({ role: "developer", status: "active" })
+    .sort({ fullName: 1 })
+    .select("fullName email role status")
+    .lean();
+  return serializeForJson(developers);
+}
+
+function canManageProjects(role: UserRole) {
+  return (permissionRules.assignTasksToOthers as UserRole[]).includes(role);
+}
+
+// Real task-count summary, not a stored field - Project deliberately carries no embedded tasks
+// (see models/Project.ts), so "how many tasks does this project have" is always a live Task
+// aggregation scoped by projectId, same index this already has for the /api/tasks list views.
+async function attachTaskSummary(projects: Array<{ _id: unknown }>) {
+  if (!projects.length) return [];
+  const projectIds = projects.map((project) => project._id);
+  const rows = await TaskModel.aggregate([
+    { $match: { projectId: { $in: projectIds }, parentTaskId: null } },
+    {
+      $group: {
+        _id: "$projectId",
+        totalTasks: { $sum: 1 },
+        completedTasks: { $sum: { $cond: [{ $in: ["$status", ["done", "COMPLETED"]] }, 1, 0] } },
+        blockedTasks: { $sum: { $cond: [{ $eq: ["$status", "BLOCKED"] }, 1, 0] } },
+      },
+    },
+  ]);
+  const summaryByProjectId = new Map(rows.map((row) => [String(row._id), row]));
+
+  return projects.map((project) => {
+    const summary = summaryByProjectId.get(String(project._id));
+    return {
+      ...project,
+      taskSummary: {
+        totalTasks: summary?.totalTasks ?? 0,
+        completedTasks: summary?.completedTasks ?? 0,
+        blockedTasks: summary?.blockedTasks ?? 0,
+      },
+    };
+  });
+}
+
+// Same access shape as GET /api/projects (canManageProjects sees everything; everyone else sees
+// only projects they run or are on the team of) - kept in sync deliberately, this is the
+// server-page equivalent of that route, not a second definition of the rule.
+export async function getProjectsForActor(
+  actor: { role: UserRole; userId: string },
+  options?: { includeHistory?: boolean; includeArchived?: boolean; limit?: number },
+) {
+  await connectToDatabase();
+  const limit = clampLimit(options?.limit, 200, 500);
+
+  const query: Record<string, unknown> = {};
+  if (!options?.includeArchived) query.archivedAt = null;
+  if (!canManageProjects(actor.role)) {
+    query.$or = [
+      { projectManagerId: actor.userId },
+      { "team.userId": actor.userId },
+      { createdBy: actor.userId },
+    ];
+  }
+
+  const projects = await ProjectModel.find(query)
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .populate("clientId", "legalName primaryContactName")
+    .populate("projectManagerId", "fullName email role")
+    .populate("team.userId", "fullName email role")
+    .lean();
+
+  return serializeForJson(await attachTaskSummary(projects));
+}
+
+export async function getProjectByIdForActor(id: string, actor: { role: UserRole; userId: string }) {
+  await connectToDatabase();
+
+  const project = await ProjectModel.findById(id)
+    .populate("clientId", "legalName primaryContactName primaryContactEmail")
+    .populate("projectManagerId", "fullName email role")
+    .populate("createdBy", "fullName email role")
+    .populate("team.userId", "fullName email role")
+    .lean();
+  if (!project) return null;
+
+  if (!canManageProjects(actor.role)) {
+    const teamUserIds = (project.team ?? []).map((member: { userId?: { _id?: unknown } | string }) =>
+      String((member.userId as { _id?: unknown })?._id ?? member.userId),
+    );
+    const isOnProject =
+      String(project.projectManagerId?._id ?? project.projectManagerId ?? "") === actor.userId ||
+      String(project.createdBy?._id ?? project.createdBy ?? "") === actor.userId ||
+      teamUserIds.includes(actor.userId);
+    if (!isOnProject) return null;
+  }
+
+  const [withSummary] = await attachTaskSummary([project]);
+  const rootTasks = await TaskModel.find({ projectId: id, parentTaskId: null })
+    .sort({ order: 1, createdAt: 1 })
+    .select("title status priority assignedToUserId dueAt progressPercent code")
+    .populate("assignedToUserId", "fullName email")
+    .lean();
+
+  return serializeForJson({ ...withSummary, rootTasks });
 }
 
