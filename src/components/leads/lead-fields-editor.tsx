@@ -255,7 +255,7 @@ export function LeadFieldsEditor({ lead }: { lead: LeadEditorPayload }) {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <select
-          className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+          className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
           value={form.source}
           onChange={(event) =>
             setForm((prev) => ({
@@ -272,7 +272,7 @@ export function LeadFieldsEditor({ lead }: { lead: LeadEditorPayload }) {
         </select>
 
         <select
-          className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+          className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
           value={form.category}
           onChange={(event) =>
             setForm((prev) => ({
@@ -289,7 +289,7 @@ export function LeadFieldsEditor({ lead }: { lead: LeadEditorPayload }) {
         </select>
 
         <select
-          className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+          className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
           value={form.urgency}
           onChange={(event) =>
             setForm((prev) => ({
@@ -322,7 +322,7 @@ export function LeadFieldsEditor({ lead }: { lead: LeadEditorPayload }) {
           placeholder="Budget Max"
         />
         <select
-          className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
+          className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
           value={form.budgetCurrency}
           onChange={(event) =>
             setForm((prev) => ({

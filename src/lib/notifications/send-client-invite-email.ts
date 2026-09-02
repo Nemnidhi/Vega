@@ -31,7 +31,7 @@ export async function sendClientInviteEmail({
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
       <p>Hi,</p>
-      <p>We've set up a client portal login for ${escapeHtml(businessName)} so you can review your digital-presence audit and the project requirements we're putting together.</p>
+      <p>We've set up a client portal login for ${escapeHtml(businessName)} so you can review your digital-presence audit and the requirements we're putting together.</p>
       <p>
         <a href="${escapeHtml(activationLink)}" style="color: #1d4ed8; font-weight: 600;">
           Set up your login
@@ -44,7 +44,7 @@ export async function sendClientInviteEmail({
   const text = [
     "Hi,",
     "",
-    `We've set up a client portal login for ${businessName} so you can review your digital-presence audit and the project requirements we're putting together.`,
+    `We've set up a client portal login for ${businessName} so you can review your digital-presence audit and the requirements we're putting together.`,
     `Set up your login: ${activationLink}`,
     "",
     "This link expires in 7 days.",

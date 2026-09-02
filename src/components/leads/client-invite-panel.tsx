@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,7 @@ export function ClientInvitePanel({
   invite,
   linkedClientUser,
 }: ClientInvitePanelProps) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [activationLink, setActivationLink] = useState<string | null>(null);
@@ -47,7 +49,9 @@ export function ClientInvitePanel({
         });
         setActivationLink(body.data.activationLink);
       }
-      setTimeout(() => window.location.reload(), activationLink ? 4000 : 1200);
+      // Refresh in place rather than reloading the page - the activation link rendered
+      // above has to survive, and a timed reload used to race the request and wipe it.
+      router.refresh();
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Request failed" });
     } finally {
@@ -58,7 +62,7 @@ export function ClientInvitePanel({
   return (
     <div className="space-y-3">
       {invite ? (
-        <div className="rounded-lg border border-border bg-white p-3">
+        <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-muted-foreground">Invited: {invite.email}</span>
             <Badge

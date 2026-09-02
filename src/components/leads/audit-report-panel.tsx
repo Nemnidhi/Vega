@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,6 +86,7 @@ function signalVariant(signal?: Signal): "success" | "danger" | "neutral" {
 }
 
 export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelProps) {
+  const router = useRouter();
   const [busy, setBusy] = useState<null | "generate" | "send">(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -117,8 +119,10 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
             ? `Report generated - tier ${body.data.tier}, ${Math.round(body.data.bytes / 1024)} KB, text by ${body.data.paragraphSource}.`
             : `Sent to ${body.data.to} (${body.data.sentToday}/${body.data.dailyLimit} today).`,
       });
-      // Server component data (status, tier) is stale after this.
-      setTimeout(() => window.location.reload(), 1200);
+      // Server component data (status, tier) is stale after this. router.refresh() re-runs
+      // the server components in place, so it keeps the rest of the page's state instead of
+      // throwing it away, and needs no guessed delay.
+      router.refresh();
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Request failed" });
     } finally {
@@ -137,7 +141,7 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-white p-3">
+        <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
           <p className="text-xs text-muted-foreground">Audit Tier</p>
           <div className="mt-1">
             {isTier(tier) ? (
@@ -159,7 +163,7 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-border bg-white p-3">
+        <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
           <p className="text-xs text-muted-foreground">Audit Stage</p>
           <p className="mt-1 font-semibold text-foreground">{humanizeKey(status)}</p>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -168,7 +172,7 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-white p-3">
+      <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
         <p className="text-xs text-muted-foreground">Industry</p>
         {prospecting.industry ? (
           <>
@@ -211,7 +215,7 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
         )}
       </div>
 
-      <div className="rounded-lg border border-border bg-white p-3">
+      <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
         <p className="text-xs text-muted-foreground">Digital Presence Signals</p>
         <div className="mt-2 space-y-2 text-sm">
           {(
@@ -288,7 +292,7 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
           rel="noreferrer"
           className={`inline-flex h-11 items-center justify-center rounded-lg border border-border px-4 text-sm font-semibold transition-colors ${
             hasReport
-              ? "bg-white text-foreground hover:bg-surface-soft"
+              ? "bg-vega-surface-1 text-foreground hover:bg-surface-soft"
               : "pointer-events-none bg-surface-soft text-muted-foreground"
           }`}
         >

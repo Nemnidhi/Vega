@@ -188,12 +188,12 @@ export function ProposalGeneratorForm({
               {drafting ? "Drafting..." : "Draft with AI"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Turns the scope manifest's objective and timeline assumptions into client-facing
+              Turns the scope manifest&apos;s objective and timeline assumptions into client-facing
               prose for the summary and timeline fields below - always review before generating.
             </p>
           </div>
           <Textarea
-            placeholder="Project summary"
+            placeholder="Proposal summary"
             value={form.projectSummary}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, projectSummary: event.target.value }))

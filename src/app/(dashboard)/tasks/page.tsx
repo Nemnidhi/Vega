@@ -1,7 +1,7 @@
 import { DashboardHeader } from "@/components/dashboard/header";
 import { TasksView } from "@/components/tasks/tasks-view";
 import { requireRoleAccess } from "@/lib/auth/role-access";
-import { getAssignableUsers, getKpisForUser, getTasksForUser } from "@/lib/tasks/queries";
+import { getAssignableUsers, getKpisForUser, getTasksWorkspace } from "@/lib/tasks/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export default async function TasksPage() {
   ]);
 
   const [tasks, kpis, assignableUsers] = await Promise.all([
-    getTasksForUser(session.userId),
+    getTasksWorkspace(session.userId, session.role),
     getKpisForUser(session.userId, session.role),
     getAssignableUsers(session.role),
   ]);
@@ -25,7 +25,7 @@ export default async function TasksPage() {
     <section className="space-y-6">
       <DashboardHeader
         title="Tasks"
-        subtitle="Track your work, see it on a calendar, and see how it adds up toward your KPIs."
+        subtitle="Plan, assign and track execution across Vega."
         showLeadCta={false}
       />
       <TasksView

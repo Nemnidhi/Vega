@@ -90,7 +90,7 @@ export function LeadDairy({
       {notes.length ? (
         <div className="space-y-3">
           {notes.map((item) => (
-            <article key={item._id} className="rounded-lg border border-border bg-white p-3">
+            <article key={item._id} className="rounded-lg border border-border bg-vega-surface-1 p-3">
               <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{item.note}</p>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span>By {formatActor(item.createdById)}</span>

@@ -10,6 +10,7 @@ interface PasswordChangeRequestFormProps {
 }
 
 export function PasswordChangeRequestForm({ userLabel }: PasswordChangeRequestFormProps) {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,13 +25,14 @@ export function PasswordChangeRequestForm({ userLabel }: PasswordChangeRequestFo
       const response = await fetch("/api/password-change-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword, confirmPassword }),
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data?.error?.message ?? "Failed to request password change.");
       }
 
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setMessage("Password change request sent to admin for approval.");
@@ -55,7 +57,16 @@ export function PasswordChangeRequestForm({ userLabel }: PasswordChangeRequestFo
         <form className="grid max-w-xl gap-3" onSubmit={submitRequest}>
           <Input
             type="password"
+            placeholder="Current password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            required
+          />
+          <Input
+            type="password"
             placeholder="New password"
+            autoComplete="new-password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
             minLength={8}
@@ -64,6 +75,7 @@ export function PasswordChangeRequestForm({ userLabel }: PasswordChangeRequestFo
           <Input
             type="password"
             placeholder="Confirm new password"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             minLength={8}

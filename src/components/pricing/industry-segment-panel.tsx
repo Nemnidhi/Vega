@@ -221,7 +221,7 @@ export function IndustrySegmentPanel({ initialIndustries, initialSegments }: Pro
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   selectedIndustryId === industry._id
                     ? "bg-accent/10 font-semibold text-accent-strong"
-                    : "hover:bg-white"
+                    : "hover:bg-vega-surface-hover"
                 }`}
               >
                 <span>{industry.label}</span>

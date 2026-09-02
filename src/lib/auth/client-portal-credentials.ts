@@ -20,6 +20,8 @@ export type ClientPortalIdentity = {
   fullName: string;
   email: string;
   role: "client";
+  /** Minted into the session cookie so deactivation revokes it - see lib/auth/session.ts. */
+  sessionVersion: number;
 };
 
 export async function verifyClientCredentials(
@@ -37,7 +39,13 @@ export async function verifyClientCredentials(
     throw new ApiError("Invalid email or password.", 401);
   }
 
-  return { id: String(user._id), fullName: user.fullName, email: user.email, role: "client" };
+  return {
+    id: String(user._id),
+    fullName: user.fullName,
+    email: user.email,
+    role: "client",
+    sessionVersion: user.sessionVersion ?? 0,
+  };
 }
 
 function trimToMax(value: string, maxLength: number) {
@@ -60,7 +68,7 @@ function inferGoalFromCategory(category: unknown) {
   if (category === "infrastructure") return "Strengthen infrastructure and reliability";
   if (category === "legal_automation") return "Automate legal operations";
   if (category === "retainer_enterprise") return "Long-term growth and support partnership";
-  return "Plan project execution with Nemnidhi team";
+  return "Plan service execution with Nemnidhi team";
 }
 
 export async function createClientSignup(
@@ -71,6 +79,23 @@ export async function createClientSignup(
   const existingUser = await UserModel.findOne({ email: normalizedEmail }).lean();
   if (existingUser) {
     throw new ApiError("Account already exists with this email.", 409);
+  }
+
+  // Staff create Client records through POST /api/clients without ever creating a User, so
+  // "no User exists" does not mean "this email is unclaimed". Open signup must never be able
+  // to write into a Client record that already exists: the upsert below would overwrite the
+  // real client's legal name, requirements and lead link, and because portal ownership is
+  // derived from primaryContactEmail the new account would inherit that client's lead,
+  // proposals and vault. Those users go through the invite flow (activateClientInvite),
+  // which proves control of the address with a signed, hashed, expiring token.
+  const existingClient = await ClientModel.findOne({ primaryContactEmail: normalizedEmail })
+    .select("_id")
+    .lean();
+  if (existingClient) {
+    throw new ApiError(
+      "This email is already registered with our team. Ask your account manager to send you a portal invite.",
+      409,
+    );
   }
 
   const latestWebsiteLead = await LeadModel.findOne({
@@ -105,7 +130,7 @@ export async function createClientSignup(
     .filter(Boolean)
     .join("\n");
 
-  let user: { _id: unknown; fullName: string; email: string } | null = null;
+  let user: { _id: unknown; fullName: string; email: string; sessionVersion: number } | null = null;
   try {
     const createdUser = await UserModel.create({
       fullName: resolvedContactName,
@@ -119,6 +144,7 @@ export async function createClientSignup(
       _id: createdUser._id,
       fullName: createdUser.fullName,
       email: createdUser.email,
+      sessionVersion: createdUser.sessionVersion ?? 0,
     };
 
     await ClientModel.findOneAndUpdate(
@@ -178,7 +204,13 @@ export async function createClientSignup(
     throw new Error("Client account could not be created.");
   }
 
-  return { id: String(user._id), fullName: user.fullName, email: user.email, role: "client" };
+  return {
+    id: String(user._id),
+    fullName: user.fullName,
+    email: user.email,
+    role: "client",
+    sessionVersion: user.sessionVersion ?? 0,
+  };
 }
 
 export async function activateClientInvite(
@@ -242,5 +274,11 @@ export async function activateClientInvite(
     details: { email: invite.email },
   });
 
-  return { id: String(user._id), fullName: user.fullName, email: user.email, role: "client" };
+  return {
+    id: String(user._id),
+    fullName: user.fullName,
+    email: user.email,
+    role: "client",
+    sessionVersion: user.sessionVersion ?? 0,
+  };
 }

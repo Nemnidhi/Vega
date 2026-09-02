@@ -1,3 +1,4 @@
+import { connectToDatabase } from "@/lib/db/mongodb";
 import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { assertRoleAccess, getActorContext } from "@/lib/auth/permissions";
 import { attendanceAdminRoles } from "@/lib/attendance/constants";
@@ -6,6 +7,7 @@ import { getAdminMonthlyAttendance } from "@/lib/attendance/queries";
 
 export async function GET(request: Request) {
   try {
+    await connectToDatabase();
     const actor = await getActorContext();
     assertRoleAccess(actor.role, { oneOf: attendanceAdminRoles });
 

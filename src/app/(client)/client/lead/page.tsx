@@ -54,7 +54,7 @@ export default async function ClientLeadHomePage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Your digital-presence audit and project requirements, in one place.
+            Your digital-presence audit and approved requirements, in one place.
           </p>
         </CardContent>
       </Card>

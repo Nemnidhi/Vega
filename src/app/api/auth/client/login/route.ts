@@ -5,11 +5,13 @@ import { verifyClientCredentials } from "@/lib/auth/client-portal-credentials";
 import { buildSessionCookieValue } from "@/lib/auth/session";
 import { AUTH_COOKIE_MAX_AGE_SECONDS, AUTH_COOKIE_NAME } from "@/lib/auth/constants";
 import { handleApiError } from "@/lib/api/responses";
+import { assertAuthRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
     const payload = clientLoginSchema.parse(await request.json());
+    await assertAuthRateLimit(request, "client_login", payload.email);
     const identity = await verifyClientCredentials(payload);
 
     const sessionValue = buildSessionCookieValue({
@@ -17,6 +19,7 @@ export async function POST(request: Request) {
       email: identity.email,
       role: identity.role,
       fullName: identity.fullName,
+      sessionVersion: identity.sessionVersion,
     });
 
     const response = NextResponse.json({

@@ -111,7 +111,7 @@ export function ClientAuditSummary({ leadId, prospecting }: ClientAuditSummaryPr
             href={`/api/leads/${leadId}/audit-report`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-white px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-vega-surface-1 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-soft"
           >
             Download Your Report
           </a>

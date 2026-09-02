@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:subtasks": "tsx scripts/validate-task-subtask-schemas.ts",
     "backup:db": "tsx --env-file=.env.local scripts/backup-database.ts",
     "preflight:migration": "tsx --env-file=.env.local scripts/preflight-migration.ts",
     "migrate:samvid": "tsx --env-file=.env.local scripts/migrate-samvid.ts",
@@ -18,11 +19,20 @@
     "enrich:leads": "tsx --env-file=.env.local scripts/enrich-leads.ts",
     "classify:leads": "tsx --env-file=.env.local scripts/classify-leads.ts",
     "enrich:leads:ci": "tsx scripts/enrich-leads.ts",
-    "classify:leads:ci": "tsx scripts/classify-leads.ts"
+    "classify:leads:ci": "tsx scripts/classify-leads.ts",
+    "migrate:embedded-subtasks": "tsx --env-file=.env.local scripts/migrate-embedded-subtasks.ts",
+    "typecheck": "tsc --noEmit",
+    "sync:indexes": "tsx --env-file=.env.local scripts/sync-indexes.ts",
+    "test:task-foundation": "tsx scripts/validate-task-foundation.ts",
+    "migrate:project-tasks": "tsx --env-file=.env.local scripts/migrate-project-tasks.ts",
+    "test:task-import": "tsx scripts/validate-task-import.ts",
+    "test:audit-fixes": "tsx scripts/validate-audit-fixes.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.0",
+    "@xyflow/react": "^12.11.5",
     "clsx": "^2.1.1",
+    "lucide-react": "^1.34.0",
     "mongoose": "^9.6.1",
     "next": "16.2.4",
     "nodemailer": "^8.0.7",
@@ -30,7 +40,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.1"
   },
   "devDependencies": {

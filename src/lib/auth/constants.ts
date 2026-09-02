@@ -18,7 +18,7 @@ export function getStaffLoginRoute(role: LoginRole) {
 
 export function getStaffHomeRoute(role: LoginRole) {
   if (role === "developer") {
-    return "/projects";
+    return "/tasks";
   }
   return "/dashboard";
 }

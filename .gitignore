@@ -41,3 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 backups/
+
+# local deploy staging and dev logs
+.deploy-temp/
+.next-dev.log
+.next-dev.err.log

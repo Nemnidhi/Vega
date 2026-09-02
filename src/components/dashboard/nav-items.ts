@@ -8,10 +8,9 @@ type DashboardNavItem = {
 
 const dashboardNavItems: DashboardNavItem[] = [
   { label: "Home", href: "/dashboard", roles: ["admin", "sales", "digital_marketing"] },
-  { label: "Projects", href: "/projects", roles: ["admin", "developer"] },
   { label: "Chat", href: "/chat", roles: ["admin", "developer", "sales", "digital_marketing"] },
   { label: "Leads", href: "/leads", roles: ["admin", "sales", "digital_marketing"] },
-  { label: "Pipeline", href: "/pipeline", roles: ["admin", "sales", "digital_marketing"] },
+  { label: "Queries", href: "/queries", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Clients", href: "/clients", roles: ["admin", "sales", "digital_marketing"] },
   { label: "Users", href: "/users", roles: ["admin"] },
   { label: "Pricing Catalog", href: "/pricing-components", roles: ["admin", "partner", "sales", "digital_marketing"] },

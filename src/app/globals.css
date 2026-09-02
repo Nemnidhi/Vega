@@ -1,19 +1,55 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
 
 :root {
-  --background: #f4f7fb;
-  --foreground: #112138;
-  --muted-foreground: #5d6d84;
-  --surface: #ffffff;
-  --surface-soft: #edf4ff;
-  --border: #d5dfec;
-  --accent: #126da6;
-  --accent-strong: #0b4f79;
-  --accent-soft: #ddf0ff;
-  --success: #1f8a54;
-  --warning: #9a6a21;
-  --danger: #cc4a45;
-  --app-font-sans: "Segoe UI", Inter, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --vega-bg: #07111b;
+  --vega-bg-deep: #050d15;
+  --vega-sidebar: #07101a;
+  --vega-topbar: #0a131d;
+  --vega-surface-1: #0d1620;
+  --vega-surface-2: #111b26;
+  --vega-surface-3: #15202c;
+  --vega-surface-hover: #182432;
+  --vega-surface-selected: #19233a;
+  --vega-border: #243241;
+  --vega-border-soft: #1c2936;
+  --vega-border-strong: #344457;
+  --vega-text: #f1f5f9;
+  --vega-text-secondary: #c3cdd8;
+  --vega-text-muted: #8996a6;
+  --vega-text-dim: #657385;
+  --vega-purple: #8b5cf6;
+  --vega-purple-hover: #956af7;
+  --vega-purple-soft: rgba(139, 92, 246, 0.14);
+  --vega-purple-border: rgba(139, 92, 246, 0.46);
+  --vega-blue: #3b82f6;
+  --vega-blue-soft: rgba(59, 130, 246, 0.13);
+  --vega-green: #22c55e;
+  --vega-green-soft: rgba(34, 197, 94, 0.12);
+  --vega-yellow: #eab308;
+  --vega-yellow-soft: rgba(234, 179, 8, 0.12);
+  --vega-orange: #f97316;
+  --vega-orange-soft: rgba(249, 115, 22, 0.12);
+  --vega-red: #ef4444;
+  --vega-red-soft: rgba(239, 68, 68, 0.12);
+  --vega-cyan: #22d3ee;
+  --vega-cyan-soft: rgba(34, 211, 238, 0.12);
+  --background: var(--vega-bg);
+  --foreground: var(--vega-text);
+  --muted-foreground: var(--vega-text-muted);
+  --surface: var(--vega-surface-1);
+  --surface-soft: var(--vega-surface-2);
+  --border: var(--vega-border);
+  --accent: var(--vega-purple);
+  --accent-strong: #c4b5fd;
+  --accent-soft: var(--vega-purple-soft);
+  --success: var(--vega-green);
+  --warning: var(--vega-yellow);
+  --danger: var(--vega-red);
+  --sidebar: var(--vega-sidebar);
+  --sidebar-muted: var(--vega-text-muted);
+  --sidebar-border: var(--vega-border-soft);
+  --app-font-sans: Geist, Inter, "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --app-font-mono: "Cascadia Code", "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
@@ -30,6 +66,41 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-vega-bg: var(--vega-bg);
+  --color-vega-bg-deep: var(--vega-bg-deep);
+  --color-vega-sidebar: var(--vega-sidebar);
+  --color-vega-topbar: var(--vega-topbar);
+  --color-vega-surface-1: var(--vega-surface-1);
+  --color-vega-surface-2: var(--vega-surface-2);
+  --color-vega-surface-3: var(--vega-surface-3);
+  --color-vega-surface-hover: var(--vega-surface-hover);
+  --color-vega-surface-selected: var(--vega-surface-selected);
+  --color-vega-border: var(--vega-border);
+  --color-vega-border-soft: var(--vega-border-soft);
+  --color-vega-border-strong: var(--vega-border-strong);
+  --color-vega-text: var(--vega-text);
+  --color-vega-text-secondary: var(--vega-text-secondary);
+  --color-vega-text-muted: var(--vega-text-muted);
+  --color-vega-text-dim: var(--vega-text-dim);
+  --color-vega-purple: var(--vega-purple);
+  --color-vega-purple-hover: var(--vega-purple-hover);
+  --color-vega-purple-soft: var(--vega-purple-soft);
+  --color-vega-purple-border: var(--vega-purple-border);
+  --color-vega-blue: var(--vega-blue);
+  --color-vega-blue-soft: var(--vega-blue-soft);
+  --color-vega-green: var(--vega-green);
+  --color-vega-green-soft: var(--vega-green-soft);
+  --color-vega-yellow: var(--vega-yellow);
+  --color-vega-yellow-soft: var(--vega-yellow-soft);
+  --color-vega-orange: var(--vega-orange);
+  --color-vega-orange-soft: var(--vega-orange-soft);
+  --color-vega-red: var(--vega-red);
+  --color-vega-red-soft: var(--vega-red-soft);
+  --color-vega-cyan: var(--vega-cyan);
+  --color-vega-cyan-soft: var(--vega-cyan-soft);
   --font-sans: var(--app-font-sans);
   --font-mono: var(--app-font-mono);
 }
@@ -44,7 +115,7 @@ body {
   background: var(--color-background);
   font-feature-settings: "ss01" 1, "cv05" 1;
   line-height: 1.45;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 a {
@@ -54,7 +125,27 @@ a {
 }
 
 ::selection {
-  background: rgba(18, 109, 166, 0.26);
+  background: rgba(139, 92, 246, 0.3);
+}
+
+/*
+ * Scrollbars are hidden app-wide.
+ *
+ * Scrolling itself is untouched - wheel, trackpad, touch, keyboard (arrows, Page Up/Down, Home/End)
+ * and programmatic scrolling all still work. Only the visual track is suppressed, so panels and
+ * tables no longer show a chrome scrollbar over the dark surfaces.
+ *
+ * .no-scrollbar is kept as an explicit opt-in for anything rendered outside this cascade.
+ */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .no-scrollbar {
@@ -67,19 +158,32 @@ a {
 }
 
 select {
-  border: 1px solid color-mix(in srgb, var(--color-border) 80%, white);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
+  min-height: 2.125rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.4375rem;
+  background: #0b141f;
   padding: 0 0.75rem;
   color: var(--color-foreground);
-  box-shadow: inset 0 1px 2px rgba(17, 33, 56, 0.05);
 }
 
 select:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.65);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
 main {
   position: relative;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
 }

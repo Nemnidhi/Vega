@@ -10,6 +10,7 @@ import { buildSessionCookieValue } from "@/lib/auth/session";
 import { UserModel } from "@/models";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { fail, handleApiError } from "@/lib/api/responses";
+import { assertAuthRateLimit } from "@/lib/rate-limit";
 
 const roleSchema = z.enum(LOGIN_ROLES);
 
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
     await connectToDatabase();
     const payload = loginSchema.parse(await request.json());
     const normalizedEmail = payload.email.toLowerCase();
+
+    await assertAuthRateLimit(request, "staff_login", normalizedEmail);
 
     let user = await UserModel.findOne({ email: normalizedEmail });
     if (!user) {
@@ -78,6 +81,7 @@ export async function POST(request: Request) {
       email: user.email,
       role: user.role,
       fullName: user.fullName,
+      sessionVersion: user.sessionVersion ?? 0,
     });
 
     const response = NextResponse.json({

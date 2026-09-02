@@ -115,7 +115,14 @@ function getCsvTemplateContent() {
   ].join("\n");
 }
 
-export function LeadIntakeForms() {
+export interface LeadIntakeFormsProps {
+  /** Render only one half. Omit for the original stacked layout. */
+  section?: "create" | "bulk";
+  /** Called after a successful create or bulk upload, so a dialog can close itself. */
+  onCompleted?: () => void;
+}
+
+export function LeadIntakeForms({ section, onCompleted }: LeadIntakeFormsProps = {}) {
   const router = useRouter();
   const [form, setForm] = useState<LeadFormState>(initialState);
   const [loading, setLoading] = useState(false);
@@ -167,6 +174,7 @@ export function LeadIntakeForms() {
       setMessage("Lead saved successfully.");
       setForm(initialState);
       router.refresh();
+      onCompleted?.();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to create lead");
     } finally {
@@ -185,19 +193,44 @@ export function LeadIntakeForms() {
       return;
     }
 
-    if (!file.name.toLowerCase().endsWith(".csv")) {
+    const name = file.name.toLowerCase();
+    const isExcel = name.endsWith(".xlsx") || name.endsWith(".xls");
+    const isCsv = name.endsWith(".csv");
+
+    if (!isExcel && !isCsv) {
       setBulkRows([]);
       setBulkFileName("");
-      setBulkMessage("Please select a CSV file.");
+      setBulkMessage("Please select an .xlsx, .xls or .csv file.");
       return;
     }
 
     try {
-      const text = await file.text();
-      const parsedRows = parseCsvText(text);
+      let parsedRows: CsvLeadRow[];
+
+      if (isExcel) {
+        // Loaded on demand: the spreadsheet parser is large and most visits never upload a file.
+        const xlsx = await import("xlsx");
+        const workbook = xlsx.read(await file.arrayBuffer(), { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error("Workbook has no sheets.");
+        const sheet = workbook.Sheets[sheetName];
+        // defval keeps empty cells as empty strings so every row has the same shape as CSV rows,
+        // and raw:false renders dates the way they appear in the sheet rather than as serials.
+        const raw = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+          defval: "",
+          raw: false,
+        });
+        parsedRows = raw.map((row) =>
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [key.trim(), String(value ?? "").trim()]),
+          ),
+        );
+      } else {
+        parsedRows = parseCsvText(await file.text());
+      }
 
       if (!parsedRows.length) {
-        throw new Error("CSV is empty or does not contain data rows.");
+        throw new Error("The file is empty or has no data rows.");
       }
 
       setBulkRows(parsedRows);
@@ -206,7 +239,7 @@ export function LeadIntakeForms() {
     } catch (error) {
       setBulkRows([]);
       setBulkFileName("");
-      setBulkMessage(error instanceof Error ? error.message : "Failed to read CSV file.");
+      setBulkMessage(error instanceof Error ? error.message : "Failed to read the file.");
     }
   }
 
@@ -214,7 +247,7 @@ export function LeadIntakeForms() {
     event.preventDefault();
     const formElement = event.currentTarget;
     if (!bulkRows.length) {
-      setBulkMessage("Select and parse a CSV file first.");
+      setBulkMessage("Select a file first.");
       return;
     }
 
@@ -241,6 +274,7 @@ export function LeadIntakeForms() {
       );
       if (result.createdCount > 0) {
         router.refresh();
+      onCompleted?.();
       }
 
       if (result.failedCount === 0) {
@@ -272,178 +306,200 @@ export function LeadIntakeForms() {
     URL.revokeObjectURL(url);
   }
 
+  const createCard = (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Lead</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Fill basic details to add a lead quickly.
+            </p>
+          </CardHeader>
+  
+          <CardContent className="space-y-4">
+            <form className="grid gap-3" onSubmit={submitLead}>
+              <Input
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Lead title"
+                required
+              />
+  
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  value={form.contactName}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, contactName: event.target.value }))
+                  }
+                  placeholder="Contact name"
+                  required
+                />
+                <Input
+                  value={form.email}
+                  type="email"
+                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                  placeholder="Contact email"
+                  required
+                />
+              </div>
+  
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  value={form.phone}
+                  onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+                  placeholder="Phone (optional)"
+                />
+                <select
+                  className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
+                  value={form.category}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      category: event.target.value as LeadFormState["category"],
+                    }))
+                  }
+                >
+                  <option value="software_request">Software Request</option>
+                  <option value="infrastructure">Infrastructure</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+  
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select
+                  className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
+                  value={form.source}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      source: event.target.value as LeadFormState["source"],
+                    }))
+                  }
+                >
+                  <option value="website">Website</option>
+                  <option value="referral">Referral</option>
+                  <option value="cold_outreach">Cold outreach</option>
+                  <option value="paid_ads">Paid ads</option>
+                  <option value="event">Event</option>
+                  <option value="partner">Partner</option>
+                  <option value="other">Other</option>
+                </select>
+  
+                <select
+                  className="h-11 rounded-lg border border-border bg-vega-surface-1 px-3 text-sm"
+                  value={form.urgency}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      urgency: event.target.value as LeadFormState["urgency"],
+                    }))
+                  }
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+  
+              <Textarea
+                value={form.description}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+                placeholder="Short requirement summary..."
+                required
+              />
+  
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="submit" disabled={!canSubmit || loading}>
+                  {loading ? "Saving..." : "Save Lead"}
+                </Button>
+                {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+  );
+
+  const bulkCard = (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk Upload</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Upload multiple leads from one Excel (.xlsx, .xls) or CSV file. The first row must be
+              the column headers.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border border-border bg-surface-soft p-3 text-sm text-muted-foreground">
+              <p>
+                Required columns: <span className="font-medium text-foreground">contactName, email</span>
+              </p>
+              <p className="mt-1">
+                Recommended columns: title, phone, source, category, urgency, description, budgetMin,
+                budgetMax, budgetCurrency, tags
+              </p>
+            </div>
+  
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="secondary" onClick={downloadCsvTemplate}>
+                Download Template
+              </Button>
+            </div>
+  
+            <form className="grid gap-3" onSubmit={uploadBulkLeads}>
+              <Input
+              type="file"
+              accept=".xlsx,.xls,.csv,text/csv"
+              onChange={handleCsvSelection}
+            />
+  
+              <div className="text-sm text-muted-foreground">
+                {bulkFileName ? <p>Selected file: {bulkFileName}</p> : <p>No CSV selected yet.</p>}
+                {bulkRows.length > 0 ? <p>Rows ready: {bulkRows.length}</p> : null}
+              </div>
+  
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="submit" disabled={!canUploadBulk}>
+                  {bulkUploading ? "Uploading..." : "Upload CSV"}
+                </Button>
+                {bulkMessage ? <p className="text-sm text-muted-foreground">{bulkMessage}</p> : null}
+              </div>
+            </form>
+  
+            {bulkResult?.failedRows?.length ? (
+              <div className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm">
+                <p className="font-semibold text-foreground">Failed Rows</p>
+                <div className="mt-2 space-y-1 text-muted-foreground">
+                  {bulkResult.failedRows.slice(0, 8).map((item) => (
+                    <p key={`${item.row}-${item.reason}`}>
+                      Row {item.row}: {item.reason}
+                    </p>
+                  ))}
+                  {bulkResult.failedRows.length > 8 ? (
+                    <p>And {bulkResult.failedRows.length - 8} more failed row(s).</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+  );
+
+  // `section` lets the launcher dialog render one half at a time; omitting it keeps the
+  // original stacked layout for any other caller.
+  if (section === "create") {
+    return <>{createCard}</>;
+  }
+
+  if (section === "bulk") {
+    return <>{bulkCard}</>;
+  }
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Lead</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Fill basic details to add a lead quickly.
-          </p>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <form className="grid gap-3" onSubmit={submitLead}>
-            <Input
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="Lead title"
-              required
-            />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                value={form.contactName}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, contactName: event.target.value }))
-                }
-                placeholder="Contact name"
-                required
-              />
-              <Input
-                value={form.email}
-                type="email"
-                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                placeholder="Contact email"
-                required
-              />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                value={form.phone}
-                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                placeholder="Phone (optional)"
-              />
-              <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
-                value={form.category}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    category: event.target.value as LeadFormState["category"],
-                  }))
-                }
-              >
-                <option value="software_request">Software Request</option>
-                <option value="infrastructure">Infrastructure</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
-                value={form.source}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    source: event.target.value as LeadFormState["source"],
-                  }))
-                }
-              >
-                <option value="website">Website</option>
-                <option value="referral">Referral</option>
-                <option value="cold_outreach">Cold outreach</option>
-                <option value="paid_ads">Paid ads</option>
-                <option value="event">Event</option>
-                <option value="partner">Partner</option>
-                <option value="other">Other</option>
-              </select>
-
-              <select
-                className="h-11 rounded-lg border border-border bg-white px-3 text-sm"
-                value={form.urgency}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    urgency: event.target.value as LeadFormState["urgency"],
-                  }))
-                }
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
-
-            <Textarea
-              value={form.description}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, description: event.target.value }))
-              }
-              placeholder="Short requirement summary..."
-              required
-            />
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={!canSubmit || loading}>
-                {loading ? "Saving..." : "Save Lead"}
-              </Button>
-              {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Bulk Lead Upload (CSV)</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload multiple leads from one CSV file.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border border-border bg-surface-soft p-3 text-sm text-muted-foreground">
-            <p>
-              Required columns: <span className="font-medium text-foreground">contactName, email</span>
-            </p>
-            <p className="mt-1">
-              Recommended columns: title, phone, source, category, urgency, description, budgetMin,
-              budgetMax, budgetCurrency, tags
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="secondary" onClick={downloadCsvTemplate}>
-              Download CSV Template
-            </Button>
-          </div>
-
-          <form className="grid gap-3" onSubmit={uploadBulkLeads}>
-            <Input type="file" accept=".csv,text/csv" onChange={handleCsvSelection} />
-
-            <div className="text-sm text-muted-foreground">
-              {bulkFileName ? <p>Selected file: {bulkFileName}</p> : <p>No CSV selected yet.</p>}
-              {bulkRows.length > 0 ? <p>Rows ready: {bulkRows.length}</p> : null}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={!canUploadBulk}>
-                {bulkUploading ? "Uploading..." : "Upload CSV"}
-              </Button>
-              {bulkMessage ? <p className="text-sm text-muted-foreground">{bulkMessage}</p> : null}
-            </div>
-          </form>
-
-          {bulkResult?.failedRows?.length ? (
-            <div className="rounded-lg border border-border bg-white p-3 text-sm">
-              <p className="font-semibold text-foreground">Failed Rows</p>
-              <div className="mt-2 space-y-1 text-muted-foreground">
-                {bulkResult.failedRows.slice(0, 8).map((item) => (
-                  <p key={`${item.row}-${item.reason}`}>
-                    Row {item.row}: {item.reason}
-                  </p>
-                ))}
-                {bulkResult.failedRows.length > 8 ? (
-                  <p>And {bulkResult.failedRows.length - 8} more failed row(s).</p>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+      {createCard}
+      {bulkCard}
     </div>
   );
 }
