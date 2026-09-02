@@ -29,12 +29,20 @@ const meetingSchema = new Schema(
     location: { type: String, required: true, trim: true, maxlength: 300 },
     cancelledAt: { type: Date, default: null },
     cancelledReason: { type: String, trim: true, maxlength: 500, default: null },
+    // Reminder-sweep watermarks, not a schedule config - the sweep queries "status confirmed,
+    // startAt within N hours, this field still null" then sets it on send. Null forever = never
+    // reminded for that tier; set = don't re-send even if the sweep re-scans this meeting.
+    reminded24hAt: { type: Date, default: null },
+    reminded1hAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
 
 // The exact shape both slot-computation and the booking-time race recheck query against.
 meetingSchema.index({ startAt: 1, type: 1, status: 1 });
+// The reminder sweep's own query shape - status + startAt range + one of the reminded*At nulls.
+meetingSchema.index({ status: 1, startAt: 1, reminded24hAt: 1 });
+meetingSchema.index({ status: 1, startAt: 1, reminded1hAt: 1 });
 
 export type MeetingDocument = InferSchemaType<typeof meetingSchema>;
 
