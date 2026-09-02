@@ -1,0 +1,25 @@
+import type { BaseDocument, ObjectId } from "@/types/common";
+
+export type UserRole =
+  | "admin"
+  | "partner"
+  | "sales"
+  | "digital_marketing"
+  | "project_manager"
+  | "developer"
+  | "client";
+
+export type UserStatus = "active" | "inactive" | "invited";
+
+export interface User extends BaseDocument {
+  fullName: string;
+  email: string;
+  role: UserRole;
+  passwordHash?: string | null;
+  status: UserStatus;
+  phone?: string;
+  department?: string;
+  avatarUrl?: string;
+  managerId?: ObjectId | null;
+  lastLoginAt?: Date | null;
+}

@@ -1,0 +1,88 @@
+import type { BaseDocument, ObjectId } from "@/types/common";
+
+export type ActivityAction =
+  | "lead_status_changed"
+  | "proposal_generated"
+  | "proposal_sent"
+  | "proposal_signed"
+  | "proposal_viewed"
+  | "proposal_rejected"
+  | "scope_manifest_edited"
+  | "change_order_created"
+  | "pricing_changed"
+  | "industry_changed"
+  | "industry_segment_changed"
+  | "pricing_tier_changed"
+  | "pricing_package_changed"
+  | "audit_enrichment_completed"
+  | "audit_classification_completed"
+  | "audit_report_generated"
+  | "audit_report_sent"
+  | "client_portal_invited"
+  | "client_portal_activated"
+  | "blueprint_shared"
+  | "blueprint_approved"
+  | "blueprint_rejected"
+  | "blueprint_self_served"
+  | "blueprint_finalized"
+  | "dashboard_event_received"
+  | "meeting_booked"
+  | "meeting_cancelled"
+  | "meeting_assigned"
+  | "subtask_dependency_added"
+  | "subtask_dependency_removed"
+  | "subtask_import_completed"
+  | "subtask_created"
+  | "subtask_assigned"
+  | "subtask_reassigned"
+  | "subtask_ready"
+  | "subtask_blocked"
+  | "subtask_completed"
+  | "subtask_due_approaching"
+  | "subtask_overdue"
+  | "subtask_comment_added"
+  | "subtask_comment_mention"
+  | "approval_requested"
+  | "approval_accepted"
+  | "approval_rejected"
+  | "workflow_changed"
+  | "workflow_node_status_changed"
+  | "workflow_node_decision_changed"
+  | "workflow_node_rescheduled"
+  | "task_created"
+  | "task_updated"
+  | "task_assigned"
+  | "task_status_changed"
+  | "task_archived"
+  | "task_restored"
+  | "task_duplicated"
+  | "task_bulk_updated"
+  | "subtask_reordered"
+  | "project_created"
+  | "project_updated"
+  | "project_archived";
+
+export interface ActivityLog extends BaseDocument {
+  action: ActivityAction;
+  /** Null for cron-triggered audit actions, which have no human actor. */
+  actorId: ObjectId | null;
+  entityType:
+    | "lead"
+    | "proposal"
+    | "scope_manifest"
+    | "change_order"
+    | "pricing_component"
+    | "blueprint"
+    | "client"
+    | "industry"
+    | "industry_segment"
+    | "pricing_tier"
+    | "pricing_package"
+    | "meeting"
+    | "task"
+    | "project";
+  entityId: ObjectId;
+  details: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+}
