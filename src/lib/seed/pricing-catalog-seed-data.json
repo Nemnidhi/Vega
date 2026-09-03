@@ -351,6 +351,264 @@
       "key": "retailer",
       "label": "Retailer",
       "sortOrder": 3
+    },
+    {
+      "industryKey": "professional_services",
+      "key": "law_firm",
+      "label": "Law Firm",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "professional_services",
+      "key": "ca_accounting_firm",
+      "label": "CA / Accounting Firm",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "professional_services",
+      "key": "consultant",
+      "label": "Consultant",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "professional_services",
+      "key": "architect_design_studio",
+      "label": "Architect / Design Studio",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "healthcare_services",
+      "key": "clinic_individual_doctor",
+      "label": "Clinic / Individual Doctor",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "healthcare_services",
+      "key": "diagnostic_center_lab",
+      "label": "Diagnostic Center / Lab",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "healthcare_services",
+      "key": "hospital",
+      "label": "Hospital",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "healthcare_services",
+      "key": "pharmacy",
+      "label": "Pharmacy",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "trade_services",
+      "key": "wholesaler",
+      "label": "Wholesaler",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "trade_services",
+      "key": "distributor",
+      "label": "Distributor",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "trade_services",
+      "key": "retailer",
+      "label": "Retailer",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "trade_services",
+      "key": "trader_importer",
+      "label": "Trader / Importer",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "construction",
+      "key": "contractor_builder",
+      "label": "Contractor / Builder",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "construction",
+      "key": "real_estate_developer",
+      "label": "Real Estate Developer",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "construction",
+      "key": "interior_fitout",
+      "label": "Interior Fit-out",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "construction",
+      "key": "material_supplier",
+      "label": "Material Supplier",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "it_technology_services",
+      "key": "software_product_company",
+      "label": "Software / Product Company",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "it_technology_services",
+      "key": "it_services_consulting",
+      "label": "IT Services & Consulting",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "it_technology_services",
+      "key": "digital_agency",
+      "label": "Digital Agency",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "financial_services",
+      "key": "insurance_agent_broker",
+      "label": "Insurance Agent / Broker",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "financial_services",
+      "key": "loan_dsa",
+      "label": "Loan / DSA",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "financial_services",
+      "key": "investment_advisor",
+      "label": "Investment Advisor",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "financial_services",
+      "key": "nbfc_lending",
+      "label": "NBFC / Lending",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "logistics_transportation",
+      "key": "fleet_transporter",
+      "label": "Fleet / Transporter",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "logistics_transportation",
+      "key": "freight_forwarder",
+      "label": "Freight Forwarder",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "logistics_transportation",
+      "key": "courier_lastmile_delivery",
+      "label": "Courier / Last-Mile Delivery",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "logistics_transportation",
+      "key": "warehousing_3pl",
+      "label": "Warehousing / 3PL",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "education_services",
+      "key": "school_college",
+      "label": "School / College",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "education_services",
+      "key": "coaching_tuition_center",
+      "label": "Coaching / Tuition Center",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "education_services",
+      "key": "skill_training_institute",
+      "label": "Skill Training Institute",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "education_services",
+      "key": "online_course_provider",
+      "label": "Online Course Provider",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "hospitality_tourism",
+      "key": "hotel_resort",
+      "label": "Hotel / Resort",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "hospitality_tourism",
+      "key": "restaurant_cafe",
+      "label": "Restaurant / Cafe",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "hospitality_tourism",
+      "key": "travel_agency_tour_operator",
+      "label": "Travel Agency / Tour Operator",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "hospitality_tourism",
+      "key": "event_venue",
+      "label": "Event Venue",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "media_communication",
+      "key": "digital_marketing_agency",
+      "label": "Digital Marketing Agency",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "media_communication",
+      "key": "content_production_house",
+      "label": "Content / Production House",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "media_communication",
+      "key": "pr_agency",
+      "label": "PR Agency",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "media_communication",
+      "key": "publisher",
+      "label": "Publisher",
+      "sortOrder": 3
+    },
+    {
+      "industryKey": "real_estate",
+      "key": "broker_agent",
+      "label": "Broker / Agent",
+      "sortOrder": 0
+    },
+    {
+      "industryKey": "real_estate",
+      "key": "developer_builder",
+      "label": "Developer / Builder",
+      "sortOrder": 1
+    },
+    {
+      "industryKey": "real_estate",
+      "key": "property_management_rental",
+      "label": "Property Management / Rental",
+      "sortOrder": 2
+    },
+    {
+      "industryKey": "real_estate",
+      "key": "coworking_managed_space",
+      "label": "Coworking / Managed Space",
+      "sortOrder": 3
     }
   ],
   "tiers": [
