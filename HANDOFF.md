@@ -1,5 +1,20 @@
 # Handoff — Vega (HRMS Command Center)
 
+## Follow-up needed 2026-09-07 (Monday): delete old nemnidhi-website backup directories on the shared VPS, once reviewed
+
+While shipping the business-audit redesign below, the website's production deploy was found to have
+no real pipeline at all (see the same-day entry further down) and got fixed with a new
+`scripts/deploy.sh` (Nemnidhi-website repo) - both the one-off manual fix and the first real run of
+that script left backup copies of the previous release on `srv1132041`:
+- `/home/nemnidhi/apps/nemnidhi.bak.20260903171XXX` (from the manual clone/build/swap done before
+  `deploy.sh` existed)
+- `/home/nemnidhi/apps/nemnidhi-backup-20260903172439` (from the first real run of `deploy.sh`)
+
+User explicitly asked to keep both for now rather than delete immediately. **Action for Monday
+2026-09-07**: review that the live site has stayed stable since, then delete these two directories
+(`rm -rf` as the `nemnidhi` user) to reclaim disk space - each is a full `node_modules` + `.next`
+build, non-trivial size. Not urgent, no functional impact either way, just cleanup.
+
 ## 2026-09-03 (later same day): `PricingComponent.department` shipped, business-audit results page redesign wired end to end — HEAD `f705e76`, pushed, **not yet deployed to production**.
 
 Closes the two real next-steps this same day's earlier handoff entry flagged as not done.
