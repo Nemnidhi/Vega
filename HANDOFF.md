@@ -1,5 +1,76 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-03 (later same day): `PricingComponent.department` shipped, business-audit results page redesign wired end to end — HEAD `f705e76`, pushed, **not yet deployed to production**.
+
+Closes the two real next-steps this same day's earlier handoff entry flagged as not done.
+
+**`department` field**: `PricingComponentModel` gained a real `department` enum
+(`sales`/`marketing`/`operations`/`billing`, required, default `operations`) instead of the
+approved Sales/Marketing/Operations/Billing classification sitting unused in
+`docs/pricing-catalog/component-department-classification.json`. Merged that classification
+straight into `src/lib/seed/pricing-catalog-seed-data.json` (one `department` field added per
+component, all 158 matched cleanly, zero fallbacks needed) and `seed-pricing-catalog.ts` now
+writes it on every upsert. `Blueprint`'s `selectedComponentSchema` gained the same field so a
+saved blueprint's components carry their department too. `recommendComponents()` carries it
+through (`component.department ?? "operations"` - the placeholder `smb-catalog.ts` catalog used
+by the staff Blueprint route has no real classification pass yet, so it deliberately falls back
+rather than blocking on it, same "not fixed this round" note as before).
+
+**Results page wired into real code**: the public `/api/public/questionnaire/submit` route no
+longer returns the full priced blueprint to the browser - it returns a redacted shape
+(`industryLabel`, `productBrand`, `components[]` with `department`/`rationale`/no price,
+`deliveryWeeksMin/Max`, `assumptions`). The full priced `Blueprint` document still gets created
+and stored exactly as before, for staff follow-up - only the JSON response back to the client
+was stripped. Real bug caught while testing this against a non-real-estate industry: the first
+version reused `getIndustryProfile()`'s segment-qualified label ("IT & Technology Services -
+Freelancer / Small Agency") for both the lead title and the new client-facing copy - fine for the
+former, ugly for the latter ("...Small Agency OS" as a product name). Fixed by adding a second,
+bare-label lookup (`getIndustryKnowledge(industry)?.label`) used only for the public response and
+`productBrand`, while the lead title keeps the fuller descriptive label.
+
+**Product branding fallback, decided this session** (task 3 from the prior handoff, previously
+unresolved): new `src/lib/pricing/product-branding.ts`. Real estate gets its real name, **Samvid
+OS**. Every other industry gets `"<Industry> OS"` (e.g. "IT & Technology Services OS") - not a
+made-up placeholder brand, but the same naming pattern Samvid OS itself follows, kept generic
+until an industry gets an actual paying client and (per the confirmed "20 industries is a
+marketing motion" sales model, see nemnidhi-ecosystem-map memory) earns a real named build.
+
+**On the website side** (`D:\Nemnidhi-website`): `app/business-audit/page.tsx`'s result step was
+rewritten - a `BusinessFlowDiagram` across Marketing/Sales/Operations/Billing (dot + count per
+stage, faint when empty), recommendations grouped under each department with a one-line blurb, a
+delivery-timeframe line replacing the old price range, and a "BUILT ON {productBrand}" strip. No
+price anywhere on the page now, matching the API change - the hero copy's leftover "an indicative
+price" line was also fixed. Pushed as `feature/business-audit-department-results` on the website
+repo (PR not yet opened - this environment's safety classifier blocked the GitHub API call used
+to open it in a prior session; the user needs to open it manually from
+https://github.com/abhishekprajapat-hg/Nemnidhi/pull/new/feature/business-audit-department-results).
+
+**Verified live against real local dev servers, not just typechecked**: ran both dev servers
+(Vega on :3000, the website on :3100 - new `.claude/launch.json` entries in the `Samvid Lead
+engine` root, `vega-public-dev`/`nemnidhi-website-dev`), seeded the local dev DB with the real
+158-component catalog (it had none before - `npx tsx --env-file=.env.local
+scripts/seed-pricing-catalog.ts`-equivalent one-off run, since the seed route needs an
+authenticated admin session this environment doesn't have), then drove the actual `/business-audit`
+UI in a real browser end to end for Real Estate / Broker-Agent: department flow diagram, grouped
+recommendations, delivery timeframe, and the Samvid OS strip all rendered correctly with zero price
+anywhere. Also `curl`-verified the submit endpoint directly for a second, non-real-estate industry
+to catch the label bug above. Test leads/blueprints created during verification were deleted from
+local dev DB afterward.
+
+**Not done, real next steps**:
+1. **Not deployed to production.** `f705e76` is pushed to `origin/master` but Vega's deploy is
+   manual (see vega-deployment memory) - needs `sudo -u hrmsdeploy git pull && npm run build && pm2
+   restart hrms` on the VPS, then re-running the pricing-catalog seed migration in production
+   (`POST /api/pricing-catalog/seed` from an authenticated admin/partner browser session, same
+   one-time-trigger pattern as every previous catalog change) so the new `department` values
+   actually land on production's existing 158 components - without that re-seed, production's
+   components keep the schema's `operations` default until someone runs it.
+2. **Website PR not opened** (see above) - branch is pushed, needs a human click.
+3. The staff-facing Blueprint route (`api/blueprint/[leadId]/route.ts`) still uses the
+   `smb-catalog.ts` placeholder catalog with no real department classification - out of scope for
+   this round (matches the pre-existing "category/pillar not unified between the two Blueprint
+   routes" gap noted in earlier handoffs), falls back to `"operations"` rather than breaking.
+
 ## 2026-09-03: real industry segments added for 11 previously-generic industries, deployed and DB-seeded live — HEAD `70e725f`. Also: a production deploy near-miss on `hrms`, root-caused, worth reading before the next manual deploy.
 
 **Starting point**: the user's team complained the self-service `/business-audit` questionnaire
