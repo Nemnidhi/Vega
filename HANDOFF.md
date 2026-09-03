@@ -1,5 +1,25 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-04: new `POST /api/integrations/meetings/[id]/cancel` route, for Dashboard-WhatsApp's new reschedule flow
+
+Dashboard-WhatsApp's meeting-reminder sweep sends Confirm/Reschedule buttons but nothing ever
+handled a tap on either - see its own `HANDOFF.md` (2026-09-04 entry) for the full satellite-flows
+build this pairs with. Reschedule needs to cancel the old meeting before offering new slots; Vega
+had a `/remind` route but nothing to cancel.
+
+New `src/app/api/integrations/meetings/[id]/cancel/route.ts` - a near-exact copy of the existing
+`[id]/remind/route.ts` (same `assertValidDashboardSecret` shared-secret auth, same
+`objectIdSchema`/find-or-404 shape). Sets `status: "cancelled"`, `cancelledAt`, `cancelledReason`
+from the request body. No model change - `MeetingModel`'s `status`/`cancelledAt`/`cancelledReason`
+fields already existed, just never had a route that set them from the Dashboard-WhatsApp side.
+
+Verified against local dev with the shared secret: bad secret → 401 `Unauthorized: invalid
+integration secret`, valid secret → 200 with the correct `status`/`cancelledAt` in the response.
+Hit the documented Turbopack stale-route-cache flakiness getting there ([[vega-deployment]]) - a
+brand-new API route 404'd through two plain dev-server restarts and only came up after a full
+`rm -rf .next` + restart. Worth remembering: a new route file that 404s locally isn't necessarily
+a routing bug, check the cache first.
+
 ## Follow-up needed 2026-09-07 (Monday): delete old nemnidhi-website backup directories on the shared VPS, once reviewed
 
 While shipping the business-audit redesign below, the website's production deploy was found to have
