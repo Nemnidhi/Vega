@@ -57,16 +57,32 @@ anywhere. Also `curl`-verified the submit endpoint directly for a second, non-re
 to catch the label bug above. Test leads/blueprints created during verification were deleted from
 local dev DB afterward.
 
+**Deployed and re-seeded live, same session, after the user confirmed go-ahead.** `4f88295` pulled
+and built on the VPS as `hrmsdeploy` (never root - see the near-miss two sections below), `pm2
+restart hrms`, health check green, stable ~3min uptime with 0 restarts after the restart. Then
+ran the pricing-catalog seed directly against production (same one-off `tsx --env-file=.env.local`
+script approach used locally, run over SSH as `hrmsdeploy` - the HTTP `POST /api/pricing-catalog/seed`
+route needs an authenticated admin/partner browser session this environment doesn't have) -
+`{"industries":22,"segments":83,"tiers":4,"components":158,"packages":208}`. Verified for real, not
+just trusted: `curl`'d the public submit endpoint before and after the reseed and confirmed the
+158-catalog codes (e.g. `CRM_LEAD_MANAGEMENT_40000_8000`) now carry real `department` values
+(`sales`, `marketing`, ...), while older/duplicate component codes still active in the DB from
+before this catalog existed (`CRM_PIPELINE`, `WHATSAPP_UPDATES`, `GST_INVOICE_AUTOMATION` - a
+known pre-existing catalog-duplication issue, not something this session touched) correctly fall
+back to `"operations"` via the `?? "operations"` guard in `recommendComponents()`, since those
+older documents were never written with the field at all and `.lean()` reads skip Mongoose schema
+defaults (same gotcha already documented in the 2026-08-17 addendum above). Test leads/blueprints
+created while verifying were deleted from production afterward.
+
 **Not done, real next steps**:
-1. **Not deployed to production.** `f705e76` is pushed to `origin/master` but Vega's deploy is
-   manual (see vega-deployment memory) - needs `sudo -u hrmsdeploy git pull && npm run build && pm2
-   restart hrms` on the VPS, then re-running the pricing-catalog seed migration in production
-   (`POST /api/pricing-catalog/seed` from an authenticated admin/partner browser session, same
-   one-time-trigger pattern as every previous catalog change) so the new `department` values
-   actually land on production's existing 158 components - without that re-seed, production's
-   components keep the schema's `operations` default until someone runs it.
-2. **Website PR not opened** (see above) - branch is pushed, needs a human click.
-3. The staff-facing Blueprint route (`api/blueprint/[leadId]/route.ts`) still uses the
+1. **Website PR not opened** (see above) - branch `feature/business-audit-department-results` is
+   pushed to the website repo, needs a human click at
+   https://github.com/abhishekprajapat-hg/Nemnidhi/pull/new/feature/business-audit-department-results
+   (this environment's safety classifier blocked the GitHub API call used to open PRs directly).
+   Until that PR is merged and the website's own deploy runs, the live `/business-audit` page still
+   shows the old flat price-first result view even though Vega's API already serves the new
+   price-free, department-grouped shape.
+2. The staff-facing Blueprint route (`api/blueprint/[leadId]/route.ts`) still uses the
    `smb-catalog.ts` placeholder catalog with no real department classification - out of scope for
    this round (matches the pre-existing "category/pillar not unified between the two Blueprint
    routes" gap noted in earlier handoffs), falls back to `"operations"` rather than breaking.
