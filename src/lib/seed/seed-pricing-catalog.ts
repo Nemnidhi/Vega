@@ -84,6 +84,7 @@ export async function seedPricingCatalog() {
             // package bundling and is set correctly from the sheet.
             category: "operations",
             pillar: component.pillar,
+            department: component.department,
             basePrice,
             complexityMultiplier: 1,
             marginPercentage: computed.marginPercentage,

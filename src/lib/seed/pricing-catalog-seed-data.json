@@ -641,7 +641,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 3000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "SEO_LOCAL_SEO_15000_12000",
@@ -650,7 +651,8 @@
       "pillar": "marketing_sales",
       "basePrice": 15000,
       "monthlyPrice": 12000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "GOOGLE_ADS_15000_15000",
@@ -659,7 +661,8 @@
       "pillar": "marketing_sales",
       "basePrice": 15000,
       "monthlyPrice": 15000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "META_ADS_15000_15000",
@@ -668,7 +671,8 @@
       "pillar": "marketing_sales",
       "basePrice": 15000,
       "monthlyPrice": 15000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "CRM_LEAD_MANAGEMENT_40000_8000",
@@ -677,7 +681,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "WHATSAPP_BUSINESS_API_20000_5000",
@@ -686,7 +691,8 @@
       "pillar": "marketing_sales",
       "basePrice": 20000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "EMAIL_FOLLOW_UP_AUTOMATION_30000_6000",
@@ -695,7 +701,8 @@
       "pillar": "marketing_sales",
       "basePrice": 30000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "PRODUCTION_JOB_MANAGEMENT_70000_12000",
@@ -706,7 +713,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "textile_apparel"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "JOB_LOT_TRACKING_70000_12000",
@@ -717,7 +725,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "textile_apparel"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "SKU_VARIANT_INVENTORY_50000_9000",
@@ -728,7 +737,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "textile_apparel"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "DEALER_ORDERS_55000_10000",
@@ -743,7 +753,8 @@
         "electronics_electricals",
         "leather_footwear",
         "textile_apparel"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PURCHASE_VENDOR_MANAGEMENT_35000_6000",
@@ -752,7 +763,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "MANAGEMENT_DASHBOARD_45000_8000",
@@ -761,7 +773,8 @@
       "pillar": "operations",
       "basePrice": 45000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DOCUMENT_MANAGEMENT_SYSTEM_30000_5000",
@@ -770,7 +783,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DIGITAL_SALES_WORK_ORDERS_70000_12000",
@@ -779,7 +793,8 @@
       "pillar": "documentation_admin",
       "basePrice": 70000,
       "monthlyPrice": 12000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "QUOTATION_MANAGEMENT_35000_6000",
@@ -788,7 +803,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "INVOICE_PAYMENT_RECORDS_35000_6000",
@@ -797,7 +813,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "VENDOR_DOCUMENTATION_30000_5000",
@@ -806,7 +823,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "COMPLIANCE_CERTIFICATE_TRACKING_30000_5000",
@@ -815,7 +833,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "MIS_REPORTING_30000_5000",
@@ -824,7 +843,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "CUSTOMER_SUPPORT_CRM_40000_8000",
@@ -833,7 +853,8 @@
       "pillar": "service_support",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "COMPLAINT_MANAGEMENT_35000_6000",
@@ -842,7 +863,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "WHATSAPP_SUPPORT_20000_5000",
@@ -851,7 +873,8 @@
       "pillar": "service_support",
       "basePrice": 20000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "CUSTOMER_PORTAL_75000_10000",
@@ -860,7 +883,8 @@
       "pillar": "service_support",
       "basePrice": 75000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "RETURN_REPLACEMENT_MANAGEMENT_35000_6000",
@@ -869,7 +893,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "QUALITY_COMPLAINT_TRACKING_35000_6000",
@@ -878,7 +903,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "ESCALATION_MANAGEMENT_35000_6000",
@@ -887,7 +913,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "B2B_CATALOGUE_WEBSITE_40000_3000",
@@ -896,7 +923,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 3000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "SEO_GOOGLE_BUSINESS_PROFILE_15000_12000",
@@ -905,7 +933,8 @@
       "pillar": "marketing_sales",
       "basePrice": 15000,
       "monthlyPrice": 12000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "BUYER_CRM_40000_8000",
@@ -914,7 +943,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "PROMOTIONAL_CAMPAIGN_AUTOMATION_30000_6000",
@@ -923,7 +953,8 @@
       "pillar": "marketing_sales",
       "basePrice": 30000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "BULK_ORDER_MANAGEMENT_35000_7000",
@@ -932,7 +963,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 7000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "PURCHASE_MANAGEMENT_35000_6000",
@@ -941,7 +973,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "WAREHOUSE_CAPACITY_MANAGEMENT_50000_9000",
@@ -950,7 +983,8 @@
       "pillar": "operations",
       "basePrice": 50000,
       "monthlyPrice": 9000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "CUSTOMER_PRICING_35000_7000",
@@ -959,7 +993,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 7000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "UDHARI_COLLECTIONS_35000_6000",
@@ -968,7 +1003,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "DOCUMENT_MANAGEMENT_30000_5000",
@@ -977,7 +1013,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "PURCHASE_SALES_ORDERS_35000_6000",
@@ -986,7 +1023,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "INVOICE_MANAGEMENT_35000_6000",
@@ -995,7 +1033,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "CUSTOMER_SUPPLIER_RECORDS_35000_6000",
@@ -1004,7 +1043,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "CREDIT_RECORDS_35000_6000",
@@ -1013,7 +1053,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "RECEIVABLE_RECORDS_35000_6000",
@@ -1022,7 +1063,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "BUYER_SUPPORT_CRM_40000_8000",
@@ -1031,7 +1073,8 @@
       "pillar": "service_support",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "WHATSAPP_ORDER_UPDATES_20000_5000",
@@ -1040,7 +1083,8 @@
       "pillar": "service_support",
       "basePrice": 20000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "RETURN_MANAGEMENT_35000_6000",
@@ -1049,7 +1093,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "FEEDBACK_MANAGEMENT_35000_6000",
@@ -1058,7 +1103,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DEALER_PARTNER_CRM_40000_8000",
@@ -1067,7 +1113,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "DEALER_LEAD_GENERATION_40000_8000",
@@ -1076,7 +1123,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "FIELD_SALES_CRM_40000_8000",
@@ -1085,7 +1133,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "SCHEME_PROMOTION_AUTOMATION_55000_10000",
@@ -1094,7 +1143,8 @@
       "pillar": "marketing_sales",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "DEALER_PARTNER_ORDER_MANAGEMENT_55000_10000",
@@ -1103,7 +1153,8 @@
       "pillar": "operations",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "SECONDARY_CHANNEL_SALES_TRACKING_55000_10000",
@@ -1112,7 +1163,8 @@
       "pillar": "operations",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "FIELD_SALES_MANAGEMENT_55000_10000",
@@ -1121,7 +1173,8 @@
       "pillar": "operations",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "TERRITORY_ROUTE_MANAGEMENT_55000_10000",
@@ -1130,7 +1183,8 @@
       "pillar": "operations",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "COLLECTIONS_35000_6000",
@@ -1139,7 +1193,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "DEALER_DOCUMENTATION_55000_10000",
@@ -1148,7 +1203,8 @@
       "pillar": "documentation_admin",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DIGITAL_ONBOARDING_FORMS_35000_7000",
@@ -1157,7 +1213,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 7000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "ORDER_INVOICE_RECORDS_35000_6000",
@@ -1166,7 +1223,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "CREDIT_LIMIT_RECORDS_35000_6000",
@@ -1175,7 +1233,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "COLLECTION_RECORDS_35000_6000",
@@ -1184,7 +1243,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "SCHEME_DOCUMENTATION_55000_10000",
@@ -1193,7 +1253,8 @@
       "pillar": "documentation_admin",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DEALER_SUPPORT_PORTAL_75000_10000",
@@ -1202,7 +1263,8 @@
       "pillar": "service_support",
       "basePrice": 75000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "WHATSAPP_DEALER_SUPPORT_20000_5000",
@@ -1211,7 +1273,8 @@
       "pillar": "service_support",
       "basePrice": 20000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "TICKETING_ESCALATION_35000_6000",
@@ -1220,7 +1283,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DEALER_FEEDBACK_55000_10000",
@@ -1229,7 +1293,8 @@
       "pillar": "service_support",
       "basePrice": 55000,
       "monthlyPrice": 10000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "WEBSITE_E_COMMERCE_75000_5000",
@@ -1238,7 +1303,8 @@
       "pillar": "marketing_sales",
       "basePrice": 75000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "LOCAL_SEO_GOOGLE_BUSINESS_PROFILE_15000_12000",
@@ -1247,7 +1313,8 @@
       "pillar": "marketing_sales",
       "basePrice": 15000,
       "monthlyPrice": 12000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "CUSTOMER_CRM_40000_8000",
@@ -1256,7 +1323,8 @@
       "pillar": "marketing_sales",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "LOYALTY_RETENTION_AUTOMATION_30000_6000",
@@ -1265,7 +1333,8 @@
       "pillar": "marketing_sales",
       "basePrice": 30000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "POS_BILLING_OR_CUSTOMER_ORDER_MANAGEMENT_35000_6000",
@@ -1274,7 +1343,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "PURCHASE_REPLENISHMENT_35000_6000",
@@ -1283,7 +1353,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "CUSTOMER_CRM_RETENTION_40000_8000",
@@ -1292,7 +1363,8 @@
       "pillar": "operations",
       "basePrice": 40000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "sales"
     },
     {
       "code": "ONLINE_DIGITAL_INTEGRATION_35000_7000",
@@ -1301,7 +1373,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 7000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "RETURNS_SERVICE_MANAGEMENT_35000_6000",
@@ -1310,7 +1383,8 @@
       "pillar": "operations",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "DIGITAL_INVOICE_MANAGEMENT_35000_6000",
@@ -1319,7 +1393,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "PURCHASE_INVOICE_MANAGEMENT_35000_6000",
@@ -1328,7 +1403,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "STOCK_RECORDS_50000_9000",
@@ -1337,7 +1413,8 @@
       "pillar": "documentation_admin",
       "basePrice": 50000,
       "monthlyPrice": 9000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "SUPPLIER_DOCUMENTATION_30000_5000",
@@ -1346,7 +1423,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "EXPENSE_RECORDS_35000_7000",
@@ -1355,7 +1433,8 @@
       "pillar": "documentation_admin",
       "basePrice": 35000,
       "monthlyPrice": 7000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "billing"
     },
     {
       "code": "EMPLOYEE_DOCUMENTS_30000_5000",
@@ -1364,7 +1443,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "AUTOMATED_REPORTS_30000_5000",
@@ -1373,7 +1453,8 @@
       "pillar": "documentation_admin",
       "basePrice": 30000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "WHATSAPP_CUSTOMER_SUPPORT_20000_5000",
@@ -1382,7 +1463,8 @@
       "pillar": "service_support",
       "basePrice": 20000,
       "monthlyPrice": 5000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "AI_FAQ_CHATBOT_30000_8000",
@@ -1391,7 +1473,8 @@
       "pillar": "service_support",
       "basePrice": 30000,
       "monthlyPrice": 8000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "ORDER_TRACKING_35000_7000",
@@ -1400,7 +1483,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 7000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "RETURN_EXCHANGE_MANAGEMENT_35000_6000",
@@ -1409,7 +1493,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "FEEDBACK_REVIEW_MANAGEMENT_35000_6000",
@@ -1418,7 +1503,8 @@
       "pillar": "service_support",
       "basePrice": 35000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "operations"
     },
     {
       "code": "RETENTION_AUTOMATION_30000_6000",
@@ -1427,7 +1513,8 @@
       "pillar": "service_support",
       "basePrice": 30000,
       "monthlyPrice": 6000,
-      "appliesToIndustries": []
+      "appliesToIndustries": [],
+      "department": "marketing"
     },
     {
       "code": "BATCH_LOT_MANAGEMENT_70000_12000",
@@ -1438,7 +1525,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "food_processing"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "EXPIRY_FEFO_INVENTORY_50000_9000",
@@ -1449,7 +1537,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "food_processing"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PRODUCTION_RECIPE_MANAGEMENT_70000_12000",
@@ -1460,7 +1549,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "food_processing"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "DISTRIBUTOR_ORDERS_55000_10000",
@@ -1471,7 +1561,8 @@
       "monthlyPrice": 10000,
       "appliesToIndustries": [
         "food_processing"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "RFQ_WORK_ORDERS_70000_12000",
@@ -1482,7 +1573,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "automobile_auto_components"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PARTS_SKU_INVENTORY_50000_9000",
@@ -1493,7 +1585,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "automobile_auto_components"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "WARRANTY_SERVICE_35000_6000",
@@ -1504,7 +1597,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "automobile_auto_components"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "RFQ_JOB_ORDERS_70000_12000",
@@ -1516,7 +1610,8 @@
       "appliesToIndustries": [
         "metals_heavy_industry",
         "paper_packaging"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PRODUCTION_FABRICATION_TRACKING_70000_12000",
@@ -1527,7 +1622,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "metals_heavy_industry"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "RAW_MATERIAL_INVENTORY_50000_9000",
@@ -1540,7 +1636,8 @@
         "chemicals",
         "metals_heavy_industry",
         "paper_packaging"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "ORDER_COSTING_35000_7000",
@@ -1551,7 +1648,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "metals_heavy_industry"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BATCH_LOT_TRACKING_70000_12000",
@@ -1562,7 +1660,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "chemicals"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PRODUCTION_MANAGEMENT_70000_12000",
@@ -1573,7 +1672,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "chemicals"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "DISPATCH_TRACKING_35000_7000",
@@ -1584,7 +1684,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "chemicals"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BATCH_EXPIRY_TRACKING_70000_12000",
@@ -1595,7 +1696,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "pharmaceuticals_healthcare"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PRODUCTION_ORDERS_70000_12000",
@@ -1607,7 +1709,8 @@
       "appliesToIndustries": [
         "leather_footwear",
         "pharmaceuticals_healthcare"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "INVENTORY_WAREHOUSE_50000_9000",
@@ -1619,7 +1722,8 @@
       "appliesToIndustries": [
         "pharmaceuticals_healthcare",
         "trade_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "STOCKIST_ORDERS_50000_9000",
@@ -1630,7 +1734,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "pharmaceuticals_healthcare"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PRODUCTION_WORK_ORDERS_70000_12000",
@@ -1641,7 +1746,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "electronics_electricals"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "SKU_SERIAL_INVENTORY_50000_9000",
@@ -1652,7 +1758,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "electronics_electricals"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "WARRANTY_TRACKING_35000_6000",
@@ -1663,7 +1770,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "electronics_electricals"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PRODUCTION_TRACKING_70000_12000",
@@ -1674,7 +1782,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "paper_packaging"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "WASTAGE_TRACKING_35000_7000",
@@ -1685,7 +1794,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "paper_packaging"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "SIZE_COLOUR_SKU_INVENTORY_50000_9000",
@@ -1696,7 +1806,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "leather_footwear"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BUYER_ORDERS_35000_7000",
@@ -1707,7 +1818,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "leather_footwear"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "SECONDARY_SALES_55000_10000",
@@ -1718,7 +1830,8 @@
       "monthlyPrice": 10000,
       "appliesToIndustries": [
         "cement_building_materials"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "INVENTORY_50000_9000",
@@ -1729,7 +1842,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "cement_building_materials"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "DISPATCH_DELIVERY_35000_7000",
@@ -1740,7 +1854,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "cement_building_materials"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PROJECT_WORK_ORDERS_70000_12000",
@@ -1751,7 +1866,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "construction"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "MATERIAL_MANAGEMENT_35000_7000",
@@ -1762,7 +1878,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "construction"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "VENDOR_SUBCONTRACTOR_MANAGEMENT_35000_6000",
@@ -1773,7 +1890,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "construction"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PROJECT_COSTING_70000_12000",
@@ -1784,7 +1902,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "construction"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "CRM_SALES_PIPELINE_40000_8000",
@@ -1795,7 +1914,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "it_technology_services"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "PROJECT_TASK_MANAGEMENT_70000_12000",
@@ -1806,7 +1926,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "it_technology_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "RESOURCE_MANAGEMENT_35000_7000",
@@ -1817,7 +1938,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "it_technology_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BILLING_RENEWALS_35000_6000",
@@ -1828,7 +1950,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "it_technology_services"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "LEAD_CRM_40000_8000",
@@ -1839,7 +1962,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "financial_services"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "DOCUMENT_WORKFLOW_30000_5000",
@@ -1850,7 +1974,8 @@
       "monthlyPrice": 5000,
       "appliesToIndustries": [
         "financial_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "CUSTOMER_ONBOARDING_35000_7000",
@@ -1861,7 +1986,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "financial_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "RENEWAL_MANAGEMENT_35000_7000",
@@ -1872,7 +1998,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "financial_services"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "CLIENT_CRM_40000_8000",
@@ -1884,7 +2011,8 @@
       "appliesToIndustries": [
         "media_communication",
         "professional_services"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "PROPOSAL_MANAGEMENT_35000_6000",
@@ -1896,7 +2024,8 @@
       "appliesToIndustries": [
         "media_communication",
         "professional_services"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "PROJECT_CASE_MANAGEMENT_70000_12000",
@@ -1907,7 +2036,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "professional_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BILLING_TIMESHEETS_35000_6000",
@@ -1918,7 +2048,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "professional_services"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "ORDER_MANAGEMENT_35000_7000",
@@ -1929,7 +2060,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "trade_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "DEALER_MANAGEMENT_55000_10000",
@@ -1940,7 +2072,8 @@
       "monthlyPrice": 10000,
       "appliesToIndustries": [
         "trade_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BOOKING_SHIPMENT_MANAGEMENT_40000_7000",
@@ -1951,7 +2084,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "logistics_transportation"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "FLEET_TRIP_MANAGEMENT_35000_7000",
@@ -1962,7 +2096,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "logistics_transportation"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "POD_TRACKING_35000_7000",
@@ -1973,7 +2108,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "logistics_transportation"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BILLING_COLLECTIONS_35000_6000",
@@ -1984,7 +2120,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "logistics_transportation"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "PATIENT_ENQUIRY_CRM_40000_8000",
@@ -1995,7 +2132,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "healthcare_services"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "APPOINTMENT_MANAGEMENT_40000_7000",
@@ -2006,7 +2144,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "healthcare_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BILLING_35000_6000",
@@ -2017,7 +2156,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "healthcare_services"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "MULTI_BRANCH_OPERATIONS_35000_7000",
@@ -2028,7 +2168,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "healthcare_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "ADMISSION_CRM_40000_8000",
@@ -2039,7 +2180,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "education_services"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "STUDENT_MANAGEMENT_35000_7000",
@@ -2050,7 +2192,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "education_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "FEE_MANAGEMENT_35000_7000",
@@ -2061,7 +2204,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "education_services"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "BATCH_ATTENDANCE_70000_12000",
@@ -2072,7 +2216,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "education_services"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "ENQUIRY_CRM_40000_8000",
@@ -2084,7 +2229,8 @@
       "appliesToIndustries": [
         "entertainment_others",
         "hospitality_tourism"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "BOOKING_RESERVATION_MANAGEMENT_40000_7000",
@@ -2095,7 +2241,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "hospitality_tourism"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "GUEST_TRAVELLER_CRM_40000_8000",
@@ -2106,7 +2253,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "hospitality_tourism"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "PAYMENTS_35000_6000",
@@ -2117,7 +2265,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "hospitality_tourism"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "CAMPAIGN_PROJECT_MANAGEMENT_70000_12000",
@@ -2128,7 +2277,8 @@
       "monthlyPrice": 12000,
       "appliesToIndustries": [
         "media_communication"
-      ]
+      ],
+      "department": "marketing"
     },
     {
       "code": "APPROVAL_WORKFLOW_35000_7000",
@@ -2139,7 +2289,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "media_communication"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "BOOKING_EVENT_MANAGEMENT_40000_7000",
@@ -2150,7 +2301,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "entertainment_others"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "VENDOR_MANAGEMENT_35000_6000",
@@ -2161,7 +2313,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "entertainment_others"
-      ]
+      ],
+      "department": "operations"
     },
     {
       "code": "PAYMENT_TRACKING_35000_6000",
@@ -2172,7 +2325,8 @@
       "monthlyPrice": 6000,
       "appliesToIndustries": [
         "entertainment_others"
-      ]
+      ],
+      "department": "billing"
     },
     {
       "code": "REAL_ESTATE_CRM_40000_8000",
@@ -2183,7 +2337,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "real_estate"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "LEAD_ASSIGNMENT_40000_8000",
@@ -2194,7 +2349,8 @@
       "monthlyPrice": 8000,
       "appliesToIndustries": [
         "real_estate"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "SITE_VISIT_MANAGEMENT_40000_7000",
@@ -2205,7 +2361,8 @@
       "monthlyPrice": 7000,
       "appliesToIndustries": [
         "real_estate"
-      ]
+      ],
+      "department": "sales"
     },
     {
       "code": "PROPERTY_UNIT_INVENTORY_50000_9000",
@@ -2216,7 +2373,8 @@
       "monthlyPrice": 9000,
       "appliesToIndustries": [
         "real_estate"
-      ]
+      ],
+      "department": "operations"
     }
   ],
   "packages": [

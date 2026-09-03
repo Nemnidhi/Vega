@@ -25,6 +25,7 @@ export async function getDbPricingCatalog(): Promise<CatalogComponent[]> {
     title: component.title,
     description: component.description,
     category: component.category,
+    department: component.department as CatalogComponent["department"],
     basePrice: component.basePrice,
     complexityMultiplier: component.complexityMultiplier,
     marginPercentage: component.marginPercentage,
