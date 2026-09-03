@@ -1,5 +1,81 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-03: real industry segments added for 11 previously-generic industries, deployed and DB-seeded live — HEAD `70e725f`. Also: a production deploy near-miss on `hrms`, root-caused, worth reading before the next manual deploy.
+
+**Starting point**: the user's team complained the self-service `/business-audit` questionnaire
+(on `D:\Nemnidhi-website`, proxies to Vega's `/api/public/questionnaire/*`) gave identical generic
+recommendations to very different businesses — a doctor and a lawyer, a wholesaler and a retailer,
+all landed in one undifferentiated bucket per industry. Checked the real data before assuming a fix:
+of the 22 industries in `pricing-catalog-seed-data.json`, only the 10 manufacturing-adjacent ones
+(Textile, Food Processing, Automobile, Metals, Chemicals, Pharma, Electronics, Paper/Packaging,
+Leather, Cement) had real segments (Manufacturer/Wholesaler/Distributor/Retailer) — the other 12,
+including **Professional Services** and **Healthcare Services**, had zero.
+
+**What was actually added** (43 new `IndustrySegment` rows, `src/lib/seed/pricing-catalog-seed-data.json`):
+Professional Services (Law Firm, CA/Accounting Firm, Consultant, Architect/Design Studio),
+Healthcare Services (Clinic/Individual Doctor, Diagnostic Center/Lab, Hospital, Pharmacy), Trade &
+Commerce (Wholesaler/Distributor/Retailer/Trader-Importer — same pattern as the 10 manufacturing
+industries), Construction, IT & Technology Services, Financial Services, Logistics &
+Transportation, Education Services, Hospitality & Tourism, Media & Communication, Real Estate.
+Entertainment & Others deliberately left as one bucket (explicit catch-all, not a real gap).
+Full list with reasoning is in the conversation this was built in, not repeated here.
+
+**Important system-design finding, worth knowing before touching segments again**: segments
+actually live in three separate systems, not one, with very different risk profiles:
+1. `IndustryModel`/`IndustrySegmentModel` (DB) — just the dropdown list. Adding a row here is safe.
+2. `src/lib/prospecting/industry-knowledge.ts` — a **separate, hardcoded** file with real
+   pain-points/flow-stages content per segment, used to make the AI's recommendation rationale sound
+   specific instead of generic. Not touched this session (would need real content-writing per
+   segment) — currently these new segments degrade gracefully to a generic rationale rather than
+   breaking, confirmed by reading `getIndustryProfile()`'s null-handling and `recommend.ts`'s
+   `profile?.label` optional chaining.
+3. `resolvePricingPackage()` (`src/lib/pricing/package-lookup.ts`) — used **only** by the
+   authenticated client-portal questionnaire (`/api/client-portal/questionnaire/submit`), a
+   completely different, stricter flow from the public business-audit. This one hard-fails
+   (`return null` → "not set up yet" error) if a segment has no matching `PricingPackage` document
+   for the exact (industry, segment, tier) combination. **Deliberately not touched** — building real
+   priced packages for 43 new segments needs actual pricing decisions, not something to invent
+   unilaterally. If anyone selects one of these new segments inside the client portal (not the
+   public audit page), they'll hit that "not set up yet" error until packages are built. Real
+   follow-up, not done.
+
+**Verified live, not just deployed**: `curl https://vega.nemnidhi.com/api/public/industries` (the
+exact endpoint the public business-audit page calls) confirmed Professional Services, Healthcare
+Services, Real Estate, and Trade & Commerce all serving their real new segment lists, and the seed
+migration's own response confirmed `segments: 83` (40 existing + 43 new) landed in the DB, run via
+the (admin/partner-only) `POST /api/pricing-catalog/seed` endpoint, triggered by the user from their
+own logged-in browser console (no UI button exists for this, it's a deliberate one-time migration
+trigger — `src/app/api/pricing-catalog/seed/route.ts`).
+
+**Separate, real production incident found and fixed along the way — not caused by the segment
+change itself, but it's what deploying that change surfaced**: the manual deploy hit a genuine `502`
+outage. Root cause: an *earlier* manual deploy had apparently been run as `root` directly instead of
+`sudo -u hrmsdeploy`, leaving `.env`, `.env.local`, and the entire `.next` build directory owned by
+`root:root` with `600` perms. When this session's deploy correctly ran as `hrmsdeploy`, the build
+couldn't read its own env files and PM2 kept restarting a broken build in a crash loop (`✓ Ready`
+appearing repeatedly in the logs, seconds apart — that pattern **is** a crash loop, not health).
+Fixed with `chown -R hrmsdeploy:hrmsdeploy /home/hrmsdeploy/apps/hrms`, then `rm -rf .next` (a stale
+build folder had a genuinely corrupted chunk — `MODULE_NOT_FOUND` for an admin-page chunk — from the
+earlier broken build; a normal rebuild on top of it wasn't enough, needed a full wipe) before
+rebuilding clean. **Always deploy `hrms` as `sudo -u hrmsdeploy`, never as root** — this is the same
+lesson Dashboard-WhatsApp's HANDOFF already documents for its own `dashboard` user, now confirmed
+true for Vega too.
+
+**Not done this session, real next step**: the actual redesigned `/business-audit` **results page**
+on `D:\Nemnidhi-website` — a full mockup was designed and approved (department-grouped
+recommendations instead of a flat list, no price shown to the client per explicit user instruction —
+showing a price was creating negative psychological impact, a visual "business flow" diagram, a
+"what it's built on" product strip naming Samvid OS for real estate specifically since that's the
+real branded product name for that vertical — other industries' product branding not yet decided,
+needs a fallback label like "Your CRM" until named) — but the mockup was never wired into the real
+`app/business-audit/page.tsx` + `app/api/questionnaire/submit/route.ts` code. Also not done: the 158
+pricing components were classified into Sales/Marketing/Operations/Billing departments (reviewed and
+approved by the user) but that classification exists only as scratch JSON/CSV files from this
+session, not written into any real schema field yet — `PricingComponentModel.category` is still the
+broken all-"operations" default from the original migration; a real `department` field (or fixing
+`category` properly) needs adding before the results page redesign can actually use it.
+
+
 **Repo:** `D:\Vega-main`
 **Remote:** https://github.com/Nemnidhi/Vega.git
 **Branch:** `master`
