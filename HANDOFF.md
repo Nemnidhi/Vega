@@ -1,5 +1,115 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-04 (later session, daytime): the audit report got a real web view, a real booking widget, real catalog tags, and the platform's own tenant model got audited - read this before anything below
+
+Picks up right after the evening/night session below (which built the gap→feature recommendation
+engine into the audit report PDF). This session built the piece that session explicitly scoped but
+didn't build: a public, no-login web page for that same report - the actual thing an ad-driven
+WhatsApp lead needs, since a cold lead has no portal account to send a PDF-download link to.
+**Everything below is pushed to `origin/master`** (`033e8bb`..`c7fb464`) and deployed live on
+`vega.nemnidhi.com` as of this entry, confirmed via `curl .../api/health` after each deploy.
+
+**1. Public web view of the audit report - the actual Phase 3 gap from the last entry, now closed.**
+New `shareToken` field on `Report` (unguessable, stable across regenerations so a link already
+pasted into WhatsApp never breaks), plus a `reportData` JSON snapshot built from the exact same
+`computeReportFacts()`/`buildReportDocument()` pipeline the PDF uses (`report-data.ts`, `report-
+template.tsx`'s `computeReportFacts` extracted and shared, not duplicated) - the web view and the
+PDF can never show different recommendations for the same lead. Two new public routes:
+`GET /api/public/audit-report/[token]` (JSON) and `/[token]/pdf` (raw bytes), both gated by the
+same `LEAD_CAPTURE_ALLOWED_ORIGINS` origin-allowlist every other `/api/public/*` route already
+uses. Staff get a "Copy Web Link" button on the lead's audit panel (`audit-report-panel.tsx`) -
+paste it straight into a WhatsApp conversation, no email needed.
+
+**Real design iteration, not first-draft-and-done** - three real rounds of direct feedback, each
+fixed for real reasons, not just accepted:
+- **Round 1 (colors/fonts unreadable)**: the report's PDF template still used generic indigo/gray
+  colors and the internal "SAMVID LEAD ENGINE" codename in its header - fixed with the real
+  Nemnidhi logo (fetched live from `nemnidhi.com/images/logo.png`), brand teal, and a real drawn
+  SVG arrow (`Svg`/`Path`) replacing a literal `"->"` text glyph that had been sitting in the flow
+  diagram since who knows when. `report-config.ts`'s `COMPANY.phone` was a **personal number**
+  going out on every report to the public now that ads are live - corrected to the real business
+  number (`8269150205`).
+- **Round 2 ("just changing colors, no animation/design")**: the web page got a real makeover
+  using the `ui-ux-pro-max-skill` design-intelligence tool (cloned locally, `python design_system.py`)
+  for an evidence-based typography pick (Poppins/Open Sans, the "Modern Professional" pairing for
+  professional-services reports) instead of a guessed font swap, plus a genuinely new
+  `AuditFlowDiagram.tsx` component on the website side reusing the same connected-node +
+  traveling-signal-dot animation technique the homepage's `HeroSystemDiagram` already proves.
+- **Round 3 (contrast bug)**: the gold eyebrow badge and tier pill used a pale tint color as both
+  background AND text - fine in dark mode, nearly invisible in light mode. Fixed by switching every
+  status chip to a solid fill + a text color chosen for that fill specifically (the exact pattern
+  `TIER_COLOR` in the PDF already used correctly) - contrast-safe in both themes since it never
+  depends on the page's own background luminance.
+
+**Real bug found and fixed post-deploy, not before**: the very first real (non-test) report record
+predates `todayFlowStages`/`automationFlow` existing on `reportData` - loading it crashed the page
+outright (`report.automationFlow.entryChain` on `undefined`). Both new flow-diagram sections are
+now conditionally rendered only when the data is present, same pattern the department/appendix
+sections already used. Caught by loading the real production URL right after deploying, not
+assumed safe - worth remembering that "generated before this field existed" is a real state to plan
+for whenever a report's stored shape grows.
+
+**2. Real "book a strategy call" widget, closing another real gap.** The web view's CTA used a
+WhatsApp deep-link as a placeholder. New `GET /api/public/audit-report/[token]/meeting-slots` and
+`POST .../book-meeting`, both keyed by the same shareToken (leadId resolved server-side from the
+token, never trusted from the client), reusing the exact `computeOpenSlots`/`MeetingModel` engine
+and slot-revalidation/race-recheck logic `client-portal/meetings/*` and Dashboard-WhatsApp's
+`integrations/meetings/*` already use - a third caller of the same engine, not a fourth
+implementation. Online-only by design (a cold digital lead could be anywhere). **Not yet meaningful
+in production**: no `MeetingAvailability` is configured yet (same open item the 2026-08-17 entry
+already flagged) - the widget correctly shows its "no online slots open" fallback until an admin
+sets one up at `vega.nemnidhi.com/meetings` → Availability tab.
+
+**3. Pricing catalog: 7 real components tagged, not a bulk guess.** Read all 158 components'
+titles against the audit's real gap vocabulary (`website`/`google`/`seo`/`social`, from
+`toMissingGapTags` in `lead-adapter.ts`) - only 7 genuinely answer it (`B2B_CORPORATE_WEBSITE...`,
+`SEO_LOCAL_SEO...`, `META_ADS...`, `B2B_CATALOGUE_WEBSITE...`, `SEO_GOOGLE_BUSINESS_PROFILE...`,
+`WEBSITE_E_COMMERCE...`, `LOCAL_SEO_GOOGLE_BUSINESS_PROFILE...`), all `scaleTiers: ["smb"]` since
+the audit report only ever asks for that tier. The other 151 are real CRM/inventory/billing/
+dealer-management/production-tracking components that correctly have nothing to do with digital-
+presence gaps - same honest conclusion the 2026-09-03 entry's first 6 reached, just now complete.
+Closes a real, previously-flagged gap: **Meta Ads now answers "social"** (it directly fixes "no
+meta ad activity found", one of that tag's two triggers) - before this, nothing in the catalog
+answered social at all. Also fixed `seed-pricing-catalog.ts` itself: it was silently dropping
+`answersGapTags`/`scaleTiers` from every `$set` even though 6 components had been tagged directly
+in the database in a past session (bypassing this seed file) - re-running the seed would have
+silently erased those hand-set tags. Triggered live via `POST /api/pricing-catalog/seed` in the
+browser console (real session cookie) after deploying - confirmed `{industries: 22, segments: 83,
+tiers: 4, components: 158, packages: 208}`, matching the real historical totals exactly (nothing
+lost or corrupted by the reseed).
+
+**4. Real question surfaced, not resolved - the platform has no cross-tenant admin surface, and
+neither does Dashboard-WhatsApp until this session.** Investigating "where do I create/see a new
+tenant" for Dashboard-WhatsApp (see that repo's own HANDOFF) surfaced the same open question here:
+Vega has no multi-tenancy concept at all by design (see `vega-source-of-truth` framing - one client
+record, not a per-tenant operational system), so this doesn't apply to Vega directly, but worth
+remembering when reasoning about "the platform" as a whole - Vega is the relationship spine, tenant
+management lives in Dashboard-WhatsApp, not here.
+
+**Verification tier, be honest about this**: `tsc --noEmit` clean and a full real local `next build`
+(Turbopack compile, not just types) for every change this session, plus loading real production
+URLs after each deploy (the crash bug above was caught exactly this way). Could **not** verify the
+booking widget or the reseed's effect on a real report end-to-end locally - Vega's local dev needs
+the same Atlas cluster this machine has repeatedly failed to reach directly; every local-dev
+verification this session used `next build`/`tsc` instead, not a running dev server.
+
+**What's still genuinely open, none of it touched this session:**
+- No `MeetingAvailability` configured - the new booking widget has nothing to actually book yet.
+- The remaining 151 pricing components could still get gap tags where genuinely applicable, but
+  after this session's real judgment pass, there may not be many more honest matches left within
+  the narrow 4-tag vocabulary - the real remaining need is `scaleTiers` for midmarket/enterprise
+  matching (a different, package-tier-driven system per the 2026-08-17 entry, not blocking today).
+- Google/WhatsApp OAuth on the client-portal signup page - still email/password only.
+
+**How to apply**: read this before touching the audit-report public routes, the pricing catalog's
+gap-tag system, or the meeting-booking engine again - three real, separately-diagnosed bugs got fixed
+in the process of shipping this (error-message truncation on Dashboard-WhatsApp's side, the
+platform-owner entitlement gate, and this repo's own reportData-shape-crash) - re-deriving any of
+them would waste real time. See Dashboard-WhatsApp's own HANDOFF.md for the tenant-admin-surface and
+platform-owner-entitlement-bypass work referenced in point 4.
+
+---
+
 ## 2026-09-04 (evening/night session): audit pipeline resurrected, WhatsApp→Vega lead push built, and real gap→feature recommendations wired into the audit report - read this before anything below
 
 Long session, three real, separate pieces of work, all verified against real production data (the
