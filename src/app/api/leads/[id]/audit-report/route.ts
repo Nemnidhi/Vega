@@ -18,7 +18,9 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { getClientAuditReportPdf } from "@/lib/prospecting/client-audit-report";
 import { logActivity } from "@/lib/activity/logging";
 import { buildReportDocument } from "@/lib/prospecting/report-template";
+import { buildReportData } from "@/lib/prospecting/report-data";
 import { generateParagraph } from "@/lib/prospecting/generate-paragraph";
+import { randomUUID } from "crypto";
 import {
   toClassificationResult,
   toEnrichmentSignals,
@@ -81,15 +83,22 @@ export async function POST(_: Request, { params }: { params: Params }) {
     });
     const productBrand = industryLabel ? getProductBrand(lead.prospecting?.industry, industryLabel) : null;
 
-    const doc = await buildReportDocument({
+    const reportInput = {
       lead: subject,
       enrichment,
       classification,
       paragraph: paragraph.text,
       recommended,
       productBrand,
-    });
+    };
+    const doc = await buildReportDocument(reportInput);
     const pdf = await renderToBuffer(doc);
+    const reportData = buildReportData(reportInput);
+
+    // Reuse the existing share link across regenerations - a lead's report URL, once handed out
+    // (pasted into a WhatsApp conversation, etc.), must keep working after a "Regenerate Report".
+    const existing = await ReportModel.findOne({ leadId: lead._id }).select("shareToken").lean();
+    const shareToken = existing?.shareToken ?? randomUUID();
 
     await ReportModel.findOneAndUpdate(
       { leadId: lead._id },
@@ -100,6 +109,8 @@ export async function POST(_: Request, { params }: { params: Params }) {
           pdf,
           categoryUsed: classification.category,
           paragraphSource: paragraph.source,
+          shareToken,
+          reportData,
           generatedAt: new Date(),
         },
       },
@@ -125,11 +136,15 @@ export async function POST(_: Request, { params }: { params: Params }) {
       },
     });
 
+    const siteBaseUrl = (process.env.CLIENT_PORTAL_BASE_URL || "https://nemnidhi.com").replace(/\/$/, "");
+
     return ok({
       bytes: pdf.length,
       tier: classification.category,
       confidence: classification.confidence,
       paragraphSource: paragraph.source,
+      shareToken,
+      webUrl: `${siteBaseUrl}/audit-report/${shareToken}`,
     });
   } catch (error) {
     return handleApiError(error);

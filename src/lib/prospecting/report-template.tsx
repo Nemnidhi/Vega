@@ -48,7 +48,7 @@ const ROW_TO_GAP_TAG: Record<string, string> = {
   "Meta ad activity": "social",
 };
 
-const DEPARTMENT_LABEL: Record<PricingDepartment, string> = {
+export const DEPARTMENT_LABEL: Record<PricingDepartment, string> = {
   sales: "Sales",
   marketing: "Marketing",
   operations: "Operations",
@@ -57,7 +57,7 @@ const DEPARTMENT_LABEL: Record<PricingDepartment, string> = {
 
 const DEPARTMENT_ORDER: PricingDepartment[] = ["marketing", "sales", "operations", "billing"];
 
-const TIER_LABEL: Record<string, string> = {
+export const TIER_LABEL: Record<string, string> = {
   A: "No digital presence found",
   B: "Minimal digital presence",
   C: "Partial digital presence",
@@ -584,19 +584,16 @@ export type ReportInput = {
   testimonials?: Testimonial[];
 };
 
-export async function buildReportDocument({
+/**
+ * Everything the PDF template and the public JSON web-view both need, computed once so the two
+ * surfaces can never drift apart. Pulled out of buildReportDocument unchanged - same inputs, same
+ * outputs, just shared now instead of only living inside the PDF's JSX builder.
+ */
+export function computeReportFacts({
   lead,
   enrichment,
-  classification,
-  paragraph,
   recommended,
-  productBrand,
-  searchScreenshotUrl,
-  competitors = [],
-  testimonials = [],
-}: ReportInput) {
-  const whatsappQrDataUrl = await QRCode.toDataURL(WHATSAPP_LINK, { margin: 1, width: 128 });
-
+}: Pick<ReportInput, "lead" | "enrichment" | "recommended">) {
   const seo = enrichment.technicalSeo;
   const rows: { label: string; value: string }[] = [
     { label: "Website", value: statusLabel({ checked: true, found: enrichment.website?.found }) },
@@ -659,6 +656,51 @@ export async function buildReportDocument({
     items: recommended.filter((component) => component.department === department),
   })).filter((group) => group.items.length > 0);
   const maxDepartmentCount = Math.max(1, ...departmentGroups.map((g) => g.items.length));
+
+  return {
+    rows,
+    isGap,
+    missingTags,
+    industryPainPoints,
+    industryOutlook,
+    revenueLeaks,
+    resolvedLabel,
+    todayFlowStages,
+    todayIntro,
+    missingCount,
+    hookText,
+    generatedOn,
+    departmentGroups,
+    maxDepartmentCount,
+  };
+}
+
+export async function buildReportDocument({
+  lead,
+  enrichment,
+  classification,
+  paragraph,
+  recommended,
+  productBrand,
+  searchScreenshotUrl,
+  competitors = [],
+  testimonials = [],
+}: ReportInput) {
+  const whatsappQrDataUrl = await QRCode.toDataURL(WHATSAPP_LINK, { margin: 1, width: 128 });
+  const seo = enrichment.technicalSeo;
+
+  const {
+    rows,
+    industryPainPoints,
+    industryOutlook,
+    revenueLeaks,
+    todayFlowStages,
+    todayIntro,
+    hookText,
+    generatedOn,
+    departmentGroups,
+    maxDepartmentCount,
+  } = computeReportFacts({ lead, enrichment, recommended });
 
   return (
     <Document title={`${lead.name} - Digital Presence Report`}>
