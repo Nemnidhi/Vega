@@ -92,6 +92,15 @@ export async function seedPricingCatalog() {
             monthlyPrice: component.monthlyPrice,
             isActive: true,
             appliesToIndustries: component.appliesToIndustries,
+            // Real per-component judgment pass (2026-09-04), not a name-match guess - see that
+            // session's own notes for which 8 of 158 genuinely answer the audit's narrow
+            // website/google/seo/social vocabulary (toMissingGapTags in lead-adapter.ts) and why
+            // the other 150 correctly stay untagged (real CRM/ops/billing tools, not digital-
+            // presence fixes). Defaults to [] for every component the JSON doesn't tag - this
+            // field was previously silently dropped by this $set, even though 6 components had
+            // been tagged directly in the database, bypassing this seed file entirely.
+            answersGapTags: (component as { answersGapTags?: string[] }).answersGapTags ?? [],
+            scaleTiers: (component as { scaleTiers?: string[] }).scaleTiers ?? [],
             priceBasis: "Migrated from Business_service_pricing_tier_list.xlsx (marketing team pricing sheet, 2026-08-16).",
           },
         },

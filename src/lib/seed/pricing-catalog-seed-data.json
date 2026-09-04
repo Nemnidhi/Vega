@@ -642,7 +642,9 @@
       "basePrice": 40000,
       "monthlyPrice": 3000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["website"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "SEO_LOCAL_SEO_15000_12000",
@@ -652,7 +654,9 @@
       "basePrice": 15000,
       "monthlyPrice": 12000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["seo"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "GOOGLE_ADS_15000_15000",
@@ -672,7 +676,9 @@
       "basePrice": 15000,
       "monthlyPrice": 15000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["social"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "CRM_LEAD_MANAGEMENT_40000_8000",
@@ -924,7 +930,9 @@
       "basePrice": 40000,
       "monthlyPrice": 3000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["website"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "SEO_GOOGLE_BUSINESS_PROFILE_15000_12000",
@@ -934,7 +942,9 @@
       "basePrice": 15000,
       "monthlyPrice": 12000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["seo", "google"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "BUYER_CRM_40000_8000",
@@ -1304,7 +1314,9 @@
       "basePrice": 75000,
       "monthlyPrice": 5000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["website"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "LOCAL_SEO_GOOGLE_BUSINESS_PROFILE_15000_12000",
@@ -1314,7 +1326,9 @@
       "basePrice": 15000,
       "monthlyPrice": 12000,
       "appliesToIndustries": [],
-      "department": "marketing"
+      "department": "marketing",
+      "answersGapTags": ["seo", "google"],
+      "scaleTiers": ["smb"]
     },
     {
       "code": "CUSTOMER_CRM_40000_8000",
