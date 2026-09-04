@@ -22,8 +22,13 @@ import { generateParagraph } from "@/lib/prospecting/generate-paragraph";
 import {
   toClassificationResult,
   toEnrichmentSignals,
+  toMissingGapTags,
   toProspectSubject,
 } from "@/lib/prospecting/lead-adapter";
+import { getDbPricingCatalog } from "@/lib/pricing/catalog-source";
+import { recommendComponents } from "@/lib/blueprint/recommend";
+import { getIndustryLabel } from "@/lib/prospecting/industry-knowledge";
+import { getProductBrand } from "@/lib/pricing/product-branding";
 import type { Lead } from "@/types/lead";
 
 type Params = Promise<{ id: string }>;
@@ -59,11 +64,30 @@ export async function POST(_: Request, { params }: { params: Params }) {
     const subject = toProspectSubject(lead);
     const paragraph = await generateParagraph(subject, enrichment, classification);
 
+    // Real gap -> feature mapping, reusing the exact same catalog/recommender the self-service
+    // website questionnaire already uses (recommendComponents already accepted missingGapTags -
+    // it was just never called with real ones before, since no digital-presence audit had ever
+    // fed it any). "smb" is the only scale tier a cold-prospect audit can honestly claim - there's
+    // no discovery call to ask otherwise. Price fields on each recommendation are deliberately
+    // never read below - this report shows what's missing and what fixes it, not numbers, per the
+    // same "no price until the strategy call" rule the self-service page already follows.
+    const industryLabel = getIndustryLabel(lead.prospecting?.industry) ?? lead.prospecting?.industry ?? null;
+    const catalog = await getDbPricingCatalog();
+    const recommended = recommendComponents(catalog, {
+      industry: lead.prospecting?.industry ?? null,
+      segment: lead.prospecting?.segment ?? null,
+      scaleTier: "smb",
+      missingGapTags: toMissingGapTags(enrichment),
+    });
+    const productBrand = industryLabel ? getProductBrand(lead.prospecting?.industry, industryLabel) : null;
+
     const doc = await buildReportDocument({
       lead: subject,
       enrichment,
       classification,
       paragraph: paragraph.text,
+      recommended,
+      productBrand,
     });
     const pdf = await renderToBuffer(doc);
 

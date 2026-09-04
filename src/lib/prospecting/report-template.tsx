@@ -14,13 +14,8 @@ import {
   COMPANY,
   WHO_WE_ARE,
   PRIVACY_NOTE,
-  SOLUTION_MAP,
-  IMPACT_MAP,
-  PACKAGES_NOTE,
   DEFAULT_PAIN_POINTS,
   AUTOMATION_FLOW,
-  PRICING_TIERS,
-  CUSTOM_TIER,
   CLOSING_CTA,
   RESPONSE_TIME_NOTE,
   WHATSAPP_LINK,
@@ -35,17 +30,32 @@ import {
   getResolvedLabel,
 } from "@/lib/prospecting/industry-knowledge";
 import type { ClassificationResult, EnrichmentSignals, ProspectSubject } from "@/lib/prospecting/types";
+import type { RecommendedComponent } from "@/lib/blueprint/recommend";
+import type { PricingDepartment } from "@/types/pricing-component";
 
-// Maps Digital Presence Audit row labels to the gap category used to match
-// industry knowledge-bank pain points - kept small and honest: we only tag
-// against gaps we actually measure, not operational issues we have no
-// signal for.
+// Maps Digital Presence Audit row labels to the gap category the industry
+// knowledge-bank's pain-point/revenue-leak narrative is tagged against - a
+// narrower, older 2-tag vocabulary (website/social) than the 4-tag one
+// (website/google/seo/social) recommendComponents uses below, because that
+// narrative content was written before the finer-grained tags existed and
+// re-tagging hundreds of knowledge-bank entries is out of scope here. Kept
+// deliberately small and honest either way: only tag against gaps actually
+// measured, not operational issues with no real signal behind them.
 const ROW_TO_GAP_TAG: Record<string, string> = {
   Website: "website",
   "Technical SEO": "website",
   "Google Business profile": "website",
   "Meta ad activity": "social",
 };
+
+const DEPARTMENT_LABEL: Record<PricingDepartment, string> = {
+  sales: "Sales",
+  marketing: "Marketing",
+  operations: "Operations",
+  billing: "Billing",
+};
+
+const DEPARTMENT_ORDER: PricingDepartment[] = ["marketing", "sales", "operations", "billing"];
 
 const TIER_LABEL: Record<string, string> = {
   A: "No digital presence found",
@@ -114,12 +124,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 10,
     color: "#27272a",
-  },
-  solutionImpact: {
-    fontSize: 9,
-    color: "#71717a",
-    marginTop: -3,
-    marginBottom: 7,
   },
   companyBox: {
     marginBottom: 18,
@@ -209,33 +213,133 @@ const styles = StyleSheet.create({
     color: "#71717a",
     marginTop: 4,
   },
-  packagesNote: {
-    fontSize: 9.5,
-    color: "#52525b",
-    marginBottom: 8,
-  },
-  solutionRow: {
+  deptChart: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 6,
+    justifyContent: "space-around",
+    alignItems: "flex-end",
+    height: 70,
+    marginVertical: 10,
+    paddingHorizontal: 10,
+  },
+  deptChartCol: {
+    alignItems: "center",
+  },
+  deptChartCount: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#3f3f46",
+    marginBottom: 3,
+  },
+  deptChartTrack: {
+    width: 22,
+    height: 40,
+    backgroundColor: "#e4e4e7",
+    borderRadius: 3,
+    justifyContent: "flex-end",
+  },
+  deptChartFill: {
+    width: "100%",
+    backgroundColor: "#4f46e5",
+    borderRadius: 3,
+  },
+  deptChartLabel: {
+    fontSize: 8,
+    color: "#71717a",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  deptSection: {
+    marginTop: 10,
+  },
+  deptSectionTitle: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#4f46e5",
+    textTransform: "uppercase",
+    marginBottom: 6,
+    paddingBottom: 3,
     borderBottom: "1 solid #e4e4e7",
   },
-  solutionGap: {
-    fontSize: 10.5,
-    color: "#b91c1c",
-    flex: 1,
+  deptItem: {
+    marginBottom: 7,
   },
-  solutionArrow: {
-    fontSize: 10.5,
-    color: "#a1a1aa",
-    marginHorizontal: 6,
-  },
-  solutionFix: {
+  deptItemTitle: {
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#15803d",
-    flex: 1,
-    textAlign: "right",
+    color: "#18181b",
+  },
+  deptItemRationale: {
+    fontSize: 9.5,
+    color: "#52525b",
+    marginTop: 1,
+    lineHeight: 1.4,
+  },
+  appendixKicker: {
+    fontSize: 9,
+    color: "#71717a",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  appendixHeading: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: "#18181b",
+    marginBottom: 10,
+  },
+  appendixIntro: {
+    fontSize: 10.5,
+    lineHeight: 1.5,
+    color: "#3f3f46",
+    marginBottom: 18,
+  },
+  pillarRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  pillarMark: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4f46e5",
+    marginTop: 4,
+    marginRight: 8,
+  },
+  pillarTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#18181b",
+  },
+  pillarBody: {
+    fontSize: 9.5,
+    color: "#52525b",
+    marginTop: 2,
+    lineHeight: 1.4,
+  },
+  brandBox: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 4,
+    border: "1 solid #d4d4d8",
+    backgroundColor: "#fafafa",
+  },
+  brandKicker: {
+    fontSize: 8.5,
+    color: "#71717a",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  brandName: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#18181b",
+  },
+  brandBody: {
+    fontSize: 9.5,
+    color: "#52525b",
+    marginTop: 4,
+    lineHeight: 1.4,
   },
   flowRowWrap: {
     marginBottom: 8,
@@ -323,43 +427,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#a1a1aa",
     marginHorizontal: 4,
-  },
-  priceTable: {
-    marginTop: 4,
-  },
-  priceHeaderRow: {
-    flexDirection: "row",
-    borderBottom: "1 solid #3f3f46",
-    paddingBottom: 4,
-    marginBottom: 4,
-  },
-  priceRow: {
-    flexDirection: "row",
-    paddingVertical: 6,
-    borderBottom: "1 solid #e4e4e7",
-  },
-  priceColName: { flex: 1, fontSize: 10 },
-  priceColOneTime: { flex: 1.1, fontSize: 10 },
-  priceColMonthly: { flex: 1.1, fontSize: 10 },
-  priceColIncludes: { flex: 2, fontSize: 9, color: "#52525b" },
-  priceHeaderText: { fontSize: 9, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase" },
-  priceNameText: { fontSize: 10, fontWeight: 700 },
-  customTierBox: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 4,
-    border: "1 solid #d4d4d8",
-    backgroundColor: "#fafafa",
-  },
-  customTierTitle: {
-    fontSize: 10,
-    fontWeight: 700,
-    marginBottom: 4,
-  },
-  customTierLine: {
-    fontSize: 9.5,
-    color: "#3f3f46",
-    marginTop: 2,
   },
   nextStepRow: {
     flexDirection: "row",
@@ -501,6 +568,14 @@ export type ReportInput = {
   enrichment: EnrichmentSignals;
   classification: ClassificationResult;
   paragraph: string;
+  // Real gap -> feature matches from the pricing catalog (recommendComponents), department-
+  // grouped below. Deliberately never reads price fields off these - see the department section
+  // for why.
+  recommended: RecommendedComponent[];
+  // "Samvid OS" for real estate, "<Industry> OS" elsewhere (getProductBrand) - null only when the
+  // lead has no resolved industry at all, in which case the appendix page is skipped rather than
+  // showing a brand for an industry nobody confirmed.
+  productBrand: string | null;
   // Only rendered once an enrichment step actually produces this - omitted today.
   searchScreenshotUrl?: string;
   // Only rendered once nearby-competitor lookups are wired up - omitted today.
@@ -514,6 +589,8 @@ export async function buildReportDocument({
   enrichment,
   classification,
   paragraph,
+  recommended,
+  productBrand,
   searchScreenshotUrl,
   competitors = [],
   testimonials = [],
@@ -546,7 +623,6 @@ export async function buildReportDocument({
     row.value === "Not found" ||
     (row.label === "Technical SEO" && Boolean(seo?.checked) && (seo?.seoScore ?? 100) < 70);
 
-  const gapRows = rows.filter((r) => isGap(r) && SOLUTION_MAP[r.label]);
   const missingTags = rows
     .filter(isGap)
     .map((r) => ROW_TO_GAP_TAG[r.label])
@@ -577,6 +653,12 @@ export async function buildReportDocument({
     month: "long",
     day: "numeric",
   });
+
+  const departmentGroups = DEPARTMENT_ORDER.map((department) => ({
+    department,
+    items: recommended.filter((component) => component.department === department),
+  })).filter((group) => group.items.length > 0);
+  const maxDepartmentCount = Math.max(1, ...departmentGroups.map((g) => g.items.length));
 
   return (
     <Document title={`${lead.name} - Digital Presence Report`}>
@@ -684,19 +766,40 @@ export async function buildReportDocument({
           ))}
         </View>
 
-        {gapRows.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>What Fixes What</Text>
-            {gapRows.map((row, i) => (
-              <View key={i}>
-                <View style={styles.solutionRow}>
-                  <Text style={styles.solutionGap}>{row.label}: missing</Text>
-                  <Text style={styles.solutionArrow}>{"->"}</Text>
-                  <Text style={styles.solutionFix}>{SOLUTION_MAP[row.label]}</Text>
+        {departmentGroups.length > 0 ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.sectionTitle}>Recommended For Your Business</Text>
+            <Text style={styles.leakIntro}>
+              {recommended.length} thing{recommended.length === 1 ? "" : "s"} worth building, grouped by who at
+              Nemnidhi does the work - matched only against what this audit actually measured, nothing generic.
+            </Text>
+
+            <View style={styles.deptChart}>
+              {departmentGroups.map((group) => (
+                <View key={group.department} style={styles.deptChartCol}>
+                  <Text style={styles.deptChartCount}>{group.items.length}</Text>
+                  <View style={styles.deptChartTrack}>
+                    <View
+                      style={[
+                        styles.deptChartFill,
+                        { height: `${Math.round((group.items.length / maxDepartmentCount) * 100)}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.deptChartLabel}>{DEPARTMENT_LABEL[group.department]}</Text>
                 </View>
-                {IMPACT_MAP[SOLUTION_MAP[row.label]] ? (
-                  <Text style={styles.solutionImpact}>{IMPACT_MAP[SOLUTION_MAP[row.label]]}</Text>
-                ) : null}
+              ))}
+            </View>
+
+            {departmentGroups.map((group) => (
+              <View key={group.department} style={styles.deptSection} wrap={false}>
+                <Text style={styles.deptSectionTitle}>{DEPARTMENT_LABEL[group.department]}</Text>
+                {group.items.map((component) => (
+                  <View key={component.code} style={styles.deptItem}>
+                    <Text style={styles.deptItemTitle}>{component.title}</Text>
+                    <Text style={styles.deptItemRationale}>{component.rationale}</Text>
+                  </View>
+                ))}
               </View>
             ))}
           </View>
@@ -746,33 +849,6 @@ export async function buildReportDocument({
         ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Packages</Text>
-          <Text style={styles.packagesNote}>{PACKAGES_NOTE}</Text>
-          <View style={styles.priceTable}>
-            <View style={styles.priceHeaderRow}>
-              <Text style={[styles.priceHeaderText, { flex: 1 }]}>Tier</Text>
-              <Text style={[styles.priceHeaderText, { flex: 1.1 }]}>One-time</Text>
-              <Text style={[styles.priceHeaderText, { flex: 1.1 }]}>Monthly</Text>
-              <Text style={[styles.priceHeaderText, { flex: 2 }]}>Includes</Text>
-            </View>
-            {PRICING_TIERS.map((tier, i) => (
-              <View style={styles.priceRow} key={i}>
-                <Text style={[styles.priceColName, styles.priceNameText]}>{tier.name}</Text>
-                <Text style={styles.priceColOneTime}>{tier.oneTime}</Text>
-                <Text style={styles.priceColMonthly}>{tier.monthly}</Text>
-                <Text style={styles.priceColIncludes}>{tier.includes}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.customTierBox}>
-            <Text style={styles.customTierTitle}>{CUSTOM_TIER.name}</Text>
-            <Text style={styles.customTierLine}>One-time: {CUSTOM_TIER.oneTime}</Text>
-            <Text style={styles.customTierLine}>Ongoing: {CUSTOM_TIER.ongoing}</Text>
-            <Text style={styles.customTierLine}>{CUSTOM_TIER.includes}</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
           <Text style={styles.sectionTitle}>What Happens Next</Text>
           {NEXT_STEPS.map((step, i) => (
             <View style={styles.nextStepRow} key={i}>
@@ -802,6 +878,82 @@ export async function buildReportDocument({
           {COMPANY.legalName} · GST {COMPANY.gst} · {COMPANY.email} · Based on publicly available information.
         </Text>
       </Page>
+
+      {productBrand ? (
+        <Page size="A4" style={styles.page} wrap>
+          <View style={styles.header}>
+            <Text style={styles.brand}>{COMPANY.product.toUpperCase()}</Text>
+            <Text style={styles.appendixKicker}>Appendix - What {productBrand} Includes</Text>
+          </View>
+
+          <Text style={styles.appendixHeading}>One connected platform, not five separate tools</Text>
+          <Text style={styles.appendixIntro}>
+            Everything recommended on the pages above comes from the same five-pillar platform - built and run by
+            Nemnidhi, not stitched together from outside vendors.
+          </Text>
+
+          <View style={styles.pillarRow}>
+            <View style={styles.pillarMark} />
+            <View>
+              <Text style={styles.pillarTitle}>CRM &amp; Client Management</Text>
+              <Text style={styles.pillarBody}>
+                One place to track every lead, proposal, client and project from first contact to delivery.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pillarRow}>
+            <View style={styles.pillarMark} />
+            <View>
+              <Text style={styles.pillarTitle}>WhatsApp Business Automation</Text>
+              <Text style={styles.pillarBody}>
+                A shared team inbox with automated replies, broadcast campaigns and catalog &amp; order sharing - the
+                channel your customers already use.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pillarRow}>
+            <View style={styles.pillarMark} />
+            <View>
+              <Text style={styles.pillarTitle}>AI Assistance</Text>
+              <Text style={styles.pillarBody}>
+                AI-drafted replies, lead scoring, and automation flows that handle repetitive conversations.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pillarRow}>
+            <View style={styles.pillarMark} />
+            <View>
+              <Text style={styles.pillarTitle}>Websites &amp; Digital Presence</Text>
+              <Text style={styles.pillarBody}>
+                A fast, SEO-ready website with lead capture and click-to-WhatsApp ad integration.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pillarRow}>
+            <View style={styles.pillarMark} />
+            <View>
+              <Text style={styles.pillarTitle}>Billing, Invoicing &amp; Compliance</Text>
+              <Text style={styles.pillarBody}>
+                GST-ready invoicing, subscription billing and financial reporting, sold standalone or as part of the
+                full platform.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.brandBox}>
+            <Text style={styles.brandKicker}>Built On</Text>
+            <Text style={styles.brandName}>{productBrand}</Text>
+            <Text style={styles.brandBody}>
+              A pack tier (Basic, Medium, Pro, or fully Custom) sets how much of this is switched on for your
+              business and budget - the platform underneath is the same one either way.
+            </Text>
+          </View>
+
+          <Text style={styles.footer} fixed>
+            {COMPANY.legalName} · GST {COMPANY.gst} · {COMPANY.email} · Based on publicly available information.
+          </Text>
+        </Page>
+      ) : null}
     </Document>
   );
 }
