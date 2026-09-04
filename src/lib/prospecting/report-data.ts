@@ -5,7 +5,11 @@
 // for the same lead.
 
 import { computeReportFacts, DEPARTMENT_LABEL, TIER_LABEL, type ReportInput } from "./report-template";
-import { COMPANY, DEFAULT_PAIN_POINTS, PLATFORM_PILLARS, WHATSAPP_LINK } from "./report-config";
+import { AUTOMATION_FLOW, COMPANY, DEFAULT_PAIN_POINTS, PLATFORM_PILLARS, WHATSAPP_LINK } from "./report-config";
+
+type FlowStepData = { title: string; subtitle: string | null };
+const toFlowStepData = (steps: readonly (readonly [string, string | null])[]): FlowStepData[] =>
+  steps.map(([title, subtitle]) => ({ title, subtitle }));
 
 export type PublicAuditReportData = {
   businessName: string;
@@ -32,6 +36,13 @@ export type PublicAuditReportData = {
   platformPillars: { title: string; body: string }[];
   company: { legalName: string; phone: string; email: string };
   whatsappLink: string;
+  todayIntro: string;
+  todayFlowStages: string[];
+  automationFlow: {
+    entryChain: FlowStepData[];
+    interested: { label: string; steps: FlowStepData[] };
+    noReply: { label: string; steps: FlowStepData[] };
+  };
   generatedAt: string;
 };
 
@@ -73,6 +84,13 @@ export function buildReportData({
     platformPillars: PLATFORM_PILLARS,
     company: { legalName: COMPANY.legalName, phone: COMPANY.phone, email: COMPANY.email },
     whatsappLink: WHATSAPP_LINK,
+    todayIntro: facts.todayIntro,
+    todayFlowStages: facts.todayFlowStages,
+    automationFlow: {
+      entryChain: toFlowStepData(AUTOMATION_FLOW.entryChain),
+      interested: { label: AUTOMATION_FLOW.interested.label, steps: toFlowStepData(AUTOMATION_FLOW.interested.steps) },
+      noReply: { label: AUTOMATION_FLOW.noReply.label, steps: toFlowStepData(AUTOMATION_FLOW.noReply.steps) },
+    },
     generatedAt: new Date().toISOString(),
   };
 }

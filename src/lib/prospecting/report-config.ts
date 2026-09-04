@@ -20,7 +20,9 @@ export const COMPANY = {
   tagline: "Engineering Software That Scales",
   gst: "23CGZPB7175E1Z5",
   address: "B20 - 5th Floor, Gravity Mall, Mechanic Nagar, Indore, Madhya Pradesh, India",
-  phone: "7000445463",
+  // The real Nemnidhi business WhatsApp/contact number - was a personal number before, now
+  // corrected since this goes out on every audit report to the public.
+  phone: "8269150205",
   email: "info@nemnidhi.com",
 } as const;
 

@@ -8,8 +8,16 @@
 //
 // Company details and pricing live in report-config.ts - edit values there.
 
-import { Document, Page, View, Text, Image, Link, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, Link, StyleSheet, Svg, Path } from "@react-pdf/renderer";
 import QRCode from "qrcode";
+
+// Nemnidhi's real brand teal (the logo mark's color, --color-accent on the site) - used
+// everywhere this report used to fall back to a generic indigo/gray template palette that had
+// nothing to do with the actual brand.
+const BRAND_TEAL = "#0891b2";
+const BRAND_TEAL_DARK = "#0e7490";
+const BRAND_TEAL_TINT = "#ecfeff";
+const LOGO_URL = "https://nemnidhi.com/images/logo.png";
 import {
   COMPANY,
   WHO_WE_ARE,
@@ -81,8 +89,18 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 16,
-    borderBottom: "2 solid #18181b",
+    borderBottom: `2 solid ${BRAND_TEAL}`,
     paddingBottom: 12,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  logo: {
+    width: 26,
+    height: 26,
   },
   brand: {
     fontSize: 10,
@@ -149,7 +167,7 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     marginBottom: 8,
     textTransform: "uppercase",
-    color: "#3f3f46",
+    color: BRAND_TEAL_DARK,
   },
   row: {
     flexDirection: "row",
@@ -239,7 +257,7 @@ const styles = StyleSheet.create({
   },
   deptChartFill: {
     width: "100%",
-    backgroundColor: "#4f46e5",
+    backgroundColor: BRAND_TEAL,
     borderRadius: 3,
   },
   deptChartLabel: {
@@ -254,11 +272,11 @@ const styles = StyleSheet.create({
   deptSectionTitle: {
     fontSize: 10,
     fontWeight: 700,
-    color: "#4f46e5",
+    color: BRAND_TEAL_DARK,
     textTransform: "uppercase",
     marginBottom: 6,
     paddingBottom: 3,
-    borderBottom: "1 solid #e4e4e7",
+    borderBottom: `1 solid ${BRAND_TEAL}`,
   },
   deptItem: {
     marginBottom: 7,
@@ -276,7 +294,8 @@ const styles = StyleSheet.create({
   },
   appendixKicker: {
     fontSize: 9,
-    color: "#71717a",
+    color: BRAND_TEAL,
+    fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 6,
@@ -301,7 +320,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#4f46e5",
+    backgroundColor: BRAND_TEAL,
     marginTop: 4,
     marginRight: 8,
   },
@@ -320,12 +339,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 14,
     borderRadius: 4,
-    border: "1 solid #d4d4d8",
-    backgroundColor: "#fafafa",
+    border: `1 solid ${BRAND_TEAL}`,
+    backgroundColor: BRAND_TEAL_TINT,
   },
   brandKicker: {
     fontSize: 8.5,
-    color: "#71717a",
+    color: BRAND_TEAL_DARK,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 4,
@@ -333,7 +352,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 13,
     fontWeight: 700,
-    color: "#18181b",
+    color: BRAND_TEAL_DARK,
   },
   brandBody: {
     fontSize: 9.5,
@@ -362,35 +381,11 @@ const styles = StyleSheet.create({
     color: "#52525b",
     marginBottom: 6,
   },
-  todayWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 10,
-  },
-  todayPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    border: "1 solid #d4d4d8",
-    borderRadius: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    marginRight: 6,
-    marginBottom: 6,
-    backgroundColor: "#f4f4f5",
-  },
-  todayPillNumber: {
-    fontSize: 8,
-    fontWeight: 700,
-    color: "#71717a",
-    marginRight: 4,
-  },
-  todayPillText: {
-    fontSize: 8,
-    color: "#3f3f46",
-  },
   flowChain: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
+    rowGap: 6,
   },
   flowBox: {
     minWidth: 110,
@@ -400,8 +395,12 @@ const styles = StyleSheet.create({
     border: "1 solid #d4d4d8",
   },
   flowBoxEntry: {
-    backgroundColor: "#eef2ff",
-    borderColor: "#6366f1",
+    backgroundColor: BRAND_TEAL_TINT,
+    borderColor: BRAND_TEAL,
+  },
+  flowBoxToday: {
+    backgroundColor: "#fafafa",
+    borderColor: "#d4d4d8",
   },
   flowBoxInterested: {
     backgroundColor: "#f0fdf4",
@@ -423,10 +422,8 @@ const styles = StyleSheet.create({
     color: "#71717a",
     marginTop: 2,
   },
-  flowArrow: {
-    fontSize: 12,
-    color: "#a1a1aa",
-    marginHorizontal: 4,
+  flowArrowWrap: {
+    marginHorizontal: 3,
   },
   nextStepRow: {
     flexDirection: "row",
@@ -436,7 +433,7 @@ const styles = StyleSheet.create({
     width: 16,
     fontSize: 10,
     fontWeight: 700,
-    color: "#4f46e5",
+    color: BRAND_TEAL_DARK,
   },
   nextStepText: {
     flex: 1,
@@ -447,7 +444,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     padding: 12,
     borderRadius: 4,
-    backgroundColor: "#eef2ff",
+    backgroundColor: "#fdf9ef",
+    border: "1 solid #d6be7c",
     flexDirection: "row",
     alignItems: "center",
   },
@@ -458,12 +456,12 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 11,
     lineHeight: 1.5,
-    color: "#312e81",
+    color: "#7a5f1f",
     fontWeight: 700,
   },
   ctaResponseTime: {
     fontSize: 9,
-    color: "#4338ca",
+    color: "#8a6d2a",
     marginTop: 6,
     fontWeight: 400,
   },
@@ -497,6 +495,18 @@ function statusLabel(channel: Channel) {
   return channel.found ? "Found" : "Not found";
 }
 
+// A real drawn arrowhead (react-pdf renders Svg/Path natively) - replaces the old plain "->"
+// text glyph, which read as unfinished rather than designed.
+function FlowArrow({ color = BRAND_TEAL }: { color?: string }) {
+  return (
+    <View style={styles.flowArrowWrap}>
+      <Svg width={14} height={9} viewBox="0 0 14 9">
+        <Path d="M0 4.5 H10 M6 0.5 L10 4.5 L6 8.5" stroke={color} strokeWidth={1.4} fill="none" />
+      </Svg>
+    </View>
+  );
+}
+
 function FlowBox({
   title,
   subtitle,
@@ -504,14 +514,16 @@ function FlowBox({
 }: {
   title: string;
   subtitle?: string | null;
-  variant: "entry" | "interested" | "noReply";
+  variant: "entry" | "interested" | "noReply" | "today";
 }) {
   const variantStyle =
     variant === "entry"
       ? styles.flowBoxEntry
-      : variant === "interested"
-        ? styles.flowBoxInterested
-        : styles.flowBoxNoReply;
+      : variant === "today"
+        ? styles.flowBoxToday
+        : variant === "interested"
+          ? styles.flowBoxInterested
+          : styles.flowBoxNoReply;
   return (
     <View style={[styles.flowBox, variantStyle]}>
       <Text style={styles.flowBoxTitle}>{title}</Text>
@@ -525,13 +537,14 @@ function FlowChain({
   variant,
 }: {
   steps: FlowStep[];
-  variant: "entry" | "interested" | "noReply";
+  variant: "entry" | "interested" | "noReply" | "today";
 }) {
+  const arrowColor = variant === "today" ? "#a1a1aa" : BRAND_TEAL;
   return (
     <View style={styles.flowChain}>
       {steps.map(([title, subtitle], i) => (
         <View key={i} style={{ flexDirection: "row", alignItems: "center" }}>
-          {i > 0 ? <Text style={styles.flowArrow}>{"->"}</Text> : null}
+          {i > 0 ? <FlowArrow color={arrowColor} /> : null}
           <FlowBox title={title} subtitle={subtitle} variant={variant} />
         </View>
       ))}
@@ -539,17 +552,11 @@ function FlowChain({
   );
 }
 
+// Was a wrapped row of plain numbered pills - now the same connected-chain treatment
+// FlowChain uses below it, so the two diagrams on this page read as one design, not two.
 function TodayFlow({ stages }: { stages: string[] }) {
-  return (
-    <View style={styles.todayWrap}>
-      {stages.map((stage, i) => (
-        <View style={styles.todayPill} key={i}>
-          <Text style={styles.todayPillNumber}>{i + 1}.</Text>
-          <Text style={styles.todayPillText}>{stage}</Text>
-        </View>
-      ))}
-    </View>
-  );
+  const steps: FlowStep[] = stages.map((stage, i) => [`${i + 1}. ${stage}`, null]);
+  return <FlowChain steps={steps} variant="today" />;
 }
 
 export type Competitor = {
@@ -706,7 +713,11 @@ export async function buildReportDocument({
     <Document title={`${lead.name} - Digital Presence Report`}>
       <Page size="A4" style={styles.page} wrap>
         <View style={styles.header}>
-          <Text style={styles.brand}>{COMPANY.product.toUpperCase()}</Text>
+          <View style={styles.headerTop}>
+            <Text style={styles.brand}>DIGITAL PRESENCE AUDIT</Text>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
+            <Image src={LOGO_URL} style={styles.logo} />
+          </View>
           <Text style={styles.businessName}>{lead.name}</Text>
           <Text style={styles.location}>{[lead.district, lead.state].filter(Boolean).join(", ")}</Text>
           <Text style={styles.hook}>{hookText}</Text>
@@ -924,8 +935,11 @@ export async function buildReportDocument({
       {productBrand ? (
         <Page size="A4" style={styles.page} wrap>
           <View style={styles.header}>
-            <Text style={styles.brand}>{COMPANY.product.toUpperCase()}</Text>
-            <Text style={styles.appendixKicker}>Appendix - What {productBrand} Includes</Text>
+            <View style={styles.headerTop}>
+              <Text style={styles.appendixKicker}>Appendix - What {productBrand} Includes</Text>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image src={LOGO_URL} style={styles.logo} />
+            </View>
           </View>
 
           <Text style={styles.appendixHeading}>One connected platform, not five separate tools</Text>
