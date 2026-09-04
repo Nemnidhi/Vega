@@ -1,5 +1,95 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-04 (evening/night session): audit pipeline resurrected, WhatsApp→Vega lead push built, and real gap→feature recommendations wired into the audit report - read this before anything below
+
+Long session, three real, separate pieces of work, all verified against real production data (the
+`samvidcluster.raeqtkm.mongodb.net` Atlas cluster the deployed app actually uses) - not just typechecked.
+**Everything below is pushed to `origin/master`** as of this entry.
+
+**1. The automated enrichment/classification pipeline was completely dead for 13+ days.**
+`.github/workflows/audit-pipeline.yml` (every 15 min) had been failing on every single run since at
+least 2026-08-22 - `Error: Missing MONGODB_URI`. Root cause: the repo had **zero** Actions secrets
+configured at all (not wrong values - genuinely none), confirmed by the user directly in the GitHub
+UI. Fixed by the user adding `MONGODB_URI`/`MONGODB_DB_NAME`/`GOOGLE_PLACES_API_KEY` as real repo
+secrets. `META_AD_LIBRARY_ACCESS_TOKEN` deliberately left unset - still pending Meta App Review, the
+pipeline already treats that as "not checked", never a false "not found".
+
+**Also found and disabled**: `Nemnidhi/samvid-lead-engine` (the old, fully-migrated-away-from repo)
+still had its OWN duplicate `enrich-leads.yml` on the same 15-minute schedule, 653 runs, all failing
+for a *different* reason (`npm ci` - stale lockfile). Real risk beyond wasted CI minutes: that old
+script wrote to a different, incompatible schema (separate leads/enrichment/classification
+collections) that this migration replaced. If it had ever started working again by someone
+innocently fixing the lockfile, it would have silently written stale-shape data into the same shared
+production database Vega now uses. Disabled via the GitHub API (`disabled_manually` - reversible,
+not deleted) - the user confirmed this repo is genuinely unused now.
+
+**2. WhatsApp conversations can now become real Vega Leads - this integration didn't exist at all
+before tonight.** Every existing Dashboard→Vega event (`dashboard-events/route.ts`) only ever
+updates an existing `Client` - none of them could handle "this is someone we've never talked to
+before," so an ad-driven (or organic) WhatsApp conversation never touched Vega. New
+`POST /api/integrations/dashboard-leads` (commit `033e8bb`): same shared-secret auth as the existing
+integration routes, creates a real `Lead` (`source: "paid_ads"` only when a genuine `ctwa_clid` is
+present, never guessed), idempotent on a new `Lead.dashboardConversationId` (unique/sparse, same
+dedupe shape as the existing `metaLeadId` field). Dashboard-WhatsApp's own side (`crm.js`/
+`vegaIntegration.js`) fires this exactly once per contact, gated on `!crm.addedToCrmAt` - see that
+repo's own HANDOFF.md. Verified live: a fresh push creates a real Lead, a repeat push with the same
+`conversationId` returns the same lead (no duplicate), wrong secret → 401. Test document deleted
+after.
+
+**3. The audit report now shows real, catalog-matched recommendations grouped by department, no
+pricing.** The old "What Fixes What" section (`report-config.ts`'s hardcoded `SOLUTION_MAP`) never
+touched the real pricing catalog or the Sales/Marketing/Operations/Billing department classification
+done 2026-09-02/03. `recommendComponents()` already accepted a `missingGapTags` parameter - built
+for exactly this - but nothing had ever called it with real gaps (the self-service questionnaire
+always passes `[]`, since no audit runs there). New `toMissingGapTags()` (`lead-adapter.ts`) turns a
+lead's real measured signals into the catalog's real tag vocabulary (`website`/`google`/`seo`/
+`social`); the audit-report route now calls the real catalog + recommender + `getProductBrand()`,
+reusing exactly what the self-service flow already proved live, not a second implementation
+(commit `ffc5948`).
+
+**Real catalog gap found and fixed while verifying this against production data, not assumed
+working**: all 158 real `PricingComponent` documents had **empty `answersGapTags` AND empty
+`scaleTiers`** - so `recommendComponents` matched nothing even with a real gap tag present. Tagged
+the 6 components whose title unambiguously answers what this audit measures (website/SEO/Google
+Business) with `scaleTiers: ["smb"]` - **not** a bulk guess across the other 152, which needs real
+business judgment this session didn't have. **No component in the catalog answers "social" at
+all** - a genuine content gap, left visible rather than papered over; worth building a real "social
+media setup" line item if that gap matters for a real client.
+
+Also removed the "Packages" pricing section from the PDF entirely - price stays deferred to the
+strategy call per direct instruction, not shown anywhere in this report now. Added a second appendix
+page (Samvid OS / `<Industry> OS` per `getProductBrand`) summarizing the five platform pillars, per
+direct instruction ("appendix inside the audit report").
+
+**Verified end-to-end against a real already-classified lead** ("Bharatavas Yojna Limited"): real
+gap tag detected (`google`), the 2 newly-tagged components matched and rendered under "Marketing"
+with real measured-fact rationale text (not generic copy), real Samvid OS appendix present, real
+21KB PDF produced and sent to the user for visual confirmation. Verification scripts and the test
+PDF were deleted after - nothing left in the repo from this.
+
+**What's still genuinely open from the original plan, none of it touched tonight:**
+- The "single-page attractive web view" (Phase 3 of the plan discussed this session) - the client
+  portal only ever serves the raw PDF today, no styled web rendering exists yet. This would live on
+  the **nemnidhi-website** repo, not here, consuming a new JSON-shaped endpoint this session scoped
+  but didn't build (the PDF route currently only returns bytes, not the structured data a web page
+  would need).
+- Client-portal self-service signup still email/password only - no Google/WhatsApp OAuth, confirmed
+  missing this session (`app/portal/signup/page.tsx` on nemnidhi-website).
+- The Pricing Components admin UI (`(dashboard)/pricing-components/page.tsx`) has no form fields for
+  `answersGapTags`/`scaleTiers` at all - every tag has to go through a direct DB script until that's
+  added, which is real friction if this needs doing again for more of the 158 components.
+- Tagging the remaining 152 catalog components with real gap tags/scale tiers where applicable -
+  needs real business judgment, not a name-match guess.
+- Building a real "social presence" sellable component so that gap tag has something to recommend.
+
+**How to apply**: read this entry in full before touching the audit-report pipeline, the pricing
+catalog's gap-tag system, or the Dashboard→Vega integration again - the mechanics are non-obvious
+(especially the gap-tag vocabulary split between this and the older website/social-only knowledge-
+bank tagging system, see `report-template.tsx`'s own comment on `ROW_TO_GAP_TAG`) and re-deriving
+them would waste real time.
+
+---
+
 ## 2026-09-04: new `POST /api/integrations/meetings/[id]/cancel` route, for Dashboard-WhatsApp's new reschedule flow
 
 Dashboard-WhatsApp's meeting-reminder sweep sends Confirm/Reschedule buttons but nothing ever
