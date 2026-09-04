@@ -26,6 +26,7 @@ export type ActivityAction =
   | "blueprint_self_served"
   | "blueprint_finalized"
   | "dashboard_event_received"
+  | "dashboard_lead_captured"
   | "meeting_booked"
   | "meeting_cancelled"
   | "meeting_assigned"

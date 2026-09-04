@@ -26,6 +26,7 @@ const activityLogSchema = new Schema(
         "blueprint_self_served",
         "blueprint_finalized",
         "dashboard_event_received",
+        "dashboard_lead_captured",
         "industry_changed",
         "industry_segment_changed",
         "pricing_tier_changed",
@@ -119,6 +120,7 @@ if (
     !existingActionEnum.includes("blueprint_shared") ||
     !existingActionEnum.includes("proposal_viewed") ||
     !existingActionEnum.includes("dashboard_event_received") ||
+    !existingActionEnum.includes("dashboard_lead_captured") ||
     !existingActionEnum.includes("pricing_package_changed") ||
     !existingActionEnum.includes("meeting_booked") ||
     !existingActionEnum.includes("blueprint_finalized") ||

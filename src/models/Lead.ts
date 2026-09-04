@@ -223,6 +223,10 @@ const leadSchema = new Schema(
     metaLeadId: { type: String, trim: true, maxlength: 60, unique: true, sparse: true, index: true },
     metaPageId: { type: String, trim: true, maxlength: 60 },
     metaFormId: { type: String, trim: true, maxlength: 60 },
+    /** Dashboard-WhatsApp's own conversation _id - dedupe key for leads pushed from a WhatsApp
+     * conversation (see /api/integrations/dashboard-leads), same unique/sparse shape as metaLeadId
+     * above so a repeated push (the same conversation continuing) upserts instead of duplicating. */
+    dashboardConversationId: { type: String, trim: true, maxlength: 60, unique: true, sparse: true, index: true },
     score: { type: Number, min: 0, max: 100, default: 0, index: true },
     priorityBand: {
       type: String,
@@ -256,11 +260,13 @@ const existingLeadModel = models.Lead;
 const existingLeadStatusEnum = existingLeadModel?.schema.path("status")?.options?.enum;
 
 // In dev HMR, an older cached model can keep the previous status enum, or
-// predate the `prospecting` sub-document entirely.
+// predate the `prospecting` sub-document entirely, or predate
+// dashboardConversationId (added for Dashboard-WhatsApp's lead push).
 if (
   existingLeadModel &&
   ((Array.isArray(existingLeadStatusEnum) && !existingLeadStatusEnum.includes("invalid")) ||
-    !existingLeadModel.schema.path("prospecting"))
+    !existingLeadModel.schema.path("prospecting") ||
+    !existingLeadModel.schema.path("dashboardConversationId"))
 ) {
   delete models.Lead;
 }

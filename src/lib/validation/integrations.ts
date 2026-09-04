@@ -7,6 +7,20 @@ export const dashboardEventSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional().default({}),
 });
 
+// A WhatsApp conversation becoming a real lead, not an existing Client's own event feed - see
+// dashboard-leads/route.ts for why this is a separate endpoint from dashboard-events above rather
+// than another event type there (that route only ever updates an existing Client, never creates
+// one; a brand-new lead has no Client yet by definition).
+export const dashboardLeadSchema = z.object({
+  dashboardOrganizationId: nonEmptyStringSchema,
+  conversationId: nonEmptyStringSchema,
+  contactName: z.string().trim().max(120).optional(),
+  phone: nonEmptyStringSchema,
+  campaign: z.string().trim().max(200).optional(),
+  ctwaClid: z.string().trim().max(200).optional(),
+  firstMessage: z.string().trim().max(2000).optional(),
+});
+
 // For a WhatsApp lead booking through Dashboard - no clientUserId (no portal account exists),
 // contactPhone identifies the booking instead. Mirrors bookMeetingSchema's shape otherwise.
 export const dashboardBookMeetingSchema = z.object({
