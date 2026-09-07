@@ -40,22 +40,17 @@ export default async function AttendancePage() {
     ]);
 
     return (
-      <section className="space-y-6">
-        <DashboardHeader
-          title="Attendance Command Center"
-          subtitle="Mark attendance manually for any date and review day/month records."
-          showLeadCta={false}
-        />
-        <AttendanceAdminDesk
-          staffUsers={staffUsers}
-          initialDailyDateKey={initialDailyDateKey}
-          initialDailyRecords={initialDailyRecords}
-          initialLeaveData={initialLeaveData}
-          initialMonthKey={initialMonthKey}
-          initialMonthlyData={initialMonthlyData}
-          initialGeofenceSettings={initialGeofenceSettings}
-        />
-      </section>
+      <AttendanceAdminDesk
+        staffUsers={staffUsers}
+        initialDailyDateKey={initialDailyDateKey}
+        initialDailyRecords={initialDailyRecords}
+        initialLeaveData={initialLeaveData}
+        initialMonthKey={initialMonthKey}
+        initialMonthlyData={initialMonthlyData}
+        initialGeofenceSettings={initialGeofenceSettings}
+        userLabel={session.fullName ?? session.email}
+        userRole={session.role}
+      />
     );
   }
 

@@ -18,6 +18,9 @@ export const updateUserSchema = z
     role: createUserRoleSchema.optional(),
     password: z.string().min(8).max(72).optional(),
     status: z.enum(["active", "inactive", "invited"]).optional(),
+    phone: z.string().trim().max(30).optional(),
+    department: z.string().trim().max(120).optional(),
+    managerId: z.union([z.string().regex(/^[a-f\d]{24}$/i), z.literal("")]).nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field is required to update user credentials.",

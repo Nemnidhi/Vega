@@ -61,6 +61,15 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     if (payload.password) {
       user.passwordHash = hashPassword(payload.password);
     }
+    if (payload.phone !== undefined) {
+      user.phone = payload.phone;
+    }
+    if (payload.department !== undefined) {
+      user.department = payload.department;
+    }
+    if (payload.managerId !== undefined) {
+      user.managerId = (payload.managerId || null) as typeof user.managerId;
+    }
     if (revokesSessions) {
       user.sessionVersion = (user.sessionVersion ?? 0) + 1;
     }
@@ -76,6 +85,9 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
         status: user.status,
         lastLoginAt: user.lastLoginAt,
         createdAt: user.createdAt,
+        phone: user.phone,
+        department: user.department,
+        managerId: user.managerId,
       }),
     );
   } catch (error) {

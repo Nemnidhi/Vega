@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
   title: string;
@@ -42,7 +41,6 @@ export function DashboardHeader({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Badge variant="accent">Command Active</Badge>
           {cta ? (
             <Link
               href={cta.href}

@@ -10,9 +10,20 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ArrowLeft,
+  CheckCheck,
+  ChevronDown,
+  EllipsisVertical,
+  Laugh,
+  MessageSquareMore,
+  Paperclip,
+  Pin,
+  RefreshCw,
+  Search,
+  Send,
+  SquarePen,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";
@@ -64,44 +75,25 @@ function formatTimestamp(value?: string | null) {
   });
 }
 
+function formatTime(value?: string | null) {
+  if (!value) return "";
+  return new Date(value).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getDisplayName(user: { fullName?: string | null; email: string }) {
-  const fullName = user.fullName?.trim();
-  if (fullName) {
-    return fullName;
-  }
-  return user.email;
+  return user.fullName?.trim() || user.email;
 }
 
 function getUserInitial(value: { fullName?: string | null; email: string }) {
-  const source = value.fullName?.trim() || value.email.trim();
-  const parts = source
-    .split(" ")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) {
-    return "?";
-  }
-  const first = parts[0]?.[0] ?? "";
-  const second = parts[1]?.[0] ?? "";
-  return `${first}${second}`.toUpperCase();
+  const parts = (value.fullName?.trim() || value.email.trim()).split(" ").filter(Boolean);
+  return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
-function SendIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 2 11 13" />
-      <path d="m22 2-7 20-4-9-9-4Z" />
-    </svg>
-  );
+function formatRole(role: string) {
+  return role.replaceAll("_", " ").replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 export function UniversalChat({
@@ -121,26 +113,20 @@ export function UniversalChat({
   const [draftMessage, setDraftMessage] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [threadSearchValue, setThreadSearchValue] = useState("");
+  const [threadSearchOpen, setThreadSearchOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState<
     "all" | "admin" | "developer" | "sales" | "digital_marketing"
   >("all");
-  const [listMode, setListMode] = useState<"all" | "unread">("all");
+  const [listMode, setListMode] = useState<"all" | "unread" | "pinned">("all");
   const [messageLimit, setMessageLimit] = useState(100);
   const [pinnedUserIds, setPinnedUserIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
+    if (typeof window === "undefined") return [];
     try {
-      const storedValue = window.localStorage.getItem(`hrms-chat-pins-${currentUserId}`);
-      if (!storedValue) {
-        return [];
-      }
-      const parsed = JSON.parse(storedValue) as unknown;
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-      return parsed.filter((item): item is string => typeof item === "string");
+      const stored = window.localStorage.getItem(`hrms-chat-pins-${currentUserId}`);
+      const parsed = stored ? (JSON.parse(stored) as unknown) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [];
     } catch {
       return [];
     }
@@ -158,11 +144,44 @@ export function UniversalChat({
     () => users.find((item) => item._id === selectedUserId) ?? null,
     [selectedUserId, users],
   );
-
+  const pinnedUserSet = useMemo(() => new Set(pinnedUserIds), [pinnedUserIds]);
   const totalUnreadCount = useMemo(
     () => users.reduce((sum, item) => sum + (item.unreadCount ?? 0), 0),
     [users],
   );
+  const unreadConversationCount = useMemo(
+    () => users.filter((item) => (item.unreadCount ?? 0) > 0).length,
+    [users],
+  );
+
+  const visibleUsers = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+    return users
+      .filter((item) => {
+        if (roleFilter !== "all" && item.role !== roleFilter) return false;
+        if (listMode === "unread" && (item.unreadCount ?? 0) === 0) return false;
+        if (listMode === "pinned" && !pinnedUserSet.has(item._id)) return false;
+        if (!query) return true;
+        return (
+          getDisplayName(item).toLowerCase().includes(query) ||
+          item.email.toLowerCase().includes(query) ||
+          item.role.replaceAll("_", " ").toLowerCase().includes(query)
+        );
+      })
+      .sort((a, b) => {
+        const pinDifference = Number(pinnedUserSet.has(b._id)) - Number(pinnedUserSet.has(a._id));
+        if (pinDifference !== 0) return pinDifference;
+        return new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime();
+      });
+  }, [listMode, pinnedUserSet, roleFilter, searchValue, users]);
+
+  const pinnedUsers = visibleUsers.filter((item) => pinnedUserSet.has(item._id));
+  const recentUsers = visibleUsers.filter((item) => !pinnedUserSet.has(item._id));
+  const selectedUserPinned = selectedUser ? pinnedUserSet.has(selectedUser._id) : false;
+  const canLoadOlderMessages = messageLimit < 200;
+  const showPeopleOnMobile = mobileMode !== "thread";
+  const showThreadOnMobile = mobileMode !== "people";
+  const mobileThread = mobileMode === "thread";
 
   useEffect(() => {
     try {
@@ -171,11 +190,9 @@ export function UniversalChat({
         JSON.stringify(pinnedUserIds),
       );
     } catch {
-      // ignore storage write errors
+      // Local pin persistence is optional.
     }
   }, [currentUserId, pinnedUserIds]);
-
-  const pinnedUserSet = useMemo(() => new Set(pinnedUserIds), [pinnedUserIds]);
 
   const selectUser = useCallback((nextUserId: string) => {
     setSelectedUserId(nextUserId);
@@ -185,9 +202,9 @@ export function UniversalChat({
 
   const activateUser = useCallback(
     (nextUserId: string) => {
-      const isPhoneViewport =
+      const isMobile =
         typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
-      if (mobileMode === "people" && isPhoneViewport) {
+      if (mobileMode === "people" && isMobile) {
         router.push(`/chat/${nextUserId}`);
         return;
       }
@@ -196,89 +213,37 @@ export function UniversalChat({
     [mobileMode, router, selectUser],
   );
 
-  const visibleUsers = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-    return users
-      .filter((item) => {
-        if (roleFilter !== "all" && item.role !== roleFilter) {
-          return false;
-        }
-
-        if (listMode === "unread" && (item.unreadCount ?? 0) === 0) {
-          return false;
-        }
-
-        if (!query) {
-          return true;
-        }
-
-        const roleLabel = item.role.replaceAll("_", " ");
-        const displayName = getDisplayName(item).toLowerCase();
-        return (
-          displayName.includes(query) ||
-          item.email.toLowerCase().includes(query) ||
-          roleLabel.toLowerCase().includes(query)
-        );
-      })
-      .sort((a, b) => {
-        const aPinned = pinnedUserSet.has(a._id) ? 1 : 0;
-        const bPinned = pinnedUserSet.has(b._id) ? 1 : 0;
-        if (aPinned !== bPinned) {
-          return bPinned - aPinned;
-        }
-        return 0;
-      });
-  }, [listMode, pinnedUserSet, roleFilter, searchValue, users]);
-
   const refreshUsers = useCallback(
     async (
       showLoader = true,
       options?: { suppressErrors?: boolean; signal?: AbortSignal },
     ) => {
-      if (usersRefreshInFlightRef.current) {
-        return;
-      }
-      if (showLoader) {
-        setRefreshingUsers(true);
-      }
+      if (usersRefreshInFlightRef.current) return;
+      if (showLoader) setRefreshingUsers(true);
       usersRefreshInFlightRef.current = true;
-
       try {
         const response = await fetch("/api/chat/users", {
-          method: "GET",
           cache: "no-store",
           signal: options?.signal,
         });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data?.error?.message ?? "Failed to refresh chat users.");
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload?.error?.message ?? "Failed to refresh chat users.");
         }
-
-        const nextUsers = (data.data ?? []) as ChatUser[];
+        const nextUsers = (payload.data ?? []) as ChatUser[];
         setUsers(nextUsers);
-        const selectedExists =
-          selectedUserId && nextUsers.some((item) => item._id === selectedUserId);
-        if (!selectedExists) {
+        if (selectedUserId && !nextUsers.some((item) => item._id === selectedUserId)) {
           selectUser(nextUsers[0]?._id ?? "");
         }
-        if (!options?.suppressErrors) {
-          setErrorMessage("");
-        }
+        if (!options?.suppressErrors) setErrorMessage("");
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (!options?.suppressErrors) {
+          setErrorMessage(error instanceof Error ? error.message : "Failed to refresh chat users.");
         }
-        if (options?.suppressErrors) {
-          return;
-        }
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to refresh chat users.",
-        );
       } finally {
         usersRefreshInFlightRef.current = false;
-        if (showLoader) {
-          setRefreshingUsers(false);
-        }
+        if (showLoader) setRefreshingUsers(false);
       }
     },
     [selectUser, selectedUserId],
@@ -292,94 +257,59 @@ export function UniversalChat({
     ) => {
       if (!targetUserId) {
         messagesRequestSeqRef.current += 1;
-        messagesRefreshTargetRef.current = null;
         setMessages([]);
         return;
       }
-      if (messagesRefreshTargetRef.current === targetUserId) {
-        return;
-      }
-
-      if (showLoader) {
-        setLoadingMessages(true);
-      }
+      if (messagesRefreshTargetRef.current === targetUserId) return;
+      if (showLoader) setLoadingMessages(true);
       messagesRefreshTargetRef.current = targetUserId;
-      const requestSeq = messagesRequestSeqRef.current + 1;
-      messagesRequestSeqRef.current = requestSeq;
-
+      const requestSequence = messagesRequestSeqRef.current + 1;
+      messagesRequestSeqRef.current = requestSequence;
       try {
         const markRead = options?.markRead === false ? "0" : "1";
         const response = await fetch(
           `/api/chat/messages?with=${encodeURIComponent(targetUserId)}&limit=${messageLimit}&markRead=${markRead}`,
-          {
-            method: "GET",
-            cache: "no-store",
-            signal: options?.signal,
-          },
+          { cache: "no-store", signal: options?.signal },
         );
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data?.error?.message ?? "Failed to load messages.");
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload?.error?.message ?? "Failed to load messages.");
         }
-        if (requestSeq !== messagesRequestSeqRef.current) {
-          return;
-        }
-
-        setMessages((data.data ?? []) as ChatMessageRecord[]);
+        if (requestSequence !== messagesRequestSeqRef.current) return;
+        setMessages((payload.data ?? []) as ChatMessageRecord[]);
         setUsers((previous) =>
           previous.map((item) =>
             item._id === targetUserId ? { ...item, unreadCount: 0 } : item,
           ),
         );
-        if (!options?.suppressErrors) {
-          setErrorMessage("");
-        }
+        if (!options?.suppressErrors) setErrorMessage("");
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (!options?.suppressErrors) {
+          setErrorMessage(error instanceof Error ? error.message : "Failed to load messages.");
         }
-        if (options?.suppressErrors) {
-          return;
-        }
-        setErrorMessage(error instanceof Error ? error.message : "Failed to load messages.");
       } finally {
         if (messagesRefreshTargetRef.current === targetUserId) {
           messagesRefreshTargetRef.current = null;
         }
-        if (showLoader) {
-          setLoadingMessages(false);
-        }
+        if (showLoader) setLoadingMessages(false);
       }
     },
     [messageLimit],
   );
 
   useEffect(() => {
-    const loadTimer = setTimeout(() => {
+    const timer = setTimeout(() => {
       void loadMessages(selectedUserId, true, { markRead: true });
     }, 0);
-
-    return () => clearTimeout(loadTimer);
+    return () => clearTimeout(timer);
   }, [loadMessages, selectedUserId]);
 
   useEffect(() => {
-    const pollIntervalMs = 35000;
-    let disposed = false;
     const controller = new AbortController();
-
-    async function pollOnce() {
-      if (disposed) {
-        return;
-      }
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        return;
-      }
-
-      await refreshUsers(false, {
-        suppressErrors: true,
-        signal: controller.signal,
-      });
-
+    async function poll() {
+      if (document.visibilityState !== "visible") return;
+      await refreshUsers(false, { suppressErrors: true, signal: controller.signal });
       if (selectedUserId) {
         await loadMessages(selectedUserId, false, {
           markRead: false,
@@ -388,16 +318,11 @@ export function UniversalChat({
         });
       }
     }
-
-    void pollOnce();
-    const pollTimer = setInterval(() => {
-      void pollOnce();
-    }, pollIntervalMs);
-
+    void poll();
+    const timer = setInterval(() => void poll(), 35000);
     return () => {
-      disposed = true;
       controller.abort();
-      clearInterval(pollTimer);
+      clearInterval(timer);
     };
   }, [loadMessages, refreshUsers, selectedUserId]);
 
@@ -407,51 +332,35 @@ export function UniversalChat({
 
   const filteredMessages = useMemo(() => {
     const query = threadSearchValue.trim().toLowerCase();
-    if (!query) {
-      return messages;
-    }
-    return messages.filter((item) => item.message.toLowerCase().includes(query));
+    return query
+      ? messages.filter((item) => item.message.toLowerCase().includes(query))
+      : messages;
   }, [messages, threadSearchValue]);
 
-  const selectedUserPinned = selectedUser ? pinnedUserSet.has(selectedUser._id) : false;
-  const canLoadOlderMessages = messageLimit < 200;
-  const showPeopleOnMobile = mobileMode !== "thread";
-  const showThreadOnMobile = mobileMode !== "people";
-  const whatsappMobilePeople = mobileMode === "people";
-  const whatsappMobileThread = mobileMode === "thread";
-
-  function togglePinned(userIdToToggle: string) {
-    setPinnedUserIds((previous) => {
-      if (previous.includes(userIdToToggle)) {
-        return previous.filter((item) => item !== userIdToToggle);
-      }
-      return [...previous, userIdToToggle];
-    });
+  function togglePinned(targetUserId: string) {
+    setPinnedUserIds((previous) =>
+      previous.includes(targetUserId)
+        ? previous.filter((item) => item !== targetUserId)
+        : [...previous, targetUserId],
+    );
   }
 
   async function submitMessage() {
-    const preparedMessage = draftMessage.trim();
-    if (!selectedUserId || !preparedMessage) {
-      return;
-    }
-
+    const message = draftMessage.trim();
+    if (!selectedUserId || !message) return;
     setSending(true);
     setErrorMessage("");
     try {
       const response = await fetch("/api/chat/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipientId: selectedUserId,
-          message: preparedMessage,
-        }),
+        body: JSON.stringify({ recipientId: selectedUserId, message }),
       });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data?.error?.message ?? "Failed to send message.");
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload?.error?.message ?? "Failed to send message.");
       }
-
-      setMessages((previous) => [...previous, data.data as ChatMessageRecord]);
+      setMessages((previous) => [...previous, payload.data as ChatMessageRecord]);
       setDraftMessage("");
       void refreshUsers(false);
     } catch (error) {
@@ -467,344 +376,93 @@ export function UniversalChat({
   }
 
   async function handleDraftKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (!(event.ctrlKey || event.metaKey) || event.key !== "Enter") {
-      return;
-    }
+    if (event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
-    if (sending || !selectedUser || draftMessage.trim().length === 0) {
-      return;
-    }
-    await submitMessage();
+    if (!sending && selectedUser && draftMessage.trim()) await submitMessage();
+  }
+
+  function renderUserRow(item: ChatUser) {
+    const active = item._id === selectedUserId;
+    const unread = item.unreadCount ?? 0;
+    const pinned = pinnedUserSet.has(item._id);
+    return (
+      <button
+        key={item._id}
+        type="button"
+        onClick={() => activateUser(item._id)}
+        className={cn(
+          "relative w-full border-b border-vega-border-soft px-1 py-3 text-left transition-colors lg:px-4",
+          active ? "bg-vega-purple-soft lg:border-l-2 lg:border-l-vega-purple" : "hover:bg-vega-surface-hover",
+        )}
+      >
+        <span className="flex items-center gap-3">
+          <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#29225f] text-sm font-semibold text-[#eee9ff] lg:h-10 lg:w-10 lg:text-xs">
+            {getUserInitial(item)}
+            <span className={cn("absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-vega-bg", item.status === "active" ? "bg-[#2bd982]" : "bg-[#91a5c6]")} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-start justify-between gap-3">
+              <span className="truncate text-sm font-semibold text-vega-text">{getDisplayName(item)}</span>
+              <span className="shrink-0 text-xs text-vega-text-muted lg:text-[10px]" title={formatTimestamp(item.lastMessageAt)}>{formatTime(item.lastMessageAt)}</span>
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-vega-text-muted lg:hidden">{formatRole(item.role)}</span>
+            <span className="mt-1 block truncate text-sm text-vega-text-muted lg:text-xs">
+              {item.lastMessage ? `${item.lastMessageFromSelf ? "You: " : ""}${item.lastMessage}` : "No messages yet"}
+            </span>
+          </span>
+          <span className="flex shrink-0 flex-col items-center gap-2">
+            {pinned ? <Pin className="h-4 w-4 fill-vega-purple text-vega-purple" aria-hidden="true" /> : null}
+            {unread > 0 ? <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-vega-purple px-1.5 text-[11px] font-semibold text-white">{unread}</span> : null}
+          </span>
+        </span>
+      </button>
+    );
   }
 
   return (
-    <section
-      className={cn(
-        "grid gap-4 lg:h-[calc(100vh-11rem)] lg:grid-cols-[340px_minmax(0,1fr)]",
-        whatsappMobilePeople || whatsappMobileThread
-          ? "h-[calc(100dvh-6.5rem)] gap-0 lg:gap-4"
-          : "",
-      )}
-    >
-      <Card
-        className={cn(
-          "overflow-hidden lg:h-full",
-          showPeopleOnMobile ? "flex flex-col" : "hidden lg:flex lg:flex-col",
-          whatsappMobilePeople
-            ? "h-full rounded-xl border border-border bg-surface shadow-sm lg:h-full"
-            : "",
-        )}
-      >
-        <CardHeader className={cn("pb-3", whatsappMobilePeople ? "border-b border-border bg-vega-surface-1" : "")}>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle>Chats</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void refreshUsers(true)}
-                  disabled={refreshingUsers}
-                >
-                  {refreshingUsers ? "Refreshing..." : "Refresh"}
-                </Button>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Total unread messages: <span className="font-semibold text-foreground">{totalUnreadCount}</span>
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden pt-0">
-          <Input
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Search by name or role"
-            className="mt-2"
-          />
-          <div className={cn("grid grid-cols-2 gap-2", whatsappMobilePeople ? "hidden lg:grid" : "")}>
-            <select
-              className="h-10 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
-              value={roleFilter}
-              onChange={(event) =>
-                setRoleFilter(
-                  event.target.value as
-                    | "all"
-                    | "admin"
-                    | "developer"
-                    | "sales"
-                    | "digital_marketing",
-                )
-              }
-            >
-              <option value="all">All roles</option>
-              <option value="admin">Admin</option>
-              <option value="developer">Developer</option>
-              <option value="sales">Sales</option>
-              <option value="digital_marketing">Digital Marketing</option>
-            </select>
-            <select
-              className="h-10 w-full rounded-xl border border-border/70 bg-background px-3 text-sm"
-              value={listMode}
-              onChange={(event) => setListMode(event.target.value as "all" | "unread")}
-            >
-              <option value="all">All chats</option>
-              <option value="unread">Unread only</option>
-            </select>
-          </div>
+    <section className={cn("grid min-h-0 lg:h-[calc(100vh-11rem)] lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-3", mobileThread && "-mx-3 -mb-7 -mt-4 h-[calc(100dvh-56px)] sm:-mx-5")}>
+      <section className={cn("min-h-0 overflow-hidden lg:flex lg:h-full lg:flex-col lg:rounded-lg lg:border lg:border-vega-border lg:bg-vega-surface-1", showPeopleOnMobile ? "flex flex-col" : "hidden")}>
+        <div className="hidden items-center justify-between border-b border-vega-border-soft px-4 py-3 lg:flex">
+          <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-vega-text">Messages</h2><span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-vega-purple px-1.5 text-[11px] font-semibold text-white">{unreadConversationCount}</span></div>
+          <div className="flex items-center gap-2"><button type="button" onClick={() => void refreshUsers(true)} disabled={refreshingUsers} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-vega-text-secondary hover:bg-vega-surface-hover" title="Refresh conversations" aria-label="Refresh conversations"><RefreshCw className={cn("h-4 w-4", refreshingUsers && "animate-spin")} aria-hidden="true" /></button><button type="button" onClick={() => document.getElementById("chat-user-search")?.focus()} className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-vega-purple text-white hover:bg-vega-purple-strong" title="Find a teammate" aria-label="Find a teammate"><SquarePen className="h-4 w-4" aria-hidden="true" /></button></div>
+        </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {visibleUsers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No users available for the selected filters.
-              </p>
-            ) : (
-              visibleUsers.map((item) => {
-                const isActive = item._id === selectedUserId;
-                const unreadCount = item.unreadCount ?? 0;
-                const isPinned = pinnedUserSet.has(item._id);
-                return (
-                  <button
-                    key={item._id}
-                    type="button"
-                    onClick={() => activateUser(item._id)}
-                    className={cn(
-                      "w-full px-3 py-2.5 text-left transition-all",
-                      whatsappMobilePeople
-                        ? "rounded-xl border border-border bg-vega-surface-1 shadow-sm"
-                        : "rounded-2xl border",
-                      isActive
-                        ? whatsappMobilePeople
-                          ? "border-accent/50 bg-accent-soft/70"
-                          : "border-accent/50 bg-accent-soft/70"
-                        : whatsappMobilePeople
-                          ? "hover:bg-vega-surface-hover"
-                          : "border-border bg-vega-surface-1 hover:border-accent/40 hover:bg-vega-surface-hover",
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={cn(
-                          "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                          whatsappMobilePeople
-                            ? "bg-accent/15 text-accent-strong"
-                            : "bg-surface-soft text-foreground",
-                        )}
-                      >
-                        {getUserInitial(item)}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {getDisplayName(item)}
-                          </p>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
-                            {formatTimestamp(item.lastMessageAt)}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {item.lastMessage
-                            ? `${item.lastMessageFromSelf ? "You: " : ""}${item.lastMessage}`
-                            : "No messages yet"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {isPinned && !whatsappMobilePeople ? <Badge variant="accent">PIN</Badge> : null}
-                        {unreadCount > 0 ? <Badge variant="danger">{unreadCount}</Badge> : null}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
+        <div className="space-y-3 border-b border-vega-border-soft pb-3 lg:px-4 lg:pt-3">
+          <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vega-text-muted" aria-hidden="true" /><Input id="chat-user-search" value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search teammates..." className="h-11 pl-10 text-sm lg:h-9 lg:text-xs" /></div>
+          <div className="grid grid-cols-3 gap-2">
+            {([ ["all", "All", users.length], ["unread", "Unread", unreadConversationCount], ["pinned", "Pinned", pinnedUserIds.length] ] as const).map(([value, label, count]) => <button key={value} type="button" onClick={() => setListMode(value)} className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-full border text-sm font-medium lg:h-8 lg:text-xs", listMode === value ? "border-vega-purple bg-vega-purple text-white" : "border-vega-border bg-vega-surface-2 text-vega-text-secondary hover:bg-vega-surface-hover")}><span>{label}</span><span className={cn("inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs lg:h-5 lg:min-w-5 lg:text-[10px]", listMode === value ? "bg-white/15" : "bg-[#223148]")}>{count}</span></button>)}
           </div>
-        </CardContent>
-      </Card>
+          <div className="grid grid-cols-[minmax(0,1fr)_48px] gap-2 lg:grid-cols-1"><div className="relative"><select className="h-11 w-full appearance-none rounded-md border border-vega-border bg-[#0b141f] px-3 text-sm text-vega-text lg:h-9 lg:text-xs" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as typeof roleFilter)}><option value="all">All roles</option><option value="admin">Admin</option><option value="developer">Developer</option><option value="sales">Sales</option><option value="digital_marketing">Digital Marketing</option></select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vega-text-muted" aria-hidden="true" /></div><button type="button" onClick={() => void refreshUsers(true)} disabled={refreshingUsers} className="inline-flex h-11 items-center justify-center rounded-md border border-vega-border text-vega-text-secondary hover:bg-vega-surface-hover lg:hidden" title="Refresh conversations" aria-label="Refresh conversations"><RefreshCw className={cn("h-5 w-5", refreshingUsers && "animate-spin")} aria-hidden="true" /></button></div>
+        </div>
 
-      <Card
-        className={cn(
-          "overflow-hidden lg:h-full",
-          showThreadOnMobile ? "flex flex-col" : "hidden lg:flex lg:flex-col",
-          mobileMode === "thread"
-            ? "h-full rounded-xl border border-border bg-surface-soft shadow-sm sm:h-auto lg:h-full lg:bg-surface"
-            : undefined,
-        )}
-      >
-        <CardHeader className={cn("pb-3", whatsappMobileThread ? "border-b border-border bg-vega-surface-1" : "")}>
-          {selectedUser ? (
-            whatsappMobileThread ? (
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="h-9 w-9 shrink-0 rounded-full p-0"
-                  onClick={() => router.push(mobileBackHref)}
-                >
-                  <span aria-hidden="true">←</span>
-                  <span className="sr-only">Back to chats</span>
-                </Button>
-                <div className="min-w-0">
-                  <CardTitle className="truncate">{getDisplayName(selectedUser)}</CardTitle>
-                  <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-muted-foreground">
-                    {selectedUser.role.replaceAll("_", " ")}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle>{getDisplayName(selectedUser)}</CardTitle>
-                  <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                    {selectedUser.role.replaceAll("_", " ")}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => togglePinned(selectedUser._id)}
-                  >
-                    {selectedUserPinned ? "Unpin Chat" : "Pin Chat"}
-                  </Button>
-                  <Badge variant="accent">Signed in as {currentUserLabel}</Badge>
-                </div>
-              </div>
-            )
-          ) : (
-            <CardTitle>Choose a user to start chat</CardTitle>
-          )}
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden pt-0">
-          {errorMessage ? <p className="text-sm text-danger">{errorMessage}</p> : null}
+        <div className="min-h-0 flex-1 overflow-y-auto">{visibleUsers.length === 0 ? <p className="px-3 py-8 text-center text-sm text-vega-text-muted">No teammates match these filters.</p> : <>{pinnedUsers.length > 0 ? <div><p className="border-b border-vega-border-soft px-1 py-3 text-xs font-semibold uppercase text-vega-text-muted lg:px-4 lg:py-2 lg:text-[10px]">Pinned</p>{pinnedUsers.map(renderUserRow)}</div> : null}{recentUsers.length > 0 ? <div><p className="border-b border-vega-border-soft px-1 py-3 text-xs font-semibold uppercase text-vega-text-muted lg:px-4 lg:py-2 lg:text-[10px]">Recent</p>{recentUsers.map(renderUserRow)}</div> : null}</>}</div>
+        <div className="flex items-center justify-between border-t border-vega-border-soft px-1 py-4 text-xs text-vega-text-muted lg:px-4 lg:py-3 lg:text-[10px]"><span>{users.length} teammates<span className="lg:hidden"> / {totalUnreadCount} unread messages</span></span><button type="button" onClick={() => document.getElementById("chat-user-search")?.focus()} className="font-medium text-vega-purple lg:hidden">Find a teammate</button></div>
+      </section>
 
-          <div className={cn("flex flex-wrap items-center justify-between gap-2", whatsappMobileThread ? "hidden lg:flex" : "")}>
-            <Input
-              value={threadSearchValue}
-              onChange={(event) => setThreadSearchValue(event.target.value)}
-              placeholder="Search in current chat messages"
-              disabled={!selectedUser}
-              className="w-full flex-1 sm:min-w-[240px]"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setMessageLimit((previous) => Math.min(previous + 50, 200))}
-              disabled={!selectedUser || loadingMessages || !canLoadOlderMessages}
-            >
-              {canLoadOlderMessages ? (
-                <>
-                  <span className="sm:hidden">{`Older (${messageLimit}/200)`}</span>
-                  <span className="hidden sm:inline">{`Load Older (${messageLimit}/200)`}</span>
-                </>
-              ) : (
-                "History Full"
-              )}
-            </Button>
-          </div>
+      <section className={cn("min-h-0 overflow-hidden lg:flex lg:h-full lg:flex-col lg:rounded-lg lg:border lg:border-vega-border lg:bg-vega-surface-1", showThreadOnMobile ? "flex flex-col" : "hidden")}>
+        <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-vega-border-soft px-4 lg:h-[68px]">
+          {selectedUser ? <div className="flex min-w-0 items-center gap-3">{mobileThread ? <button type="button" onClick={() => router.push(mobileBackHref)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-vega-text-secondary hover:bg-vega-surface-hover" aria-label="Back to chats"><ArrowLeft className="h-5 w-5" aria-hidden="true" /></button> : null}<span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#29225f] text-sm font-semibold text-[#eee9ff]">{getUserInitial(selectedUser)}<span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-vega-surface-1 bg-[#2bd982]" aria-hidden="true" /></span><div className="min-w-0"><h2 className="truncate text-base font-semibold text-vega-text">{getDisplayName(selectedUser)}</h2><p className="truncate text-xs text-vega-text-muted">{formatRole(selectedUser.role)} / Online</p></div></div> : <h2 className="text-sm font-semibold text-vega-text">Choose a teammate</h2>}
+          <div className="flex items-center gap-1"><button type="button" onClick={() => setThreadSearchOpen((value) => !value)} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-vega-text-secondary hover:bg-vega-surface-hover" title="Search messages" aria-label="Search messages"><Search className="h-5 w-5" aria-hidden="true" /></button>{selectedUser ? <button type="button" onClick={() => togglePinned(selectedUser._id)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-vega-surface-hover", selectedUserPinned ? "text-vega-purple" : "text-vega-text-secondary")} title={selectedUserPinned ? "Unpin conversation" : "Pin conversation"} aria-label={selectedUserPinned ? "Unpin conversation" : "Pin conversation"}><Pin className={cn("h-4 w-4", selectedUserPinned && "fill-current")} aria-hidden="true" /></button> : null}<button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-vega-text-secondary hover:bg-vega-surface-hover" title="Conversation options" aria-label="Conversation options"><EllipsisVertical className="h-5 w-5" aria-hidden="true" /></button></div>
+        </header>
 
-          <div
-            className={cn(
-              "min-h-0 flex-1 space-y-2 overflow-y-auto p-3",
-              whatsappMobileThread
-                ? "rounded-none border-0 bg-surface-soft pb-2"
-                : "rounded-2xl border border-border bg-vega-surface-1",
-            )}
-          >
-            {!selectedUser ? (
-              <p className="text-sm text-muted-foreground">Select any user from left panel.</p>
-            ) : loadingMessages ? (
-              <p className="text-sm text-muted-foreground">Loading messages...</p>
-            ) : messages.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No messages yet. Start the conversation.
-              </p>
-            ) : filteredMessages.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No messages found for current thread search.
-              </p>
-            ) : (
-              filteredMessages.map((item) => {
-                const mine = userId(item.senderId) === currentUserId;
-                return (
-                  <div key={item._id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                    <div
-                      className={cn(
-                        "max-w-[82%] rounded-2xl px-3 py-2 shadow-sm",
-                        mine
-                          ? "border border-accent bg-accent text-white"
-                          : "border border-border bg-vega-surface-1 text-foreground",
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap text-sm leading-6">{item.message}</p>
-                      <p
-                        className={cn(
-                          "mt-1 text-[11px]",
-                          mine ? "text-white/85" : "text-muted-foreground",
-                        )}
-                      >
-                        {formatTimestamp(item.createdAt)}
-                        {mine ? ` | ${item.readAt ? "✓✓" : "✓"}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+        <div className={cn("items-center gap-2 border-b border-vega-border-soft px-4 py-2", threadSearchOpen ? "flex" : "hidden lg:flex")}><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vega-text-muted" aria-hidden="true" /><Input value={threadSearchValue} onChange={(event) => setThreadSearchValue(event.target.value)} placeholder="Search messages..." disabled={!selectedUser} className="h-9 pl-9" /></div></div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 lg:px-5">
+          {errorMessage ? <p className="mb-3 text-xs text-vega-red">{errorMessage}</p> : null}
+          {selectedUser && canLoadOlderMessages ? <button type="button" onClick={() => setMessageLimit((previous) => Math.min(previous + 50, 200))} disabled={loadingMessages} className="mx-auto mb-4 text-xs font-medium text-vega-purple hover:underline">View older messages</button> : null}
+          <div className="mb-5 flex items-center gap-4 text-xs text-vega-text-muted"><span className="h-px flex-1 bg-vega-border-soft" /><span className="rounded-full border border-vega-border-soft bg-vega-surface-2 px-4 py-1">Today</span><span className="h-px flex-1 bg-vega-border-soft" /></div>
+          <div className="space-y-3 lg:space-y-2.5">
+            {!selectedUser ? <div className="flex flex-col items-center justify-center py-16 text-center text-vega-text-muted"><MessageSquareMore className="mb-3 h-8 w-8" aria-hidden="true" /><p className="text-sm">Select a teammate to start chatting.</p></div> : loadingMessages ? <p className="py-12 text-center text-sm text-vega-text-muted">Loading messages...</p> : messages.length === 0 ? <p className="py-12 text-center text-sm text-vega-text-muted">No messages yet. Start the conversation.</p> : filteredMessages.length === 0 ? <p className="py-12 text-center text-sm text-vega-text-muted">No messages found.</p> : filteredMessages.map((item) => { const mine = userId(item.senderId) === currentUserId; return <div key={item._id} className={cn("flex items-start gap-3", mine ? "justify-end" : "justify-start")}>{!mine ? <span className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#29225f] text-xs font-semibold text-[#eee9ff]">{selectedUser ? getUserInitial(selectedUser) : "?"}</span> : null}<div className={cn("max-w-[78%] lg:max-w-[68%]", mine && "text-right")}><div className={cn("inline-block rounded-lg border px-3.5 py-2.5 text-left", mine ? "border-vega-purple bg-vega-purple text-white" : "border-vega-border-soft bg-[#1a283b] text-vega-text")}><p className="whitespace-pre-wrap text-sm leading-5">{item.message}</p></div><p className={cn("mt-1 flex items-center gap-1 text-[11px] text-vega-text-muted", mine ? "justify-end" : "justify-start")}>{formatTime(item.createdAt)}{mine ? <CheckCheck className={cn("h-3.5 w-3.5", item.readAt && "text-vega-purple")} aria-label={item.readAt ? "Read" : "Sent"} /> : null}</p></div></div>; })}
             <div ref={threadEndRef} />
           </div>
+        </div>
 
-          <form
-            onSubmit={sendMessage}
-            className={cn(
-              "sticky bottom-0 z-10 mt-auto pt-2",
-              whatsappMobileThread
-                ? "border-0 bg-surface px-2 pb-2"
-                : "border-t border-border bg-vega-surface-1",
-            )}
-          >
-            <div className="flex items-end gap-2">
-              <Textarea
-                value={draftMessage}
-                onChange={(event) => setDraftMessage(event.target.value)}
-                onKeyDown={handleDraftKeyDown}
-                placeholder={
-                  selectedUser
-                    ? `Message ${getDisplayName(selectedUser)}...`
-                    : "Select a user first"
-                }
-                disabled={!selectedUser || sending}
-                className={cn(
-                  "min-h-12 flex-1 resize-none",
-                  whatsappMobileThread
-                    ? "h-11 rounded-full bg-vega-surface-1 px-4 py-2 shadow-sm"
-                    : "h-12",
-                )}
-                maxLength={2000}
-              />
-              <Button
-                type="submit"
-                size="sm"
-                className={cn(
-                  "shrink-0 p-0",
-                  whatsappMobileThread
-                    ? "h-11 w-11 rounded-full border-0 bg-accent text-white hover:bg-accent-strong"
-                    : "h-12 w-12 rounded-xl",
-                )}
-                disabled={!selectedUser || sending || draftMessage.trim().length === 0}
-              >
-                <SendIcon />
-                <span className="sr-only">
-                  {sending ? "Sending message" : "Send message"}
-                </span>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <form onSubmit={sendMessage} className="shrink-0 border-t border-vega-border-soft bg-vega-surface-1 p-3 lg:px-4">
+          <span className="sr-only">Signed in as {currentUserLabel}</span>
+          <div className="flex items-center gap-2"><button type="button" disabled title="File attachments are not available" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-vega-text-muted opacity-70" aria-label="Attach file"><Paperclip className="h-5 w-5" aria-hidden="true" /></button><div className="relative min-w-0 flex-1"><Textarea value={draftMessage} onChange={(event) => setDraftMessage(event.target.value)} onKeyDown={handleDraftKeyDown} placeholder={selectedUser ? `Message ${getDisplayName(selectedUser)}...` : "Select a teammate first"} disabled={!selectedUser || sending} className="h-11 min-h-11 resize-none rounded-full py-3 pl-4 pr-11 text-sm lg:rounded-md" maxLength={2000} /><button type="button" onClick={() => setDraftMessage((value) => `${value}:) `)} disabled={!selectedUser || sending} className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-vega-text-muted hover:bg-vega-surface-hover" title="Add emoji" aria-label="Add emoji"><Laugh className="h-5 w-5" aria-hidden="true" /></button></div><button type="submit" disabled={!selectedUser || sending || !draftMessage.trim()} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-vega-purple text-white transition-colors hover:bg-vega-purple-strong disabled:cursor-not-allowed disabled:opacity-50 lg:rounded-md" aria-label={sending ? "Sending message" : "Send message"}><Send className="h-5 w-5" aria-hidden="true" /></button></div>
+          <p className="mt-2 hidden text-[10px] text-vega-text-muted lg:block">Enter to send / Shift + Enter for a new line</p>
+        </form>
+      </section>
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Upload, X } from "lucide-react";
+import { FileText, MoreVertical, Plus, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeadIntakeForms } from "@/components/leads/lead-intake-forms";
 import { cn } from "@/lib/utils/cn";
@@ -42,13 +42,26 @@ export function LeadIntakeLauncher() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="md" onClick={() => setOpenTab("bulk")}>
+        <Button variant="secondary" size="md" className="hidden sm:inline-flex" onClick={() => setOpenTab("bulk")}>
           <Upload className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
           Bulk Upload
         </Button>
-        <Button variant="primary" size="md" onClick={() => setOpenTab("create")}>
+        <Button variant="secondary" size="md" className="hidden sm:inline-flex" onClick={() => setOpenTab("bulk")}>
+          <FileText className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
+          Import (Excel)
+        </Button>
+        <Button variant="primary" size="lg" className="h-10 rounded-lg px-4 text-xs sm:h-[34px] sm:rounded-md sm:px-3 sm:text-xs" onClick={() => setOpenTab("create")}>
           <Plus className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
           Add Lead
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          className="h-10 w-10 rounded-lg px-0 sm:hidden"
+          onClick={() => setOpenTab("bulk")}
+          aria-label="More lead actions"
+        >
+          <MoreVertical className="h-5 w-5" aria-hidden="true" />
         </Button>
       </div>
 

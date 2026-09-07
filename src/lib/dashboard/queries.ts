@@ -71,7 +71,7 @@ export async function getLeads(options?: { limit?: number }) {
     // prospecting.* is projected narrowly on purpose - the list only needs
     // the tier and industry, not the enrichment payload.
     .select(
-      "title contactName source status updatedAt prospecting.industry prospecting.segment prospecting.prospectingStatus prospecting.classification.category",
+      "title contactName email phone source status category urgency score priorityBand createdAt updatedAt prospecting.industry prospecting.segment prospecting.prospectingStatus prospecting.classification.category",
     )
     .lean();
   return serializeForJson(leads);
@@ -253,4 +253,3 @@ export async function getClientQueries(options?: { limit?: number }) {
 
   return serializeForJson(queries);
 }
-

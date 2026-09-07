@@ -1,5 +1,5 @@
 import { UniversalChat } from "@/components/chat/universal-chat";
-import { BackButton } from "@/components/dashboard/back-button";
+import { ChatPageChrome } from "@/components/chat/chat-page-chrome";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { connectToDatabase } from "@/lib/db/mongodb";
@@ -33,15 +33,8 @@ export default async function ChatPage() {
   }>;
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-3">
-        <BackButton href="/dashboard" label="Dashboard" />
-        <div className="min-w-0">
-          <h1 className="text-base font-semibold leading-6 text-vega-text">Chat</h1>
-          <p className="text-[11px] text-vega-text-muted">Message anyone on the Vega team.</p>
-        </div>
-      </div>
-
+    <section>
+      <ChatPageChrome />
       <UniversalChat
         currentUserId={session.userId}
         currentUserLabel={session.fullName ?? session.email}

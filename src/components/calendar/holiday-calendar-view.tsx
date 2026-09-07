@@ -1,6 +1,17 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Bell,
+  CalendarCheck,
+  CalendarDays,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Plus,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,10 +54,33 @@ type HolidayViewProps = {
   holidays: IndiaHoliday[];
   initialLeaveData?: LeavePanelData | null;
   initialAttendanceData?: AttendanceCalendarMonthPayload | null;
+  followUps?: CalendarFollowUp[];
 };
 
 type HolidayWithDate = IndiaHoliday & {
   date: Date;
+};
+
+type CalendarLeadRef =
+  | string
+  | {
+      _id: string;
+      title?: string;
+      contactName?: string;
+      email?: string;
+      phone?: string;
+      status?: string;
+    }
+  | null;
+
+export type CalendarFollowUp = {
+  _id: string;
+  leadId: CalendarLeadRef;
+  status: string;
+  channel: string;
+  priority: string;
+  dueAt: string;
+  nextAction: string;
 };
 
 type LeaveDateEntry = {
@@ -61,6 +95,7 @@ type DayCell = {
   inCurrentMonth: boolean;
   isToday: boolean;
   holidays: HolidayWithDate[];
+  followUps: CalendarFollowUp[];
   leaveEntries: LeaveDateEntry[];
   attendanceStatus: AttendanceDayStatus | null;
 };
@@ -116,6 +151,39 @@ function toDateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function leadTitle(lead: CalendarLeadRef) {
+  if (!lead || typeof lead === "string") return "Unknown lead";
+  return lead.title || lead.contactName || "Untitled lead";
+}
+
+function leadIdValue(lead: CalendarLeadRef) {
+  if (!lead) return "";
+  return typeof lead === "string" ? lead : lead._id;
+}
+
+function formatFollowUpTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getFollowUpAccentClass(priority: string) {
+  if (priority === "urgent") return "border-danger/40 bg-danger/15 text-danger";
+  if (priority === "high") return "border-warning/45 bg-warning/15 text-warning";
+  if (priority === "medium") return "border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]";
+  return "border-success/35 bg-success/10 text-success";
+}
+
+function getFollowUpDotClass(priority: string) {
+  if (priority === "urgent") return "bg-danger";
+  if (priority === "high") return "bg-warning";
+  if (priority === "medium") return "bg-vega-purple";
+  return "bg-success";
 }
 
 function startOfMonth(date: Date) {
@@ -229,6 +297,7 @@ function toMonthKey(date: Date) {
 function buildMonthGrid(
   visibleMonth: Date,
   holidaysByDateKey: Map<string, HolidayWithDate[]>,
+  followUpsByDateKey: Map<string, CalendarFollowUp[]>,
   leaveByDateKey: Map<string, LeaveDateEntry[]>,
   attendanceByDateKey: Map<string, AttendanceCalendarDayRecord>,
 ) {
@@ -243,6 +312,7 @@ function buildMonthGrid(
     date.setDate(gridStart.getDate() + offset);
     const dateKey = toDateKey(date);
     const dayHolidays = holidaysByDateKey.get(dateKey) ?? [];
+    const dayFollowUps = followUpsByDateKey.get(dateKey) ?? [];
     const leaveEntries = leaveByDateKey.get(dateKey) ?? [];
     const attendanceStatus = attendanceByDateKey.get(dateKey)?.dayStatus ?? null;
 
@@ -252,6 +322,7 @@ function buildMonthGrid(
       inCurrentMonth: isSameMonth(date, currentMonthStart),
       isToday: dateKey === todayKey,
       holidays: dayHolidays,
+      followUps: dayFollowUps,
       leaveEntries,
       attendanceStatus,
     });
@@ -264,6 +335,7 @@ export function HolidayCalendarView({
   holidays,
   initialLeaveData = null,
   initialAttendanceData = null,
+  followUps = [],
 }: HolidayViewProps) {
   const holidayViews = useMemo<HolidayWithDate[]>(
     () =>
@@ -287,6 +359,23 @@ export function HolidayCalendarView({
 
     return map;
   }, [holidayViews]);
+
+  const followUpsByDateKey = useMemo(() => {
+    const map = new Map<string, CalendarFollowUp[]>();
+
+    for (const followUp of followUps) {
+      if (followUp.status !== "scheduled") continue;
+      const dueDate = new Date(followUp.dueAt);
+      if (Number.isNaN(dueDate.getTime())) continue;
+      const dateKey = toDateKey(dueDate);
+      const entries = map.get(dateKey) ?? [];
+      entries.push(followUp);
+      entries.sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime());
+      map.set(dateKey, entries);
+    }
+
+    return map;
+  }, [followUps]);
 
   const today = new Date();
   const firstHolidayDate = holidayViews[0]?.date ?? today;
@@ -363,26 +452,24 @@ export function HolidayCalendarView({
   }, [attendanceMonthData]);
 
   const monthCells = useMemo(
-    () => buildMonthGrid(visibleMonth, holidaysByDateKey, leaveByDateKey, attendanceByDateKey),
-    [visibleMonth, holidaysByDateKey, leaveByDateKey, attendanceByDateKey],
+    () =>
+      buildMonthGrid(
+        visibleMonth,
+        holidaysByDateKey,
+        followUpsByDateKey,
+        leaveByDateKey,
+        attendanceByDateKey,
+      ),
+    [visibleMonth, holidaysByDateKey, followUpsByDateKey, leaveByDateKey, attendanceByDateKey],
   );
 
   const selectedDate = useMemo(() => parseDateKey(selectedDateKey), [selectedDateKey]);
   const selectedDayHolidays = holidaysByDateKey.get(selectedDateKey) ?? [];
+  const selectedDayFollowUps = followUpsByDateKey.get(selectedDateKey) ?? [];
   const selectedDayLeaveEntries = useMemo(
     () => leaveByDateKey.get(selectedDateKey) ?? [],
     [leaveByDateKey, selectedDateKey],
   );
-
-  const selectedDayLeaveRequests = useMemo(() => {
-    if (!leaveData) {
-      return [] as LeaveRequestView[];
-    }
-    const requestById = new Map(leaveData.requests.map((request) => [request._id, request]));
-    return selectedDayLeaveEntries
-      .map((entry) => requestById.get(entry.requestId))
-      .filter((entry): entry is LeaveRequestView => Boolean(entry));
-  }, [leaveData, selectedDayLeaveEntries]);
 
   const selectedDayAttendanceStatus = attendanceByDateKey.get(selectedDateKey)?.dayStatus ?? null;
 
@@ -600,363 +687,401 @@ export function HolidayCalendarView({
     }
   };
 
+  const selectedDayAgendaCount =
+    selectedDayFollowUps.length +
+    selectedDayHolidays.length +
+    selectedDayLeaveEntries.length +
+    (selectedDayAttendanceStatus ? 1 : 0);
+
   return (
     <div className="space-y-4">
-      {supportsAttendance ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Leave Balance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-foreground">
-                {leaveData?.balance.availableDays ?? 0}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Available days</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Present Days</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-foreground">{attendanceSummary.presentDays}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{monthTitleFormatter.format(visibleMonth)}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Absent Days</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-foreground">{attendanceSummary.absentDays}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{monthTitleFormatter.format(visibleMonth)}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Half Days</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-foreground">{attendanceSummary.halfDays}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{monthTitleFormatter.format(visibleMonth)}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Late Coming</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-foreground">{attendanceSummary.lateComingDays}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{monthTitleFormatter.format(visibleMonth)}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Total Marked</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-foreground">{attendanceSummary.totalMarkedDays}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {attendanceLoading ? "Syncing attendance..." : "Attendance entries"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
       {attendanceNotice ? (
         <p className={attendanceNotice.tone === "error" ? "text-sm text-danger" : "text-sm text-success"}>
           {attendanceNotice.text}
         </p>
       ) : null}
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle>{monthTitleFormatter.format(visibleMonth)}</CardTitle>
-              <CardDescription>Google Calendar style month view</CardDescription>
-            </div>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="grid w-full grid-cols-4 rounded-lg border border-vega-border-soft bg-vega-surface-1 p-1 xl:inline-flex xl:w-fit xl:grid-cols-none">
+          {["Month", "Week", "Day", "List"].map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={cn(
+                "h-11 rounded-md px-5 text-base font-semibold text-vega-text-muted transition-colors xl:h-9 xl:text-sm",
+                item === "Month" ? "bg-vega-purple text-white shadow-sm" : "hover:bg-vega-surface-hover hover:text-vega-text",
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleVisibleMonthChange(addMonths(visibleMonth, -1))}
-              >
-                Prev
-              </Button>
-              <Button variant="subtle" size="sm" onClick={onPickToday}>
-                Today
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleVisibleMonthChange(addMonths(visibleMonth, 1))}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-12 w-12 px-0 xl:h-8 xl:w-auto xl:px-2.5"
+            onClick={() => handleVisibleMonthChange(addMonths(visibleMonth, -1))}
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Button variant="subtle" size="sm" className="h-12 px-6 text-base xl:h-8 xl:px-2.5 xl:text-xs" onClick={onPickToday}>
+            Today
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-12 w-12 px-0 xl:h-8 xl:w-auto xl:px-2.5"
+            onClick={() => handleVisibleMonthChange(addMonths(visibleMonth, 1))}
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Link
+            href="/meetings"
+            className="ml-auto inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-vega-purple px-5 text-base font-semibold text-white transition-colors hover:bg-vega-purple-strong xl:ml-0 xl:h-9 xl:rounded-md xl:px-4 xl:text-sm"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            <span className="xl:hidden">Event</span>
+            <span className="hidden xl:inline">Add Event</span>
+          </Link>
+        </div>
+      </div>
 
-        <CardContent className="p-0">
-          <div className="grid grid-cols-7 border-y border-border bg-[#f8fafc]">
-            {WEEKDAY_LABELS.map((day) => (
-              <div
-                key={day}
-                className="px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="text-2xl">{monthTitleFormatter.format(visibleMonth)}</CardTitle>
+          </CardHeader>
 
-          <div className="grid grid-cols-7">
-            {monthCells.map((cell) => {
-              const isSelected = cell.dateKey === selectedDateKey;
-              const isRangeStart = activeRangeStartKey === cell.dateKey;
-              const isRangeEnd = activeRangeEndKey === cell.dateKey;
-              const isInSelectedRange =
-                activeRangeStartKey && activeRangeEndKey
-                  ? isDateWithinRange(cell.dateKey, activeRangeStartKey, activeRangeEndKey)
-                  : false;
-              const visibleHolidayItems = cell.holidays.slice(0, 2);
-              const visibleLeaveItems = cell.leaveEntries.slice(0, 1);
-              const attendanceStatusBadge = cell.attendanceStatus
-                ? getAttendanceStatusBadge(cell.attendanceStatus)
-                : null;
-              const moreCount =
-                cell.holidays.length +
-                cell.leaveEntries.length -
-                visibleHolidayItems.length -
-                visibleLeaveItems.length -
-                (attendanceStatusBadge ? 1 : 0);
-
-              return (
-                <button
-                  key={cell.dateKey}
-                  type="button"
-                  onClick={() => handleCalendarDateClick(cell.dateKey, cell.date)}
-                  className={cn(
-                    "min-h-[96px] border-b border-r border-border p-1.5 text-left transition-colors md:min-h-[112px] md:p-2",
-                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
-                    cell.inCurrentMonth ? "bg-vega-surface-1" : "bg-[#fafafa] text-muted-foreground/80",
-                    isInSelectedRange && !isSelected ? "bg-accent/5" : null,
-                    isSelected ? "bg-accent/10" : "hover:bg-surface-soft",
-                  )}
+          <CardContent className="p-0">
+            <div className="grid grid-cols-7 border-b border-border bg-vega-surface-2">
+              {WEEKDAY_LABELS.map((day) => (
+                <div
+                  key={day}
+                  className="px-2 py-3 text-center text-base font-semibold text-vega-text-muted xl:text-xs"
                 >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
-                        cell.isToday ? "bg-accent text-white" : "text-foreground",
-                        isRangeStart || isRangeEnd ? "bg-accent text-white" : null,
-                        !cell.inCurrentMonth && !cell.isToday ? "text-muted-foreground" : null,
-                      )}
-                    >
-                      {cell.date.getDate()}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {cell.holidays.length > 0 ? (
-                        <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
-                      ) : null}
-                      {cell.leaveEntries.length > 0 ? (
-                        <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-                      ) : null}
-                      {attendanceStatusBadge ? (
-                        <span
-                          className={cn(
-                            "h-2 w-2 rounded-full",
-                            attendanceStatusBadge.variant === "success" && "bg-success",
-                            attendanceStatusBadge.variant === "danger" && "bg-danger",
-                            attendanceStatusBadge.variant === "warning" && "bg-warning",
-                            attendanceStatusBadge.variant === "accent" && "bg-accent",
-                          )}
-                          aria-hidden="true"
-                        />
-                      ) : null}
-                    </div>
-                  </div>
+                  <span className="xl:hidden">{day[0]}</span>
+                  <span className="hidden xl:inline">{day}</span>
+                </div>
+              ))}
+            </div>
 
-                  <div className="mt-1 space-y-1">
-                    {visibleHolidayItems.map((holiday) => (
-                      <p
-                        key={holiday.id}
+            <div className="grid grid-cols-7">
+              {monthCells.map((cell) => {
+                const isSelected = cell.dateKey === selectedDateKey;
+                const isRangeStart = activeRangeStartKey === cell.dateKey;
+                const isRangeEnd = activeRangeEndKey === cell.dateKey;
+                const isInSelectedRange =
+                  activeRangeStartKey && activeRangeEndKey
+                    ? isDateWithinRange(cell.dateKey, activeRangeStartKey, activeRangeEndKey)
+                    : false;
+                const visibleHolidayItems = cell.holidays.slice(0, 1);
+                const visibleFollowUpItems = cell.followUps.slice(0, 2);
+                const visibleLeaveItems = cell.leaveEntries.slice(0, 1);
+                const attendanceStatusBadge = cell.attendanceStatus
+                  ? getAttendanceStatusBadge(cell.attendanceStatus)
+                  : null;
+                const moreCount =
+                  cell.holidays.length +
+                  cell.followUps.length +
+                  cell.leaveEntries.length -
+                  visibleHolidayItems.length -
+                  visibleFollowUpItems.length -
+                  visibleLeaveItems.length -
+                  (attendanceStatusBadge ? 1 : 0);
+
+                return (
+                  <button
+                    key={cell.dateKey}
+                    type="button"
+                    onClick={() => handleCalendarDateClick(cell.dateKey, cell.date)}
+                    className={cn(
+                      "min-h-[62px] border-b border-r border-border p-1.5 text-center transition-colors sm:min-h-[78px] xl:min-h-[104px] xl:p-2 xl:text-left 2xl:min-h-[118px]",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
+                      cell.inCurrentMonth ? "bg-vega-surface-1" : "bg-vega-surface-2/60 text-vega-text-dim",
+                      isInSelectedRange && !isSelected ? "bg-vega-purple-soft/50" : null,
+                      isSelected ? "bg-vega-purple-soft ring-1 ring-inset ring-vega-purple-border" : "hover:bg-vega-surface-hover",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
                         className={cn(
-                          "truncate rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                          holiday.category === "national"
-                            ? "border border-[#c7d5e2] bg-[#ecf2f7] text-[#274d6f]"
-                            : "border border-[#e8d7b8] bg-[#fbf6eb] text-[#8a5a1f]",
+                          "inline-flex h-10 w-10 items-center justify-center rounded-full text-lg font-semibold xl:h-7 xl:w-7 xl:text-sm",
+                          cell.isToday ? "bg-vega-purple text-white" : "text-vega-text",
+                          isRangeStart || isRangeEnd ? "bg-vega-purple text-white" : null,
+                          !cell.inCurrentMonth && !cell.isToday ? "text-vega-text-dim" : null,
                         )}
                       >
-                        {holiday.name}
-                      </p>
-                    ))}
+                        {cell.date.getDate()}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {cell.holidays.length > 0 ? (
+                          <span className="h-2 w-2 rounded-full bg-pink-400" aria-hidden="true" />
+                        ) : null}
+                        {cell.followUps.length > 0 ? (
+                          <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
+                        ) : null}
+                        {cell.leaveEntries.length > 0 ? (
+                          <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
+                        ) : null}
+                        {attendanceStatusBadge ? (
+                          <span
+                            className={cn(
+                              "h-2 w-2 rounded-full",
+                              attendanceStatusBadge.variant === "success" && "bg-success",
+                              attendanceStatusBadge.variant === "danger" && "bg-danger",
+                              attendanceStatusBadge.variant === "warning" && "bg-warning",
+                              attendanceStatusBadge.variant === "accent" && "bg-accent",
+                            )}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </div>
+                    </div>
 
-                    {visibleLeaveItems.map((entry, index) => {
-                      const status = getLeaveStatusBadge(entry.status);
-                      return (
+                    <div className="mt-1 flex justify-center gap-1 xl:hidden">
+                      {cell.holidays.length > 0 ? <span className="h-2 w-2 rounded-full bg-pink-400" /> : null}
+                      {cell.followUps.length > 0 ? <span className="h-2 w-2 rounded-full bg-success" /> : null}
+                      {cell.leaveEntries.length > 0 || attendanceStatusBadge ? <span className="h-2 w-2 rounded-full bg-vega-purple" /> : null}
+                    </div>
+
+                    <div className="mt-2 hidden space-y-1 xl:block">
+                      {visibleHolidayItems.map((holiday) => (
                         <p
-                          key={`${entry.requestId}-${entry.status}-${index}`}
+                          key={holiday.id}
+                          className="truncate rounded border border-warning/30 bg-warning/15 px-1.5 py-1 text-[10px] font-semibold text-warning"
+                        >
+                          {holiday.name}
+                        </p>
+                      ))}
+
+                      {visibleFollowUpItems.map((followUp) => (
+                        <p
+                          key={followUp._id}
                           className={cn(
-                            "truncate rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                            getLeaveStatusPillClass(entry.status),
+                            "truncate rounded border px-1.5 py-1 text-[10px] font-semibold",
+                            getFollowUpAccentClass(followUp.priority),
+                          )}
+                          title={`${formatFollowUpTime(followUp.dueAt)} ${leadTitle(followUp.leadId)} - ${followUp.nextAction}`}
+                        >
+                          {formatFollowUpTime(followUp.dueAt)} {leadTitle(followUp.leadId)}
+                        </p>
+                      ))}
+
+                      {visibleLeaveItems.map((entry, index) => {
+                        const status = getLeaveStatusBadge(entry.status);
+                        return (
+                          <p
+                            key={`${entry.requestId}-${entry.status}-${index}`}
+                            className={cn(
+                              "truncate rounded px-1.5 py-1 text-[10px] font-semibold",
+                              getLeaveStatusPillClass(entry.status),
+                            )}
+                          >
+                            Leave {status.label}
+                          </p>
+                        );
+                      })}
+
+                      {attendanceStatusBadge && cell.attendanceStatus ? (
+                        <p
+                          className={cn(
+                            "truncate rounded px-1.5 py-1 text-[10px] font-semibold",
+                            getAttendanceStatusPillClass(cell.attendanceStatus),
                           )}
                         >
-                          Leave {status.label}
+                          {attendanceStatusBadge.label}
                         </p>
-                      );
-                    })}
+                      ) : null}
 
-                    {attendanceStatusBadge && cell.attendanceStatus ? (
-                      <p
-                        className={cn(
-                          "truncate rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                          getAttendanceStatusPillClass(cell.attendanceStatus),
-                        )}
-                      >
-                        {attendanceStatusBadge.label}
-                      </p>
-                    ) : null}
-
-                    {moreCount > 0 ? (
-                      <p className="text-[10px] font-semibold text-muted-foreground">+{moreCount} more</p>
-                    ) : null}
-                  </div>
-                </button>
-              );
-            })}
+                      {moreCount > 0 ? (
+                        <p className="text-[10px] font-semibold text-muted-foreground">+{moreCount} more</p>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+          <div className="flex gap-5 border-t border-border px-4 py-3 text-sm text-vega-text-muted xl:hidden">
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-vega-purple" />Meetings</span>
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-warning" />Calls</span>
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-success" />Follow-ups</span>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>{fullDateFormatter.format(selectedDate)}</CardTitle>
-            <CardDescription>{weekdayFormatter.format(selectedDate)}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {selectedDayHolidays.length === 0 ? (
-              <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
-                No holiday on this date.
-              </p>
-            ) : (
-              selectedDayHolidays.map((holiday) => (
-                <div
-                  key={holiday.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-vega-surface-1 p-3"
-                >
-                  <p className="text-sm font-semibold text-foreground">{holiday.name}</p>
-                  <div className="flex items-center gap-2">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="border-b border-border pb-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardDescription>{weekdayFormatter.format(selectedDate)}</CardDescription>
+                  <CardTitle className="mt-1 text-xl">{fullDateFormatter.format(selectedDate)}</CardTitle>
+                </div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-vega-surface-1 text-vega-text-muted">
+                  <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-vega-text">Selected Day Events</p>
+                <span className="text-xs font-semibold text-[#c4b5fd]">{selectedDayAgendaCount} total</span>
+              </div>
+
+              {selectedDayFollowUps.map((followUp) => {
+                const leadId = leadIdValue(followUp.leadId);
+
+                return (
+                  <div
+                    key={followUp._id}
+                    className="rounded-md border border-border bg-vega-surface-1 p-3"
+                  >
+                    <div className="flex gap-3">
+                      <span
+                        className={cn("mt-1 h-3 w-3 shrink-0 rounded-full", getFollowUpDotClass(followUp.priority))}
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-vega-text">
+                          {leadId ? (
+                            <Link href={`/leads/${leadId}`} className="hover:text-accent hover:underline">
+                              {leadTitle(followUp.leadId)}
+                            </Link>
+                          ) : (
+                            leadTitle(followUp.leadId)
+                          )}
+                        </p>
+                        <p className="mt-1 text-xs text-vega-text-muted">
+                          {formatFollowUpTime(followUp.dueAt)} - {followUp.nextAction}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Badge variant="accent">{followUp.channel}</Badge>
+                          <Badge variant={followUp.priority === "urgent" ? "danger" : "warning"}>
+                            {followUp.priority}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Link
+                        href={leadId ? `/leads/${leadId}` : "/leads"}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-vega-surface-2 text-vega-text-muted transition-colors hover:border-vega-purple-border hover:text-vega-text"
+                        aria-label="Open lead"
+                      >
+                        <Phone className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {selectedDayFollowUps.length === 0 ? (
+                <div className="rounded-md border border-border bg-vega-surface-1 p-6 text-center">
+                  <CalendarCheck className="mx-auto h-8 w-8 text-vega-text-dim" aria-hidden="true" />
+                  <p className="mt-3 text-sm font-medium text-vega-text-muted">No scheduled follow-ups</p>
+                </div>
+              ) : null}
+
+              {selectedDayHolidays.map((holiday) => (
+                <div key={holiday.id} className="rounded-md border border-border bg-vega-surface-1 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-vega-text">{holiday.name}</p>
                     <Badge variant={holiday.category === "national" ? "accent" : "warning"}>
                       {holiday.category === "national" ? "National" : "Festival"}
                     </Badge>
-                    {holiday.isTentative ? <Badge variant="neutral">Tentative</Badge> : null}
                   </div>
                 </div>
-              ))
-            )}
+              ))}
 
-            {supportsAttendance ? (
-              selectedDayAttendanceStatus ? (
-                <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
+              {supportsAttendance && selectedDayAttendanceStatus ? (
+                <div className="rounded-md border border-border bg-vega-surface-1 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground">Attendance Status</p>
+                    <p className="text-sm font-semibold text-vega-text">Attendance</p>
                     <Badge variant={getAttendanceStatusBadge(selectedDayAttendanceStatus).variant}>
                       {getAttendanceStatusBadge(selectedDayAttendanceStatus).label}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Marked for {selectedDateKey}
-                  </p>
                 </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="border-b border-border pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Holidays This Month</CardTitle>
+                <span className="text-xs font-semibold text-[#c4b5fd]">{visibleMonthHolidays.length}</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-4">
+              {visibleMonthHolidays.length === 0 ? (
+                <p className="rounded-md border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
+                  No listed holidays in this month.
+                </p>
               ) : (
-                <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
-                  Attendance status not marked for this date.
-                </p>
-              )
-            ) : null}
-
-            {supportsLeaveApply ? (
-              <>
-                <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Your leave status on selected date
-                </p>
-                {selectedDayLeaveRequests.length === 0 ? (
-                  <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
-                    No leave mapped on this date.
-                  </p>
-                ) : (
-                  selectedDayLeaveRequests.map((request) => {
-                    const status = getLeaveStatusBadge(request.status);
-                    const canCancel = request.status === "pending";
-
-                    return (
-                      <div key={request._id} className="rounded-lg border border-border bg-vega-surface-1 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {request.leaveType} leave ({request.totalDays} day{request.totalDays > 1 ? "s" : ""})
-                          </p>
-                          <Badge variant={status.variant}>{status.label}</Badge>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {request.startDateKey} to {request.endDateKey}
-                        </p>
-                        {canCancel ? (
-                          <Button
-                            className="mt-2"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void cancelLeaveRequest(request._id)}
-                            disabled={leaveActionLoading !== null || leaveLoading}
-                          >
-                            {leaveActionLoading === `cancel-${request._id}` ? "Cancelling..." : "Cancel"}
-                          </Button>
-                        ) : null}
-                      </div>
-                    );
-                  })
-                )}
-              </>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Holidays This Month</CardTitle>
-            <CardDescription>{monthTitleFormatter.format(visibleMonth)}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {visibleMonthHolidays.length === 0 ? (
-              <p className="rounded-lg border border-border bg-vega-surface-1 p-3 text-sm text-muted-foreground">
-                No listed holidays in this month.
-              </p>
-            ) : (
-              visibleMonthHolidays.map((holiday) => (
-                <div key={holiday.id} className="rounded-lg border border-border bg-vega-surface-1 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-foreground">{holiday.name}</p>
-                    <Badge variant={holiday.category === "national" ? "accent" : "warning"}>
-                      {holiday.category === "national" ? "National" : "Festival"}
-                    </Badge>
+                visibleMonthHolidays.slice(0, 4).map((holiday) => (
+                  <div key={holiday.id} className="rounded-md border border-border bg-vega-surface-1 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground">{holiday.name}</p>
+                      <Badge variant={holiday.category === "national" ? "accent" : "warning"}>
+                        {holiday.category === "national" ? "National" : "Festival"}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{fullDateFormatter.format(holiday.date)}</p>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{fullDateFormatter.format(holiday.date)}</p>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2">
+              <Link href="/meetings" className="rounded-md border border-blue-400/30 bg-blue-500/20 p-3 text-center text-xs font-semibold text-blue-100">
+                <CalendarDays className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
+                Add Meeting
+              </Link>
+              <Link href="/calendar" className="rounded-md border border-success/30 bg-success/15 p-3 text-center text-xs font-semibold text-success">
+                <CalendarCheck className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
+                Add Holiday
+              </Link>
+              <Link href="/leads" className="rounded-md border border-vega-purple-border bg-vega-purple-soft p-3 text-center text-xs font-semibold text-[#c4b5fd]">
+                <Bell className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
+                Set Reminder
+              </Link>
+              <Link href="/tasks" className="rounded-md border border-warning/30 bg-warning/15 p-3 text-center text-xs font-semibold text-warning">
+                <CheckSquare className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
+                Create Task
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {supportsAttendance ? (
+        <Card>
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-6">
+            {[
+              ["Leave Balance", leaveData?.balance.availableDays ?? 0, "Available days"],
+              ["Present Days", attendanceSummary.presentDays, monthTitleFormatter.format(visibleMonth)],
+              ["Absent Days", attendanceSummary.absentDays, monthTitleFormatter.format(visibleMonth)],
+              ["Half Days", attendanceSummary.halfDays, monthTitleFormatter.format(visibleMonth)],
+              ["Late Coming", attendanceSummary.lateComingDays, monthTitleFormatter.format(visibleMonth)],
+              ["Total Marked", attendanceSummary.totalMarkedDays, attendanceLoading ? "Syncing..." : "Entries"],
+            ].map(([label, value, hint]) => (
+              <div key={label} className="rounded-md border border-border bg-vega-surface-1 p-3">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
-
-      </div>
+      ) : null}
 
       {supportsLeaveApply ? (
         <div className="grid gap-4 lg:grid-cols-2">

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { UniversalChat } from "@/components/chat/universal-chat";
-import { BackButton } from "@/components/dashboard/back-button";
+import { ChatPageChrome } from "@/components/chat/chat-page-chrome";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { connectToDatabase } from "@/lib/db/mongodb";
@@ -41,23 +41,9 @@ export default async function ChatConversationPage({ params }: { params: Params 
     notFound();
   }
 
-  const target = initialUsers.find((item) => item._id === userId);
-
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-3">
-        {/* An explicit href, not history: this route is deep-linkable and may open in a fresh tab. */}
-        <BackButton href="/chat" label="All chats" />
-        <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold leading-6 text-vega-text">
-            {target?.fullName ?? "Conversation"}
-          </h1>
-          <p className="text-[11px] capitalize text-vega-text-muted">
-            {(target?.role ?? "").replaceAll("_", " ")}
-          </p>
-        </div>
-      </div>
-
+    <section>
+      <ChatPageChrome thread />
       <UniversalChat
         currentUserId={session.userId}
         currentUserLabel={session.fullName ?? session.email}

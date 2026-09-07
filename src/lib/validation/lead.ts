@@ -13,11 +13,17 @@ export const leadSourceValues = [
 export const leadStatusValues = [
   "new",
   "contacted",
+  "not_picking_call",
+  "call_back_later",
+  "follow_up",
+  "interested",
+  "not_interested",
   "qualified",
   "proposal_sent",
   "negotiation",
   "closed_won",
   "closed_lost",
+  "wrong_number",
   "invalid",
 ] as const;
 

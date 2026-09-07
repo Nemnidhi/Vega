@@ -1,41 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Bell, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, CircleMinus, Clock3, Download, FileText, Filter, MapPin, Pencil, RefreshCw, Search, Settings, UserRound, UsersRound, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import type {
-  AdminLeavePayload,
-  AdminLeaveRequestRecord,
-  AdminDailyAttendanceRecord,
-  AdminMonthlyAttendancePayload,
-  AttendanceDayStatus,
-  AttendanceStaffUser,
-} from "@/lib/attendance/queries";
+import { Textarea } from "@/components/ui/textarea";
+import type { AdminDailyAttendanceRecord, AdminLeavePayload, AdminLeaveRequestRecord, AdminMonthlyAttendancePayload, AttendanceDayStatus, AttendanceStaffUser } from "@/lib/attendance/queries";
 import type { AttendanceGeofenceSettingsPayload } from "@/lib/attendance/geofence";
+import { cn } from "@/lib/utils/cn";
 
-type ApiResponse = {
-  success: boolean;
-  data?: unknown;
-  error?: {
-    message?: string;
-  };
-};
-
-type Notice = {
-  tone: "success" | "error";
-  text: string;
-};
-
-type AttendanceMarkStatus = AttendanceDayStatus;
-type AttendanceGridDisplayStatus = AttendanceDayStatus | "weekend_off";
+type ApiResponse = { success: boolean; data?: unknown; error?: { message?: string } };
+type Notice = { tone: "success" | "error"; text: string };
+type AttendanceView = "daily" | "monthly" | "leave";
+type GridStatus = AttendanceDayStatus | "weekend_off";
 
 interface AttendanceAdminDeskProps {
   initialDailyDateKey: string;
@@ -45,144 +23,81 @@ interface AttendanceAdminDeskProps {
   initialMonthlyData: AdminMonthlyAttendancePayload;
   initialGeofenceSettings: AttendanceGeofenceSettingsPayload | null;
   staffUsers: AttendanceStaffUser[];
+  userLabel: string;
+  userRole: string;
 }
 
-function formatDateFromKey(dateKey?: string) {
-  if (!dateKey) {
-    return "--";
-  }
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
+const panel = "rounded-lg border border-vega-border bg-vega-surface-1";
+const select = "h-[38px] w-full rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs text-vega-text outline-none focus:border-vega-purple/70";
+const parseDate = (key: string) => new Date(`${key}T00:00:00`);
 
-function formatTime(value?: string | null) {
-  if (!value) {
-    return "--";
-  }
-  return new Date(value).toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function dateLabel(key?: string, long = false) {
+  if (!key) return "--";
+  return parseDate(key).toLocaleDateString("en-IN", { weekday: long ? "long" : undefined, day: long ? "numeric" : "2-digit", month: long ? "long" : "short", year: "numeric" });
 }
-
-function formatMonthFromKey(monthKey?: string) {
-  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) {
-    return "--";
-  }
-  return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
+function shortDate(key?: string) {
+  if (!key) return "--";
+  return parseDate(key).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
-
-function formatMinutesAsHours(minutes: number) {
-  if (!Number.isFinite(minutes) || minutes <= 0) {
-    return "0h 00m";
-  }
-  const wholeHours = Math.floor(minutes / 60);
-  const remainderMinutes = minutes % 60;
-  return `${wholeHours}h ${String(remainderMinutes).padStart(2, "0")}m`;
+function timeLabel(value?: string | null) {
+  return value ? new Date(value).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "--";
 }
-
-function statusBadge(status: string) {
-  if (status === "present") {
-    return { label: status, variant: "success" as const };
-  }
-  if (status === "absent") {
-    return { label: status, variant: "danger" as const };
-  }
-  if (status === "half_day") {
-    return { label: "half day", variant: "warning" as const };
-  }
-  if (status === "late_coming") {
-    return { label: "late coming", variant: "accent" as const };
-  }
-  return { label: status, variant: "accent" as const };
+function monthLabel(key?: string) {
+  return key && /^\d{4}-\d{2}$/.test(key) ? parseDate(`${key}-01`).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "--";
 }
-
-function leaveStatusBadge(status: string) {
-  if (status === "approved") {
-    return { label: "Approved", variant: "success" as const };
-  }
-  if (status === "pending") {
-    return { label: "Pending", variant: "warning" as const };
-  }
-  if (status === "rejected") {
-    return { label: "Rejected", variant: "danger" as const };
-  }
+function workLabel(minutes = 0) {
+  return minutes > 0 ? `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m` : "--";
+}
+function shiftDate(key: string, amount: number) {
+  const value = parseDate(key); value.setDate(value.getDate() + amount);
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+function shiftMonth(key: string, amount: number) {
+  const value = parseDate(`${key}-01`); value.setMonth(value.getMonth() + amount);
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+}
+function monthDates(key: string) {
+  if (!/^\d{4}-\d{2}$/.test(key)) return [];
+  const [year, month] = key.split("-").map(Number);
+  return Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => `${key}-${String(index + 1).padStart(2, "0")}`);
+}
+function isWeekend(key: string) { const day = parseDate(key).getDay(); return day === 0 || day === 6; }
+function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
+function titleCase(value: string) { return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+function statusSymbol(status?: GridStatus) { return status === "present" ? "P" : status === "absent" ? "A" : status === "half_day" ? "H" : status === "late_coming" ? "L" : status === "weekend_off" ? "W" : "-"; }
+function statusClass(status?: GridStatus) {
+  if (status === "present") return "bg-vega-green-soft text-[#66dc91]";
+  if (status === "absent") return "bg-vega-red-soft text-vega-red";
+  if (status === "half_day") return "bg-vega-yellow-soft text-vega-yellow";
+  if (status === "late_coming") return "bg-vega-purple-soft text-[#b794f8]";
+  if (status === "weekend_off") return "bg-[#17273a] text-[#b7c7df]";
+  return "text-vega-text-muted";
+}
+function attendanceBadge(status?: AttendanceDayStatus) {
+  if (status === "present") return { label: "Present", variant: "success" as const };
+  if (status === "absent") return { label: "Absent", variant: "danger" as const };
+  if (status === "half_day") return { label: "Half day", variant: "warning" as const };
+  if (status === "late_coming") return { label: "Late", variant: "accent" as const };
+  return { label: "Not marked", variant: "neutral" as const };
+}
+function leaveBadge(status: AdminLeaveRequestRecord["status"]) {
+  if (status === "approved") return { label: "Approved", variant: "success" as const };
+  if (status === "pending") return { label: "Pending", variant: "warning" as const };
+  if (status === "rejected") return { label: "Rejected", variant: "danger" as const };
   return { label: "Cancelled", variant: "neutral" as const };
 }
 
-function formatLeaveType(value: string) {
-  return value.replaceAll("_", " ");
+function Avatar({ name, index = 0, large = false }: { name: string; index?: number; large?: boolean }) {
+  const colors = ["bg-[#4338a5]", "bg-[#2563a8]", "bg-[#147a6b]", "bg-[#8b3f75]", "bg-[#8a6423]"];
+  return <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white", colors[index % colors.length], large ? "h-11 w-11 text-sm" : "h-8 w-8 text-[11px]")}>{initials(name)}</span>;
+}
+function Metric({ icon: Icon, label, value, tone = "blue" }: { icon: typeof UsersRound; label: string; value: number; tone?: "blue" | "green" | "purple" | "red" | "neutral" }) {
+  const color = { blue: "bg-vega-blue-soft text-[#5da2ff]", green: "bg-vega-green-soft text-[#55df89]", purple: "bg-vega-purple-soft text-[#a875ff]", red: "bg-vega-red-soft text-[#ff6872]", neutral: "bg-[#172536] text-[#b8c8dc]" }[tone];
+  return <div className={cn(panel, "flex min-h-[74px] items-center gap-3 px-4 py-3")}><span className={cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full", color)}><Icon className="h-5 w-5" strokeWidth={1.8} /></span><div><p className="text-[11px] text-vega-text-muted">{label}</p><p className="mt-0.5 text-xl font-semibold leading-none text-vega-text">{value}</p></div></div>;
 }
 
-function isWeekendDateKey(dateKey: string) {
-  const dayOfWeek = new Date(`${dateKey}T00:00:00`).getDay();
-  return dayOfWeek === 0 || dayOfWeek === 6;
-}
-
-function getStatusSymbol(status?: AttendanceGridDisplayStatus) {
-  if (status === "present") return "P";
-  if (status === "absent") return "A";
-  if (status === "half_day") return "H";
-  if (status === "late_coming") return "L";
-  if (status === "weekend_off") return "W";
-  return "-";
-}
-
-function getStatusSymbolClass(status?: AttendanceGridDisplayStatus) {
-  if (status === "present") {
-    return "bg-success/15 text-success";
-  }
-  if (status === "absent") {
-    return "bg-danger/15 text-danger";
-  }
-  if (status === "half_day") {
-    return "bg-warning/15 text-warning";
-  }
-  if (status === "late_coming") {
-    return "bg-accent/15 text-accent";
-  }
-  if (status === "weekend_off") {
-    return "bg-primary/10 text-primary";
-  }
-  return "bg-muted text-muted-foreground";
-}
-
-function buildMonthDateKeys(monthKey: string) {
-  if (!/^\d{4}-\d{2}$/.test(monthKey)) {
-    return [] as string[];
-  }
-
-  const [yearPart, monthPart] = monthKey.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-
-  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return [] as string[];
-  }
-
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  return Array.from({ length: daysInMonth }, (_, dayIndex) => {
-    const day = String(dayIndex + 1).padStart(2, "0");
-    return `${monthKey}-${day}`;
-  });
-}
-
-export function AttendanceAdminDesk({
-  initialDailyDateKey,
-  initialDailyRecords,
-  initialLeaveData,
-  initialMonthKey,
-  initialMonthlyData,
-  initialGeofenceSettings,
-  staffUsers,
-}: AttendanceAdminDeskProps) {
+export function AttendanceAdminDesk({ initialDailyDateKey, initialDailyRecords, initialLeaveData, initialMonthKey, initialMonthlyData, initialGeofenceSettings, staffUsers, userLabel, userRole }: AttendanceAdminDeskProps) {
+  const [activeView, setActiveView] = useState<AttendanceView>("daily");
   const [dailyDateKey, setDailyDateKey] = useState(initialDailyDateKey);
   const [dailyRecords, setDailyRecords] = useState(initialDailyRecords);
   const [leaveData, setLeaveData] = useState(initialLeaveData);
@@ -190,736 +105,132 @@ export function AttendanceAdminDesk({
   const [monthlyData, setMonthlyData] = useState(initialMonthlyData);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [dailySearch, setDailySearch] = useState("");
+  const [dailyStatus, setDailyStatus] = useState("all");
+  const [leaveSearch, setLeaveSearch] = useState("");
+  const [leaveStatus, setLeaveStatus] = useState("all");
+  const [leaveType, setLeaveType] = useState("all");
+  const [selectedLeaveId, setSelectedLeaveId] = useState(initialLeaveData.requests[0]?._id ?? "");
+  const [visibleLeaveCount, setVisibleLeaveCount] = useState(4);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
-  const [geofenceForm, setGeofenceForm] = useState({
-    officeLatitude: initialGeofenceSettings?.officeLatitude?.toString() ?? "",
-    officeLongitude: initialGeofenceSettings?.officeLongitude?.toString() ?? "",
-    officeRadiusMeters: (initialGeofenceSettings?.officeRadiusMeters ?? 200).toString(),
-  });
-  const [markForm, setMarkForm] = useState({
-    userId: staffUsers[0]?._id ?? "",
-    dateKey: initialDailyDateKey,
-    dayStatus: "present" as AttendanceMarkStatus,
-  });
+  const [selectedMonthlyUserId, setSelectedMonthlyUserId] = useState(initialMonthlyData.rows[0]?.user._id ?? "");
+  const [selectedMonthDateKey, setSelectedMonthDateKey] = useState(initialDailyDateKey.startsWith(initialMonthKey) ? initialDailyDateKey : `${initialMonthKey}-01`);
+  const [mobileMarkOpen, setMobileMarkOpen] = useState(false);
+  const [officeSettingsOpen, setOfficeSettingsOpen] = useState(false);
+  const [geofenceForm, setGeofenceForm] = useState({ officeLatitude: initialGeofenceSettings?.officeLatitude?.toString() ?? "", officeLongitude: initialGeofenceSettings?.officeLongitude?.toString() ?? "", officeRadiusMeters: (initialGeofenceSettings?.officeRadiusMeters ?? 200).toString() });
+  const [markForm, setMarkForm] = useState({ userId: staffUsers[0]?._id ?? "", dateKey: initialDailyDateKey, dayStatus: "present" as AttendanceDayStatus });
 
-  async function loadDailyRecords(dateKey: string) {
-    const response = await fetch(`/api/attendance/admin/daily?dateKey=${dateKey}`, {
-      method: "GET",
-      cache: "no-store",
-    });
+  async function loadDaily(dateKey: string) {
+    const response = await fetch(`/api/attendance/admin/daily?dateKey=${dateKey}`, { cache: "no-store" });
     const payload = (await response.json()) as ApiResponse;
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error?.message ?? "Unable to load daily attendance.");
-    }
-
-    const parsed = payload.data as {
-      dateKey: string;
-      records: AdminDailyAttendanceRecord[];
-    };
-    setDailyDateKey(parsed.dateKey);
-    setDailyRecords(parsed.records);
+    if (!response.ok || !payload.success || !payload.data) throw new Error(payload.error?.message ?? "Unable to load daily attendance.");
+    const parsed = payload.data as { dateKey: string; records: AdminDailyAttendanceRecord[] };
+    setDailyDateKey(parsed.dateKey); setDailyRecords(parsed.records);
   }
-
-  async function loadMonthlyRecords(nextMonthKey: string) {
-    const response = await fetch(`/api/attendance/admin/month?month=${nextMonthKey}`, {
-      method: "GET",
-      cache: "no-store",
-    });
+  async function loadMonth(nextMonth: string) {
+    const response = await fetch(`/api/attendance/admin/month?month=${nextMonth}`, { cache: "no-store" });
     const payload = (await response.json()) as ApiResponse;
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error?.message ?? "Unable to load monthly attendance.");
-    }
-
+    if (!response.ok || !payload.success || !payload.data) throw new Error(payload.error?.message ?? "Unable to load monthly attendance.");
     const parsed = payload.data as AdminMonthlyAttendancePayload;
-    setMonthKey(parsed.monthKey);
-    setMonthlyData(parsed);
+    setMonthKey(parsed.monthKey); setMonthlyData(parsed); setSelectedMonthDateKey(`${parsed.monthKey}-01`);
+    setSelectedMonthlyUserId((current) => parsed.rows.some((row) => row.user._id === current) ? current : (parsed.rows[0]?.user._id ?? ""));
   }
-
-  async function loadLeaveRequests() {
-    const response = await fetch("/api/attendance/admin/leave", {
-      method: "GET",
-      cache: "no-store",
-    });
+  async function loadLeave() {
+    const response = await fetch("/api/attendance/admin/leave", { cache: "no-store" });
     const payload = (await response.json()) as ApiResponse;
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error?.message ?? "Unable to load leave requests.");
-    }
-
-    setLeaveData(payload.data as AdminLeavePayload);
+    if (!response.ok || !payload.success || !payload.data) throw new Error(payload.error?.message ?? "Unable to load leave requests.");
+    const parsed = payload.data as AdminLeavePayload; setLeaveData(parsed);
+    setSelectedLeaveId((current) => parsed.requests.some((request) => request._id === current) ? current : (parsed.requests[0]?._id ?? ""));
   }
-
-  async function runAction(
-    key: string,
-    path: string,
-    method: "PATCH" | "POST",
-    successText: string,
-    options?: {
-      body?: Record<string, unknown>;
-      refreshDaily?: boolean;
-      refreshDateKey?: string;
-      refreshMonthly?: boolean;
-      refreshMonthKey?: string;
-      onSuccess?: () => void;
-    },
-  ) {
-    setLoadingKey(key);
-    setNotice(null);
-
+  async function runAction(key: string, path: string, method: "PATCH" | "POST", successText: string, options?: { body?: Record<string, unknown>; refreshDaily?: boolean; refreshDate?: string; refreshMonthly?: boolean; refreshMonth?: string; onSuccess?: () => void }) {
+    setLoadingKey(key); setNotice(null);
     try {
-      const response = await fetch(path, {
-        method,
-        headers: options?.body ? { "Content-Type": "application/json" } : undefined,
-        body: options?.body ? JSON.stringify(options.body) : undefined,
-      });
+      const response = await fetch(path, { method, headers: options?.body ? { "Content-Type": "application/json" } : undefined, body: options?.body ? JSON.stringify(options.body) : undefined });
       const payload = (await response.json()) as ApiResponse;
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error?.message ?? "Unable to complete action.");
-      }
-
-      if (options?.refreshDaily) {
-        await loadDailyRecords(options.refreshDateKey ?? dailyDateKey);
-      }
-      if (options?.refreshMonthly) {
-        await loadMonthlyRecords(options.refreshMonthKey ?? monthKey);
-      }
-
-      options?.onSuccess?.();
-      setNotice({ tone: "success", text: successText });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Unable to complete action.",
-      });
-    } finally {
-      setLoadingKey(null);
-    }
+      if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Unable to complete action.");
+      if (options?.refreshDaily) await loadDaily(options.refreshDate ?? dailyDateKey);
+      if (options?.refreshMonthly) await loadMonth(options.refreshMonth ?? monthKey);
+      options?.onSuccess?.(); setNotice({ tone: "success", text: successText });
+    } catch (error) { setNotice({ tone: "error", text: error instanceof Error ? error.message : "Unable to complete action." }); }
+    finally { setLoadingKey(null); }
   }
-
-  async function refreshLeaveRequests() {
-    setLoadingKey("leave-refresh");
-    setNotice(null);
+  async function refreshDaily(key = dailyDateKey) { setLoadingKey("daily-refresh"); setNotice(null); try { await loadDaily(key); } catch (error) { setNotice({ tone: "error", text: error instanceof Error ? error.message : "Unable to load daily attendance." }); } finally { setLoadingKey(null); } }
+  async function refreshMonth(key = monthKey) { setLoadingKey("month-refresh"); setNotice(null); try { await loadMonth(key); } catch (error) { setNotice({ tone: "error", text: error instanceof Error ? error.message : "Unable to load monthly attendance." }); } finally { setLoadingKey(null); } }
+  async function refreshLeave() { setLoadingKey("leave-refresh"); setNotice(null); try { await loadLeave(); } catch (error) { setNotice({ tone: "error", text: error instanceof Error ? error.message : "Unable to load leave requests." }); } finally { setLoadingKey(null); } }
+  async function reviewLeave(request: AdminLeaveRequestRecord, status: "approved" | "rejected") {
+    const key = `leave-${status}-${request._id}`; setLoadingKey(key); setNotice(null);
     try {
-      await loadLeaveRequests();
-      setNotice({ tone: "success", text: "Leave requests refreshed." });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Unable to load leave requests.",
-      });
-    } finally {
-      setLoadingKey(null);
-    }
-  }
-
-  async function reviewLeaveRequest(
-    request: AdminLeaveRequestRecord,
-    status: "approved" | "rejected",
-  ) {
-    const loadingKeyValue = `leave-${status}-${request._id}`;
-    setLoadingKey(loadingKeyValue);
-    setNotice(null);
-
-    try {
-      const response = await fetch(`/api/attendance/admin/leave/${request._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          reviewNote: reviewNotes[request._id] ?? "",
-        }),
-      });
+      const response = await fetch(`/api/attendance/admin/leave/${request._id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, reviewNote: reviewNotes[request._id] ?? "" }) });
       const payload = (await response.json()) as ApiResponse;
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error?.message ?? "Unable to review leave request.");
-      }
-
-      await loadLeaveRequests();
-      setReviewNotes((previous) => {
-        const next = { ...previous };
-        delete next[request._id];
-        return next;
-      });
-      setNotice({
-        tone: "success",
-        text: status === "approved" ? "Leave request approved." : "Leave request rejected.",
-      });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Unable to review leave request.",
-      });
-    } finally {
-      setLoadingKey(null);
-    }
+      if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Unable to review leave request.");
+      await loadLeave(); setReviewNotes((current) => { const next = { ...current }; delete next[request._id]; return next; });
+      setNotice({ tone: "success", text: status === "approved" ? "Leave request approved." : "Leave request rejected." });
+    } catch (error) { setNotice({ tone: "error", text: error instanceof Error ? error.message : "Unable to review leave request." }); }
+    finally { setLoadingKey(null); }
+  }
+  async function saveGeofence() {
+    const officeLatitude = Number(geofenceForm.officeLatitude); const officeLongitude = Number(geofenceForm.officeLongitude); const officeRadiusMeters = Number(geofenceForm.officeRadiusMeters);
+    if (!Number.isFinite(officeLatitude) || !Number.isFinite(officeLongitude) || !Number.isInteger(officeRadiusMeters)) { setNotice({ tone: "error", text: "Enter valid latitude, longitude, and radius." }); return; }
+    await runAction("geofence-save", "/api/attendance/admin/settings", "PATCH", "Office location updated successfully.", { body: { officeLatitude, officeLongitude, officeRadiusMeters } });
+  }
+  async function saveAttendance() {
+    await runAction("attendance-mark", "/api/attendance/admin/mark", "POST", "Attendance marked successfully.", { body: markForm, refreshDaily: true, refreshDate: markForm.dateKey, refreshMonthly: true, refreshMonth: markForm.dateKey.slice(0, 7), onSuccess: () => setMobileMarkOpen(false) });
   }
 
-  async function refreshDailyForSelectedDate() {
-    setLoadingKey("daily-refresh");
-    setNotice(null);
-    try {
-      await loadDailyRecords(dailyDateKey);
-      setNotice({ tone: "success", text: "Daily records refreshed." });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Unable to load daily attendance.",
-      });
-    } finally {
-      setLoadingKey(null);
-    }
+  const recordMap = useMemo(() => new Map(dailyRecords.flatMap((record) => record.userId?._id ? [[record.userId._id, record] as const] : [])), [dailyRecords]);
+  const dailyRows = useMemo(() => staffUsers.map((user) => ({ user, record: recordMap.get(user._id) })), [staffUsers, recordMap]);
+  const filteredDaily = useMemo(() => { const query = dailySearch.trim().toLowerCase(); return dailyRows.filter(({ user, record }) => (!query || `${user.fullName} ${user.email} ${user.role}`.toLowerCase().includes(query)) && (dailyStatus === "all" || (dailyStatus === "not_marked" ? !record : record?.dayStatus === dailyStatus))); }, [dailyRows, dailySearch, dailyStatus]);
+  const presentCount = dailyRows.filter(({ record }) => record && record.dayStatus !== "absent").length;
+  const notMarkedCount = dailyRows.filter(({ record }) => !record).length;
+  const cancelledCount = leaveData.requests.filter((request) => request.status === "cancelled").length;
+  const dates = useMemo(() => monthDates(monthlyData.monthKey), [monthlyData.monthKey]);
+  const selectedMonthRow = monthlyData.rows.find((row) => row.user._id === selectedMonthlyUserId) ?? monthlyData.rows[0];
+  const selectedDayRecord = selectedMonthRow?.records.find((record) => record.dateKey === selectedMonthDateKey);
+  const filteredLeaves = useMemo(() => { const query = leaveSearch.trim().toLowerCase(); return leaveData.requests.filter((request) => (!query || `${request.userId?.fullName ?? ""} ${request.userId?.email ?? ""}`.toLowerCase().includes(query)) && (leaveStatus === "all" || request.status === leaveStatus) && (leaveType === "all" || request.leaveType === leaveType)); }, [leaveData.requests, leaveSearch, leaveStatus, leaveType]);
+  const selectedLeave = filteredLeaves.find((request) => request._id === selectedLeaveId) ?? filteredLeaves[0];
+
+  function openMark(userId: string, record?: AdminDailyAttendanceRecord) { setMarkForm({ userId, dateKey: record?.dateKey ?? dailyDateKey, dayStatus: record?.dayStatus ?? "present" }); setMobileMarkOpen(true); }
+  function openOfficeSettings() {
+    setActiveView("daily");
+    setOfficeSettingsOpen(true);
+    window.setTimeout(() => document.getElementById("attendance-office-settings")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  }
+  function exportView() {
+    const rows: Array<Array<string | number>> = activeView === "daily" ? [["Staff", "Status", "Check-in", "Check-out", "Work time", "Break"], ...dailyRows.map(({ user, record }) => [user.fullName, record?.dayStatus ?? "not_marked", timeLabel(record?.checkInAt), timeLabel(record?.checkOutAt), workLabel(record?.workedMinutes), record?.totalBreakMinutes ?? 0])] : activeView === "monthly" ? [["Staff", "Present", "Late", "Absent", "Half day", "Marked"], ...monthlyData.rows.map((row) => [row.user.fullName, row.summary.presentDays, row.summary.lateComingDays, row.summary.absentDays, row.summary.halfDays, row.summary.totalMarkedDays])] : [["Staff", "From", "To", "Type", "Days", "Status"], ...leaveData.requests.map((request) => [request.userId?.fullName ?? "Unknown", request.startDateKey, request.endDateKey, request.leaveType, request.totalDays, request.status])];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = `attendance-${activeView}.csv`; link.click(); URL.revokeObjectURL(url);
   }
 
-  async function refreshMonthlyForSelectedMonth() {
-    setLoadingKey("month-refresh");
-    setNotice(null);
-    try {
-      await loadMonthlyRecords(monthKey);
-      setNotice({ tone: "success", text: "Monthly records refreshed." });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        text: error instanceof Error ? error.message : "Unable to load monthly attendance.",
-      });
-    } finally {
-      setLoadingKey(null);
-    }
+  function renderDateNav(monthly = false) {
+    const value = monthly ? monthKey : dailyDateKey;
+    const move = (amount: number) => monthly ? void refreshMonth(shiftMonth(monthKey, amount)) : void refreshDaily(shiftDate(dailyDateKey, amount));
+    return <div className="flex items-center gap-2"><button type="button" onClick={() => move(-1)} disabled={loadingKey !== null} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-vega-border text-vega-text-secondary hover:bg-vega-surface-hover" aria-label="Previous"><ChevronLeft className="h-4 w-4" /></button><label className="relative flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs font-medium text-vega-text sm:min-w-[220px]"><CalendarDays className="h-4 w-4 text-vega-text-muted" /><span className="truncate">{monthly ? monthLabel(value) : dateLabel(value, true)}</span><input className="absolute inset-0 cursor-pointer opacity-0" type={monthly ? "month" : "date"} value={value} onChange={(event) => monthly ? void refreshMonth(event.target.value) : void refreshDaily(event.target.value)} /></label><button type="button" onClick={() => move(1)} disabled={loadingKey !== null} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-vega-border text-vega-text-secondary hover:bg-vega-surface-hover" aria-label="Next"><ChevronRight className="h-4 w-4" /></button><Button variant="secondary" className="hidden sm:inline-flex" onClick={() => monthly ? void refreshMonth(initialMonthKey) : void refreshDaily(initialDailyDateKey)}>{monthly ? "Current month" : "Today"}</Button></div>;
+  }
+  function renderMarkForm(dismiss = false) {
+    return <div className="space-y-3 p-4"><div className="flex items-start gap-3"><span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-vega-purple-soft text-vega-purple"><FileText className="h-4 w-4" /></span><div><h3 className="text-sm font-semibold text-vega-text">Mark attendance</h3><p className="text-[11px] text-vega-text-muted">Add or update a daily record.</p></div>{dismiss ? <button type="button" className="ml-auto text-vega-text-muted" onClick={() => setMobileMarkOpen(false)} aria-label="Close"><X className="h-4 w-4" /></button> : null}</div><label className="block text-[11px] text-vega-text-muted">Staff<select className={cn(select, "mt-1")} value={markForm.userId} onChange={(event) => setMarkForm((current) => ({ ...current, userId: event.target.value }))}>{staffUsers.map((user) => <option key={user._id} value={user._id}>{user.fullName}</option>)}</select></label><div className="grid grid-cols-2 gap-3"><label className="text-[11px] text-vega-text-muted">Date<Input type="date" className="mt-1 h-[38px]" value={markForm.dateKey} onChange={(event) => setMarkForm((current) => ({ ...current, dateKey: event.target.value }))} /></label><label className="text-[11px] text-vega-text-muted">Status<select className={cn(select, "mt-1")} value={markForm.dayStatus} onChange={(event) => setMarkForm((current) => ({ ...current, dayStatus: event.target.value as AttendanceDayStatus }))}><option value="present">Present</option><option value="late_coming">Late coming</option><option value="absent">Absent</option><option value="half_day">Half day</option></select></label></div><Button className="w-full" onClick={() => void saveAttendance()} disabled={!markForm.userId || !markForm.dateKey || loadingKey !== null}>{loadingKey === "attendance-mark" ? "Saving..." : "Save attendance"}</Button></div>;
+  }
+  function renderOfficeLocation(editable = true) {
+    return <div className={cn(panel, "p-4")} id="attendance-office-settings"><div className="flex items-start gap-3"><span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-vega-purple-soft text-[#ad7aff]"><MapPin className="h-5 w-5" /></span><div className="min-w-0 flex-1"><h3 className="text-sm font-semibold text-vega-text">Office location</h3><p className="text-[11px] text-vega-text-muted">Check-in is allowed inside this office radius.</p><p className="mt-0.5 text-[10px] text-vega-text-dim">Check-out does not use geofencing.</p></div>{!editable ? <Button variant="secondary" onClick={() => setOfficeSettingsOpen(true)}><Settings className="mr-2 h-4 w-4" />Manage</Button> : null}</div>{editable || officeSettingsOpen ? <div className="mt-4 space-y-3"><div className="grid grid-cols-2 gap-3"><label className="text-[10px] text-vega-text-muted">Latitude<Input inputMode="decimal" className="mt-1" value={geofenceForm.officeLatitude} onChange={(event) => setGeofenceForm((current) => ({ ...current, officeLatitude: event.target.value }))} /></label><label className="text-[10px] text-vega-text-muted">Longitude<Input inputMode="decimal" className="mt-1" value={geofenceForm.officeLongitude} onChange={(event) => setGeofenceForm((current) => ({ ...current, officeLongitude: event.target.value }))} /></label></div><label className="text-[10px] text-vega-text-muted">Allowed radius (metres)<Input inputMode="numeric" className="mt-1" value={geofenceForm.officeRadiusMeters} onChange={(event) => setGeofenceForm((current) => ({ ...current, officeRadiusMeters: event.target.value }))} /></label><Button variant="secondary" className="w-full text-[#a8c8ff]" onClick={() => void saveGeofence()} disabled={loadingKey !== null}>{loadingKey === "geofence-save" ? "Saving..." : "Save location"}</Button></div> : null}</div>;
   }
 
-  async function saveGeofenceSettings() {
-    const officeLatitude = Number(geofenceForm.officeLatitude);
-    const officeLongitude = Number(geofenceForm.officeLongitude);
-    const officeRadiusMeters = Number(geofenceForm.officeRadiusMeters);
+  return <section className="min-w-0">
+    <div className="-mx-[22px] -mt-[18px] mb-4 hidden h-14 items-center justify-between border-b border-vega-border-soft bg-vega-topbar px-6 lg:flex"><div className="text-xs text-vega-text-muted">Operations <span className="px-2 text-vega-text-dim">/</span><span className="font-medium text-vega-text">Attendance</span></div><div className="flex h-9 w-[450px] max-w-[40vw] items-center gap-2 rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs text-vega-text-muted"><Search className="h-4 w-4" />Search across Vega...</div><div className="flex items-center gap-3"><Bell className="h-4 w-4 text-vega-text-secondary" /><Avatar name={userLabel} /><div><p className="text-xs font-medium text-vega-text">{userLabel}</p><p className="text-[10px] capitalize text-vega-text-muted">{userRole.replaceAll("_", " ")}</p></div><ChevronDown className="h-4 w-4 text-vega-text-muted" /></div></div>
+    <div className="mb-3 flex items-start justify-between gap-3"><div><h1 className="text-[26px] font-semibold leading-8 text-vega-text lg:text-[28px]">Attendance</h1><p className="mt-0.5 text-xs text-vega-text-muted lg:text-sm">Manage your team&apos;s time and leave.</p></div><div className="flex gap-2"><Button variant="secondary" size="lg" onClick={openOfficeSettings}><Settings className="mr-2 h-4 w-4" />Office settings</Button><Button size="lg" className="hidden lg:inline-flex" onClick={exportView}><Download className="mr-2 h-4 w-4" />Export</Button></div></div>
+    <div className="mb-4 grid h-10 grid-cols-3 overflow-hidden rounded-md border border-vega-border lg:w-[390px]">{(["daily", "monthly", "leave"] as AttendanceView[]).map((view) => <button key={view} type="button" onClick={() => setActiveView(view)} className={cn("border-r border-vega-border px-2 text-xs font-medium capitalize text-vega-text-secondary last:border-r-0", activeView === view && "bg-vega-purple text-white")}>{view === "leave" ? "Leave requests" : view}</button>)}</div>
+    {notice ? <div className={cn("mb-3 rounded-md border px-3 py-2 text-xs", notice.tone === "error" ? "border-vega-red/40 bg-vega-red-soft text-[#ff838b]" : "border-vega-green/35 bg-vega-green-soft text-[#6ce39a]")}>{notice.text}</div> : null}
 
-    if (
-      !Number.isFinite(officeLatitude) ||
-      !Number.isFinite(officeLongitude) ||
-      !Number.isInteger(officeRadiusMeters)
-    ) {
-      setNotice({ tone: "error", text: "Enter valid latitude, longitude, and radius." });
-      return;
-    }
+    {activeView === "daily" ? <div className="space-y-4">{renderDateNav()}<div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Metric icon={UsersRound} label="Total staff" value={staffUsers.length} /><Metric icon={UserRound} label="Present" value={presentCount} tone="green" /><Metric icon={CircleMinus} label="Not marked" value={notMarkedCount} tone="neutral" /><Metric icon={FileText} label="Pending leave" value={leaveData.summary.pendingCount} tone="purple" /></div><div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_330px]"><div className={panel}><div className="flex flex-col gap-3 border-b border-vega-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center justify-between"><h2 className="text-base font-semibold text-vega-text">Daily attendance</h2><span className="text-xs text-vega-text-muted sm:hidden">{staffUsers.length} staff</span></div><div className="flex gap-2"><label className="relative min-w-0 flex-1 sm:w-56"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vega-text-muted" /><Input placeholder="Search staff..." value={dailySearch} onChange={(event) => setDailySearch(event.target.value)} className="h-[38px] pl-9" /></label><select aria-label="Filter attendance status" className={cn(select, "hidden w-40 sm:block")} value={dailyStatus} onChange={(event) => setDailyStatus(event.target.value)}><option value="all">All statuses</option><option value="present">Present</option><option value="late_coming">Late</option><option value="absent">Absent</option><option value="half_day">Half day</option><option value="not_marked">Not marked</option></select><button type="button" onClick={() => setDailyStatus((current) => current === "all" ? "not_marked" : "all")} className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-md border border-vega-border text-vega-text-secondary sm:hidden" aria-label="Filter staff"><Filter className="h-4 w-4" /></button></div></div>
+      <div className="hidden overflow-x-auto lg:block"><table className="w-full min-w-[760px] table-fixed text-left text-xs"><thead className="bg-[#0b151f] text-[11px] text-vega-text-muted"><tr><th className="w-[28%] px-4 py-2.5 font-medium">Staff</th><th className="px-3 py-2.5 font-medium">Status</th><th className="px-3 py-2.5 font-medium">Check-in</th><th className="px-3 py-2.5 font-medium">Check-out</th><th className="px-3 py-2.5 font-medium">Work time</th><th className="px-3 py-2.5 font-medium">Break</th><th className="w-16 px-3 py-2.5 font-medium">Action</th></tr></thead><tbody>{filteredDaily.map(({ user, record }, index) => { const badge = attendanceBadge(record?.dayStatus); return <tr key={user._id} className="border-t border-vega-border-soft hover:bg-vega-surface-hover/50"><td className="px-4 py-2.5"><div className="flex items-center gap-2.5"><Avatar name={user.fullName} index={index} /><div className="min-w-0"><p className="truncate font-medium text-vega-text">{user.fullName}</p><p className="truncate text-[10px] capitalize text-vega-text-muted">{user.role.replaceAll("_", " ")}</p></div></div></td><td className="px-3 py-2.5"><Badge variant={badge.variant}>{badge.label}</Badge></td><td className="px-3 py-2.5 text-vega-text-secondary">{timeLabel(record?.checkInAt)}</td><td className="px-3 py-2.5 text-vega-text-secondary">{timeLabel(record?.checkOutAt)}</td><td className="px-3 py-2.5 text-vega-text-secondary">{record?.checkInAt && !record.checkOutAt ? "In progress" : workLabel(record?.workedMinutes)}</td><td className="px-3 py-2.5 text-vega-text-secondary">{record ? `${record.totalBreakMinutes ?? 0}m` : "--"}</td><td className="px-3 py-2.5"><button type="button" onClick={() => openMark(user._id, record)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-vega-border text-vega-text-secondary" aria-label={`Edit ${user.fullName}`}><Pencil className="h-3.5 w-3.5" /></button></td></tr>; })}</tbody></table></div>
+      <div className="space-y-2.5 p-3 lg:hidden">{filteredDaily.filter(({ record }) => Boolean(record)).map(({ user, record }, index) => { const badge = attendanceBadge(record?.dayStatus); return <div key={user._id} className="rounded-md border border-vega-border bg-[#0b151f] p-3"><div className="flex items-center gap-3"><Avatar name={user.fullName} index={index} /><p className="min-w-0 flex-1 truncate text-sm font-semibold text-vega-text">{user.fullName}</p><Badge variant={badge.variant} className="h-7 px-3 text-[11px]">{badge.label}</Badge><button type="button" onClick={() => openMark(user._id, record)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-vega-border text-vega-text-secondary" aria-label={`Edit ${user.fullName}`}><Pencil className="h-4 w-4" /></button></div><div className="mt-3 grid grid-cols-2 border-t border-vega-border-soft pt-3 text-xs"><div className="space-y-1"><p><span className="inline-block w-[72px] text-vega-text-muted">Check-in</span>{timeLabel(record?.checkInAt)}</p><p><span className="inline-block w-[72px] text-vega-text-muted">Work time</span>{record?.checkInAt && !record.checkOutAt ? "In progress" : workLabel(record?.workedMinutes)}</p></div><div className="space-y-1 border-l border-vega-border pl-3"><p><span className="inline-block w-[70px] text-vega-text-muted">Check-out</span>{timeLabel(record?.checkOutAt)}</p><p><span className="inline-block w-[70px] text-vega-text-muted">Break</span>{record?.totalBreakMinutes ?? 0}m</p></div></div></div>; })}{filteredDaily.some(({ record }) => !record) ? <div><h3 className="mb-2 text-sm font-semibold text-vega-text">Not marked <span className="text-vega-text-muted">- {filteredDaily.filter(({ record }) => !record).length}</span></h3><div className="overflow-hidden rounded-md border border-vega-border">{filteredDaily.filter(({ record }) => !record).map(({ user }, index) => <div key={user._id} className="flex items-center gap-3 border-b border-vega-border-soft px-3 py-2.5 last:border-b-0"><Avatar name={user.fullName} index={index + 2} /><p className="min-w-0 flex-1 truncate text-sm font-medium text-vega-text">{user.fullName}</p><Badge variant="neutral">Not marked</Badge><button type="button" onClick={() => openMark(user._id)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-vega-border text-vega-text-secondary" aria-label={`Mark ${user.fullName}`}><Pencil className="h-3.5 w-3.5" /></button></div>)}</div></div> : null}</div><div className="hidden items-center justify-between border-t border-vega-border px-4 py-2.5 text-[11px] text-vega-text-muted lg:flex"><span>Showing {filteredDaily.length} staff</span><button type="button" onClick={() => void refreshDaily()} disabled={loadingKey !== null} className="inline-flex items-center gap-2"><RefreshCw className={cn("h-3.5 w-3.5", loadingKey === "daily-refresh" && "animate-spin")} />Refresh</button></div></div><aside className="hidden space-y-3 xl:block"><div className={panel}>{renderMarkForm()}</div>{renderOfficeLocation()}</aside></div><div className="xl:hidden">{renderOfficeLocation(false)}</div><button type="button" onClick={() => setMobileMarkOpen(true)} className="sticky bottom-3 z-20 flex h-12 w-full items-center justify-center gap-2 rounded-md bg-vega-purple text-sm font-semibold text-white shadow-[0_8px_28px_rgba(90,45,220,0.35)] lg:hidden"><span className="text-xl">+</span>Mark attendance</button></div> : null}
 
-    await runAction(
-      "geofence-save",
-      "/api/attendance/admin/settings",
-      "PATCH",
-      "Office location updated successfully.",
-      {
-        body: {
-          officeLatitude,
-          officeLongitude,
-          officeRadiusMeters,
-        },
-      },
-    );
-  }
+    {activeView === "monthly" ? <div className="space-y-4">{renderDateNav(true)}<div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Metric icon={UsersRound} label="Staff" value={monthlyData.totals.staffCount} /><Metric icon={FileText} label="Marked entries" value={monthlyData.totals.totalMarkedDays} tone="neutral" /><Metric icon={UserRound} label="Present" value={monthlyData.totals.presentDays} tone="green" /><Metric icon={Clock3} label="Late" value={monthlyData.totals.lateComingDays} tone="purple" /></div>
+      <div className={cn(panel, "hidden overflow-hidden lg:block")}><div className="flex items-center justify-between border-b border-vega-border px-4 py-3"><h2 className="text-base font-semibold text-vega-text">Team attendance</h2><button type="button" onClick={() => void refreshMonth()} className="inline-flex items-center gap-2 text-xs text-vega-text-muted"><RefreshCw className={cn("h-3.5 w-3.5", loadingKey === "month-refresh" && "animate-spin")} />Refresh</button></div><div className="overflow-x-auto"><table className="min-w-max border-collapse text-center text-[11px]"><thead><tr className="bg-[#0b151f] text-vega-text-muted"><th className="sticky left-0 z-10 min-w-[205px] border-r border-vega-border bg-[#0b151f] px-3 py-2 text-left font-medium">Staff</th>{dates.map((key) => <th key={key} className={cn("h-9 w-10 border-r border-vega-border-soft font-medium", key === selectedMonthDateKey && "bg-vega-purple-soft text-[#c4b5fd]")}>{key.slice(-2)}</th>)}<th className="w-10">P</th><th className="w-10">L</th></tr></thead><tbody>{monthlyData.rows.map((row, index) => { const records = new Map(row.records.map((record) => [record.dateKey, record] as const)); return <tr key={row.user._id} className="border-t border-vega-border-soft"><td className="sticky left-0 z-10 border-r border-vega-border bg-vega-surface-1 px-3 py-2 text-left"><div className="flex items-center gap-2"><Avatar name={row.user.fullName} index={index} /><span className="font-medium text-vega-text">{row.user.fullName}</span></div></td>{dates.map((key) => { const raw = records.get(key)?.dayStatus; const status = raw ?? (isWeekend(key) ? "weekend_off" : undefined); return <td key={key} className={cn("h-10 border-r border-vega-border-soft", key === selectedMonthDateKey && "bg-vega-purple-soft/60")}><button type="button" onClick={() => { setSelectedMonthlyUserId(row.user._id); setSelectedMonthDateKey(key); }} className={cn("mx-auto inline-flex h-7 w-7 items-center justify-center rounded font-semibold", statusClass(status), selectedMonthlyUserId === row.user._id && selectedMonthDateKey === key && "ring-2 ring-vega-purple")}>{statusSymbol(status)}</button></td>; })}<td className="font-semibold">{row.summary.presentDays}</td><td className="font-semibold">{row.summary.lateComingDays}</td></tr>; })}</tbody></table></div><div className="flex flex-wrap items-center gap-5 border-t border-vega-border px-4 py-3 text-[11px] text-vega-text-muted">{(["present", "late_coming", "absent", "half_day", "weekend_off", undefined] as Array<GridStatus | undefined>).map((status) => <span key={status ?? "empty"} className="inline-flex items-center gap-2"><span className={cn("inline-flex h-6 w-6 items-center justify-center rounded font-semibold", statusClass(status))}>{statusSymbol(status)}</span>{status ? titleCase(status === "weekend_off" ? "weekend" : status) : "Not marked"}</span>)}</div></div>
+      {selectedMonthRow ? <div className="space-y-3 lg:hidden"><label className={cn(panel, "relative flex items-center gap-3 p-3")}><Avatar name={selectedMonthRow.user.fullName} large /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-vega-text">{selectedMonthRow.user.fullName}</p><p className="mt-1 text-xs text-vega-text-muted">{selectedMonthRow.summary.presentDays} Present - {selectedMonthRow.summary.lateComingDays} Late - {selectedMonthRow.summary.absentDays} Absent</p></div><ChevronDown className="h-4 w-4 text-vega-text-muted" /><select className="absolute inset-0 opacity-0" value={selectedMonthRow.user._id} onChange={(event) => setSelectedMonthlyUserId(event.target.value)}>{monthlyData.rows.map((row) => <option key={row.user._id} value={row.user._id}>{row.user.fullName}</option>)}</select></label><div className={cn(panel, "overflow-hidden")}><div className="grid grid-cols-7 border-b border-vega-border bg-[#0b151f] text-center text-[11px] text-vega-text-muted">{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={`${day}-${index}`} className="py-2.5">{day}</span>)}</div><div className="grid grid-cols-7">{Array.from({ length: (parseDate(`${monthlyData.monthKey}-01`).getDay() + 6) % 7 }).map((_, index) => <span key={`blank-${index}`} className="h-[60px] border-b border-r border-vega-border-soft" />)}{dates.map((key) => { const raw = selectedMonthRow.records.find((record) => record.dateKey === key)?.dayStatus; const status = raw ?? (isWeekend(key) ? "weekend_off" : undefined); return <button key={key} type="button" onClick={() => setSelectedMonthDateKey(key)} className={cn("flex h-[60px] flex-col items-center justify-center gap-1 border-b border-r border-vega-border-soft text-sm", selectedMonthDateKey === key && "bg-vega-purple-soft ring-2 ring-inset ring-vega-purple")}><span>{Number(key.slice(-2))}</span><span className={cn("text-xs font-semibold", statusClass(status).replace(/bg-\S+\s?/, ""))}>{statusSymbol(status)}</span></button>; })}</div></div><div className="flex flex-wrap gap-4 px-2 text-[11px] text-vega-text-muted">{(["present", "late_coming", "weekend_off", undefined] as Array<GridStatus | undefined>).map((status) => <span key={status ?? "none"} className="inline-flex items-center gap-1.5"><span className={cn("inline-flex h-6 w-6 items-center justify-center rounded font-semibold", statusClass(status))}>{statusSymbol(status)}</span>{status ? titleCase(status === "weekend_off" ? "weekend" : status) : "Not marked"}</span>)}</div><div className={cn(panel, "p-4")}><div className="flex items-center justify-between"><h3 className="text-base font-semibold">{Number(selectedMonthDateKey.slice(-2))} {monthLabel(monthlyData.monthKey).split(" ")[0]} <span className="text-vega-text-muted">-</span> <span className={selectedDayRecord?.dayStatus === "present" ? "text-[#62df91]" : "text-vega-text-muted"}>{selectedDayRecord ? titleCase(selectedDayRecord.dayStatus) : "Not marked"}</span></h3>{selectedDayRecord ? <button type="button" onClick={() => openMark(selectedMonthRow.user._id, { ...selectedDayRecord, userId: selectedMonthRow.user } as AdminDailyAttendanceRecord)} className="text-xs font-medium text-vega-purple">Edit record</button> : null}</div><div className="mt-4 grid grid-cols-3 divide-x divide-vega-border text-xs"><div><p className="text-vega-text-muted">Check-in</p><p className="mt-1 text-sm">{timeLabel(selectedDayRecord?.checkInAt)}</p></div><div className="pl-3"><p className="text-vega-text-muted">Check-out</p><p className="mt-1 text-sm">{timeLabel(selectedDayRecord?.checkOutAt)}</p></div><div className="pl-3"><p className="text-vega-text-muted">Work time</p><p className="mt-1 text-sm">{selectedDayRecord?.checkInAt && !selectedDayRecord.checkOutAt ? "In progress" : workLabel(selectedDayRecord?.workedMinutes)}</p></div></div></div><div className={cn(panel, "overflow-hidden")}><div className="flex items-center justify-between border-b border-vega-border px-4 py-3"><h3 className="text-sm font-semibold">Team summary <span className="font-normal text-vega-text-muted">(other staff)</span></h3><span className="text-xs text-vega-purple">View full team</span></div>{monthlyData.rows.filter((row) => row.user._id !== selectedMonthRow.user._id).map((row, index) => <button key={row.user._id} type="button" onClick={() => setSelectedMonthlyUserId(row.user._id)} className="flex w-full items-center gap-3 border-b border-vega-border-soft px-4 py-2.5 text-left last:border-b-0"><Avatar name={row.user.fullName} index={index + 1} /><span className="min-w-0 flex-1 truncate text-sm">{row.user.fullName}</span><span className="text-xs text-vega-text-muted">{row.summary.presentDays} P - {row.summary.lateComingDays} L</span><ChevronRight className="h-4 w-4 text-vega-text-muted" /></button>)}</div></div> : null}</div> : null}
 
-  const monthDateKeys = useMemo(() => buildMonthDateKeys(monthlyData.monthKey), [monthlyData.monthKey]);
-  const pendingLeaveRequests = useMemo(
-    () => leaveData.requests.filter((request) => request.status === "pending"),
-    [leaveData.requests],
-  );
-  const reviewedLeaveRequests = useMemo(
-    () => leaveData.requests.filter((request) => request.status !== "pending").slice(0, 12),
-    [leaveData.requests],
-  );
-
-  return (
-    <section className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Office Location</CardTitle>
-          <CardDescription>
-            Check-in is allowed inside this office radius. Check-out does not use geofencing.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
-            <Input
-              inputMode="decimal"
-              placeholder="Latitude"
-              value={geofenceForm.officeLatitude}
-              onChange={(event) =>
-                setGeofenceForm((prev) => ({ ...prev, officeLatitude: event.target.value }))
-              }
-              disabled={loadingKey !== null}
-            />
-            <Input
-              inputMode="decimal"
-              placeholder="Longitude"
-              value={geofenceForm.officeLongitude}
-              onChange={(event) =>
-                setGeofenceForm((prev) => ({ ...prev, officeLongitude: event.target.value }))
-              }
-              disabled={loadingKey !== null}
-            />
-            <Input
-              inputMode="numeric"
-              placeholder="Radius meters"
-              value={geofenceForm.officeRadiusMeters}
-              onChange={(event) =>
-                setGeofenceForm((prev) => ({ ...prev, officeRadiusMeters: event.target.value }))
-              }
-              disabled={loadingKey !== null}
-            />
-            <Button
-              onClick={() => void saveGeofenceSettings()}
-              disabled={
-                !geofenceForm.officeLatitude ||
-                !geofenceForm.officeLongitude ||
-                !geofenceForm.officeRadiusMeters ||
-                loadingKey !== null
-              }
-            >
-              {loadingKey === "geofence-save" ? "Saving..." : "Save Location"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle>Leave Requests</CardTitle>
-              <CardDescription>
-                Review pending team leave requests and recent decisions.
-              </CardDescription>
-            </div>
-            <Button
-              variant="secondary"
-              onClick={() => void refreshLeaveRequests()}
-              disabled={loadingKey !== null}
-            >
-              {loadingKey === "leave-refresh" ? "Refreshing..." : "Refresh"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-              <p className="text-xs text-muted-foreground">Pending</p>
-              <p className="text-lg font-semibold text-foreground">{leaveData.summary.pendingCount}</p>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-              <p className="text-xs text-muted-foreground">Approved</p>
-              <p className="text-lg font-semibold text-foreground">{leaveData.summary.approvedCount}</p>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-              <p className="text-xs text-muted-foreground">Rejected</p>
-              <p className="text-lg font-semibold text-foreground">{leaveData.summary.rejectedCount}</p>
-            </div>
-          </div>
-
-          {pendingLeaveRequests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending leave requests.</p>
-          ) : (
-            <div className="space-y-3">
-              {pendingLeaveRequests.map((request) => {
-                const staff = request.userId;
-                return (
-                  <div
-                    key={request._id}
-                    className="space-y-3 rounded-lg border border-border/70 bg-card px-3 py-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">
-                          {staff?.fullName ?? "Unknown staff"}
-                        </p>
-                        <p className="break-all text-[11px] text-muted-foreground">
-                          {staff ? `${staff.role} | ${staff.email}` : "User details unavailable"}
-                        </p>
-                      </div>
-                      <Badge variant="warning">Pending</Badge>
-                    </div>
-                    <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
-                      <p>
-                        <span className="font-medium text-foreground">Type:</span>{" "}
-                        {formatLeaveType(request.leaveType)}
-                      </p>
-                      <p>
-                        <span className="font-medium text-foreground">Dates:</span>{" "}
-                        {request.startDateKey} to {request.endDateKey}
-                      </p>
-                      <p>
-                        <span className="font-medium text-foreground">Days:</span>{" "}
-                        {request.totalDays}
-                      </p>
-                    </div>
-                    {request.reason ? (
-                      <p className="rounded-lg border border-border/70 bg-vega-surface-1 px-3 py-2 text-sm text-muted-foreground">
-                        {request.reason}
-                      </p>
-                    ) : null}
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                      <Input
-                        placeholder="Review note (optional)"
-                        value={reviewNotes[request._id] ?? ""}
-                        onChange={(event) =>
-                          setReviewNotes((previous) => ({
-                            ...previous,
-                            [request._id]: event.target.value,
-                          }))
-                        }
-                        disabled={loadingKey !== null}
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          onClick={() => void reviewLeaveRequest(request, "approved")}
-                          disabled={loadingKey !== null}
-                        >
-                          {loadingKey === `leave-approved-${request._id}` ? "Approving..." : "Approve"}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={() => void reviewLeaveRequest(request, "rejected")}
-                          disabled={loadingKey !== null}
-                        >
-                          {loadingKey === `leave-rejected-${request._id}` ? "Rejecting..." : "Reject"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {reviewedLeaveRequests.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Recent reviewed requests
-              </p>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="px-2 py-2">Staff</th>
-                      <th className="px-2 py-2">Dates</th>
-                      <th className="px-2 py-2">Type</th>
-                      <th className="px-2 py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reviewedLeaveRequests.map((request) => {
-                      const badge = leaveStatusBadge(request.status);
-                      return (
-                        <tr key={request._id} className="border-b border-border/60">
-                          <td className="px-2 py-2 text-foreground">
-                            {request.userId?.fullName ?? "Unknown staff"}
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            {request.startDateKey} to {request.endDateKey}
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            {formatLeaveType(request.leaveType)}
-                          </td>
-                          <td className="px-2 py-2">
-                            <Badge variant={badge.variant}>{badge.label}</Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Mark Attendance</CardTitle>
-          <CardDescription>Admin can mark or update attendance manually for any date.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-4">
-            <select
-              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3.5 text-sm text-foreground"
-              value={markForm.userId}
-              onChange={(event) =>
-                setMarkForm((prev) => ({ ...prev, userId: event.target.value }))
-              }
-            >
-              {staffUsers.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.fullName} ({user.role})
-                </option>
-              ))}
-            </select>
-            <Input
-              type="date"
-              value={markForm.dateKey}
-              onChange={(event) =>
-                setMarkForm((prev) => ({ ...prev, dateKey: event.target.value }))
-              }
-            />
-            <select
-              className="h-11 w-full rounded-lg border border-border bg-vega-surface-1 px-3.5 text-sm text-foreground"
-              value={markForm.dayStatus}
-              onChange={(event) =>
-                setMarkForm((prev) => ({
-                  ...prev,
-                  dayStatus: event.target.value as AttendanceMarkStatus,
-                }))
-              }
-            >
-              <option value="present">Present</option>
-              <option value="late_coming">Late Coming</option>
-              <option value="absent">Absent</option>
-              <option value="half_day">Half Day</option>
-            </select>
-            <Button
-              onClick={() =>
-                runAction(
-                  "attendance-mark",
-                  "/api/attendance/admin/mark",
-                  "POST",
-                  "Attendance marked successfully.",
-                  {
-                    body: markForm,
-                    refreshDaily: true,
-                    refreshDateKey: markForm.dateKey,
-                    refreshMonthly: true,
-                    refreshMonthKey: markForm.dateKey.slice(0, 7),
-                  },
-                )
-              }
-              disabled={!markForm.userId || !markForm.dateKey || loadingKey !== null}
-            >
-              {loadingKey === "attendance-mark" ? "Saving..." : "Mark Attendance"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily Attendance View</CardTitle>
-          <CardDescription>
-            Review all marked records for {formatDateFromKey(dailyDateKey)}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              type="date"
-              value={dailyDateKey}
-              onChange={(event) => setDailyDateKey(event.target.value)}
-              className="max-w-[220px]"
-            />
-            <Button
-              variant="secondary"
-              onClick={() => void refreshDailyForSelectedDate()}
-              disabled={!dailyDateKey || loadingKey !== null}
-            >
-              {loadingKey === "daily-refresh" ? "Refreshing..." : "Load Date"}
-            </Button>
-          </div>
-
-          {dailyRecords.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No records found for this date.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="px-2 py-2">Staff</th>
-                    <th className="px-2 py-2">Status</th>
-                    <th className="px-2 py-2">Check-in</th>
-                    <th className="px-2 py-2">Check-out</th>
-                    <th className="px-2 py-2">Worked</th>
-                    <th className="px-2 py-2">Break</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dailyRecords.map((record) => {
-                    const badge = statusBadge(record.dayStatus);
-                    const staffLabel = record.userId
-                      ? `${record.userId.fullName} (${record.userId.email})`
-                      : "Unknown";
-                    return (
-                      <tr key={record._id} className="border-b border-border/60">
-                        <td className="px-2 py-2 text-foreground">{staffLabel}</td>
-                        <td className="px-2 py-2">
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatTime(record.checkInAt)}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatTime(record.checkOutAt)}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatMinutesAsHours(record.workedMinutes ?? 0)}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatMinutesAsHours(record.totalBreakMinutes ?? 0)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Monthly Team Attendance</CardTitle>
-          <CardDescription>
-            View all staff attendance at one place for {formatMonthFromKey(monthlyData.monthKey)}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              type="month"
-              value={monthKey}
-              onChange={(event) => setMonthKey(event.target.value)}
-              className="max-w-[220px]"
-            />
-            <Button
-              variant="secondary"
-              onClick={() => void refreshMonthlyForSelectedMonth()}
-              disabled={!monthKey || loadingKey !== null}
-            >
-              {loadingKey === "month-refresh" ? "Refreshing..." : "Load Month"}
-            </Button>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-              <p className="text-xs text-muted-foreground">Total Staff</p>
-              <p className="text-lg font-semibold text-foreground">{monthlyData.totals.staffCount}</p>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-              <p className="text-xs text-muted-foreground">Marked Days</p>
-              <p className="text-lg font-semibold text-foreground">
-                {monthlyData.totals.totalMarkedDays}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
-              <p className="text-xs text-muted-foreground">Present / Late / Absent / Half</p>
-              <p className="text-lg font-semibold text-foreground">
-                {monthlyData.totals.presentDays} / {monthlyData.totals.lateComingDays} /{" "}
-                {monthlyData.totals.absentDays} / {monthlyData.totals.halfDays}
-              </p>
-            </div>
-          </div>
-
-          {monthlyData.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No attendance marked for this month yet.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1 rounded bg-success/15 px-2 py-1 text-success">
-                  <span className="font-semibold">P</span> Present
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-danger/15 px-2 py-1 text-danger">
-                  <span className="font-semibold">A</span> Absent
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-accent/15 px-2 py-1 text-accent">
-                  <span className="font-semibold">L</span> Late Coming
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-2 py-1 text-warning">
-                  <span className="font-semibold">H</span> Half Day
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-primary">
-                  <span className="font-semibold">W</span> Weekend Off
-                </span>
-                <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-muted-foreground">
-                  <span className="font-semibold">-</span> Not Marked
-                </span>
-              </div>
-
-              {monthlyData.rows.map((row) => {
-                const recordByDateKey = new Map(
-                  row.records.map((record) => [record.dateKey, record.dayStatus] as const),
-                );
-                const weekendOffDays = monthDateKeys.reduce((count, dateKey) => {
-                  const hasMarkedAttendance = recordByDateKey.has(dateKey);
-                  if (hasMarkedAttendance || !isWeekendDateKey(dateKey)) {
-                    return count;
-                  }
-                  return count + 1;
-                }, 0);
-
-                return (
-                  <div
-                    key={row.user._id}
-                    className="space-y-3 rounded-lg border border-border/70 bg-card px-3 py-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">{row.user.fullName}</p>
-                        <p className="break-all text-[11px] text-muted-foreground">
-                          {row.user.role} | {row.user.email}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 text-[11px]">
-                        <span className="rounded bg-success/15 px-2 py-1 font-semibold text-success">
-                          P {row.summary.presentDays}
-                        </span>
-                        <span className="rounded bg-danger/15 px-2 py-1 font-semibold text-danger">
-                          A {row.summary.absentDays}
-                        </span>
-                        <span className="rounded bg-accent/15 px-2 py-1 font-semibold text-accent">
-                          L {row.summary.lateComingDays}
-                        </span>
-                        <span className="rounded bg-warning/15 px-2 py-1 font-semibold text-warning">
-                          H {row.summary.halfDays}
-                        </span>
-                        <span className="rounded bg-primary/10 px-2 py-1 font-semibold text-primary">
-                          W {weekendOffDays}
-                        </span>
-                        <span className="rounded bg-muted px-2 py-1 font-semibold text-foreground">
-                          T {row.summary.totalMarkedDays}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      className="grid gap-1.5"
-                      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(38px, 1fr))" }}
-                    >
-                      {monthDateKeys.map((dateKey) => {
-                        const rawDayStatus = recordByDateKey.get(dateKey);
-                        const dayStatus: AttendanceGridDisplayStatus | undefined =
-                          rawDayStatus ?? (isWeekendDateKey(dateKey) ? "weekend_off" : undefined);
-                        return (
-                          <div
-                            key={`${row.user._id}-${dateKey}`}
-                            className={`rounded border border-border/50 px-1 py-1 text-center ${getStatusSymbolClass(dayStatus)}`}
-                            title={`${dateKey}: ${dayStatus ?? "not_marked"}`}
-                          >
-                            <p className="text-[10px] leading-none opacity-80">{dateKey.slice(-2)}</p>
-                            <p className="text-xs font-semibold leading-tight">
-                              {getStatusSymbol(dayStatus)}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {notice ? (
-        <p className={notice.tone === "error" ? "text-sm text-danger" : "text-sm text-success"}>
-          {notice.text}
-        </p>
-      ) : null}
-    </section>
-  );
+    {activeView === "leave" ? <div className="space-y-4"><div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Metric icon={Clock3} label="Pending" value={leaveData.summary.pendingCount} /><Metric icon={Check} label="Approved" value={leaveData.summary.approvedCount} tone="green" /><Metric icon={X} label="Rejected" value={leaveData.summary.rejectedCount} tone="red" /><Metric icon={CircleMinus} label="Cancelled" value={cancelledCount} tone="neutral" /></div>{leaveData.summary.pendingCount === 0 ? <div className="flex items-center gap-3 rounded-md border border-vega-green/35 bg-vega-green-soft px-4 py-3"><span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5ce58d] text-[#062414]"><Check className="h-4 w-4" /></span><div><p className="text-sm font-semibold text-[#73e7a0]">No pending requests</p><p className="text-[11px] text-vega-text-muted">All requests have been reviewed or closed.</p></div></div> : null}<div className="flex flex-col gap-2 sm:flex-row"><label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vega-text-muted" /><Input placeholder="Search staff..." className="h-[38px] pl-9" value={leaveSearch} onChange={(event) => setLeaveSearch(event.target.value)} /></label><select className={cn(select, "sm:w-40")} value={leaveStatus} onChange={(event) => setLeaveStatus(event.target.value)}><option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="cancelled">Cancelled</option></select><select className={cn(select, "sm:w-36")} value={leaveType} onChange={(event) => setLeaveType(event.target.value)}><option value="all">All types</option><option value="planned">Planned</option><option value="casual">Casual</option><option value="sick">Sick</option><option value="unpaid">Unpaid</option><option value="other">Other</option></select><button type="button" onClick={() => void refreshLeave()} className="hidden h-[38px] w-[38px] items-center justify-center rounded-md border border-vega-border text-vega-text-secondary sm:inline-flex" aria-label="Refresh"><RefreshCw className={cn("h-4 w-4", loadingKey === "leave-refresh" && "animate-spin")} /></button></div><div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className={cn(panel, "hidden overflow-hidden lg:block")}><div className="flex items-center gap-2 border-b border-vega-border px-4 py-3"><h2 className="text-base font-semibold">Leave requests</h2><span className="text-xs text-vega-text-muted">{filteredLeaves.length} requests</span></div><table className="w-full table-fixed text-left text-xs"><thead className="bg-[#0b151f] text-[11px] text-vega-text-muted"><tr><th className="w-[27%] px-4 py-2.5 font-medium">Staff</th><th className="w-[28%] px-3 py-2.5 font-medium">Leave dates</th><th className="px-3 py-2.5 font-medium">Type</th><th className="px-3 py-2.5 font-medium">Status</th><th className="w-20 px-3 py-2.5 font-medium">Action</th></tr></thead><tbody>{filteredLeaves.map((request, index) => { const badge = leaveBadge(request.status); const name = request.userId?.fullName ?? "Unknown staff"; return <tr key={request._id} onClick={() => setSelectedLeaveId(request._id)} className={cn("cursor-pointer border-t border-vega-border-soft hover:bg-vega-surface-hover", selectedLeave?._id === request._id && "bg-vega-purple-soft")}><td className="px-4 py-2"><div className="flex items-center gap-2.5"><Avatar name={name} index={index} /><span className="truncate font-medium">{name}</span></div></td><td className="px-3 py-2 text-vega-text-secondary">{shortDate(request.startDateKey)}{request.endDateKey !== request.startDateKey ? ` - ${shortDate(request.endDateKey)}` : ""}</td><td className="px-3 py-2 capitalize text-vega-text-secondary">{request.leaveType}</td><td className="px-3 py-2"><Badge variant={badge.variant}>{badge.label}</Badge></td><td className="px-3 py-2 text-vega-purple">View <ChevronRight className="inline h-3.5 w-3.5" /></td></tr>; })}</tbody></table><div className="border-t border-vega-border px-4 py-2.5 text-[11px] text-vega-text-muted">Showing {filteredLeaves.length} requests</div></div>
+      <div className="space-y-3 lg:hidden"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Recent requests</h2><span className="text-xs text-vega-text-muted">{filteredLeaves.length} total</span></div>{filteredLeaves.slice(0, visibleLeaveCount).map((request, index) => { const badge = leaveBadge(request.status); const name = request.userId?.fullName ?? "Unknown staff"; return <div key={request._id} className={cn(panel, "p-3")}><button type="button" onClick={() => setSelectedLeaveId(selectedLeaveId === request._id ? "" : request._id)} className="w-full text-left"><div className="flex items-center gap-3"><Avatar name={name} index={index} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{name}</p><p className="mt-0.5 text-xs capitalize text-vega-text-muted">{request.leaveType} leave</p></div><Badge variant={badge.variant} className="h-7 px-3 text-[11px]">{badge.label}</Badge></div><div className="mt-3 flex items-center gap-4 border-t border-vega-border-soft pt-3 text-xs text-vega-text-secondary"><span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4 text-vega-text-muted" />{shortDate(request.startDateKey)}</span><span className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4 text-vega-text-muted" />{request.totalDays} {request.totalDays === 1 ? "day" : "days"}</span><span className="ml-auto font-medium text-vega-purple">View <ChevronRight className="inline h-3.5 w-3.5" /></span></div></button>{selectedLeaveId === request._id && request.status === "pending" ? <div className="mt-3 space-y-2 border-t border-vega-border pt-3"><Input placeholder="Review note (optional)" value={reviewNotes[request._id] ?? ""} onChange={(event) => setReviewNotes((current) => ({ ...current, [request._id]: event.target.value }))} /><div className="grid grid-cols-2 gap-2"><Button onClick={() => void reviewLeave(request, "approved")}>Approve</Button><Button variant="danger" onClick={() => void reviewLeave(request, "rejected")}>Reject</Button></div></div> : null}</div>; })}{visibleLeaveCount < filteredLeaves.length ? <Button variant="subtle" className="w-full" size="lg" onClick={() => setVisibleLeaveCount((count) => count + 4)}>Load more requests</Button> : null}</div>
+      {selectedLeave ? <aside className={cn(panel, "hidden p-4 lg:block")}><h2 className="text-base font-semibold">Request details</h2><div className="mt-4 flex items-center gap-3"><Avatar name={selectedLeave.userId?.fullName ?? "Unknown"} large /><div><p className="text-sm font-semibold">{selectedLeave.userId?.fullName ?? "Unknown staff"}</p><Badge variant={leaveBadge(selectedLeave.status).variant} className="mt-1">{leaveBadge(selectedLeave.status).label}</Badge></div></div><dl className="mt-5 grid grid-cols-2 gap-y-3 text-xs"><dt className="text-vega-text-muted">Type</dt><dd className="capitalize">{selectedLeave.leaveType}</dd><dt className="text-vega-text-muted">From</dt><dd>{shortDate(selectedLeave.startDateKey)}</dd><dt className="text-vega-text-muted">To</dt><dd>{shortDate(selectedLeave.endDateKey)}</dd><dt className="text-vega-text-muted">Duration</dt><dd>{selectedLeave.totalDays} {selectedLeave.totalDays === 1 ? "day" : "days"}</dd></dl><div className="mt-4 border-t border-vega-border pt-4"><p className="text-xs text-vega-text-muted">Reason</p><p className="mt-1 text-xs text-vega-text-secondary">{selectedLeave.reason || "No reason provided"}</p></div>{selectedLeave.status === "pending" ? <div className="mt-4 space-y-2 border-t border-vega-border pt-4"><Textarea placeholder="Review note (optional)" value={reviewNotes[selectedLeave._id] ?? ""} onChange={(event) => setReviewNotes((current) => ({ ...current, [selectedLeave._id]: event.target.value }))} className="min-h-20" /><div className="grid grid-cols-2 gap-2"><Button onClick={() => void reviewLeave(selectedLeave, "approved")} disabled={loadingKey !== null}>Approve</Button><Button variant="danger" onClick={() => void reviewLeave(selectedLeave, "rejected")} disabled={loadingKey !== null}>Reject</Button></div></div> : null}</aside> : null}</div></div> : null}
+    {mobileMarkOpen ? <div className="fixed inset-0 z-50 flex items-end bg-black/65 p-3 lg:hidden" role="dialog" aria-modal="true" aria-label="Mark attendance"><div className={cn(panel, "w-full bg-[#0a141f]")}>{renderMarkForm(true)}</div></div> : null}
+  </section>;
 }

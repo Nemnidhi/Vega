@@ -6,6 +6,9 @@ const activityLogSchema = new Schema(
       type: String,
       enum: [
         "lead_status_changed",
+        "lead_follow_up_created",
+        "lead_follow_up_updated",
+        "lead_follow_up_completed",
         "proposal_generated",
         "proposal_sent",
         "proposal_signed",
@@ -116,6 +119,7 @@ if (
   existingActivityLogModel &&
   Array.isArray(existingActionEnum) &&
   (!existingActionEnum.includes("audit_report_generated") ||
+    !existingActionEnum.includes("lead_follow_up_created") ||
     !existingActionEnum.includes("blueprint_shared") ||
     !existingActionEnum.includes("proposal_viewed") ||
     !existingActionEnum.includes("dashboard_event_received") ||

@@ -185,11 +185,17 @@ const leadSchema = new Schema(
       enum: [
         "new",
         "contacted",
+        "not_picking_call",
+        "call_back_later",
+        "follow_up",
+        "interested",
+        "not_interested",
         "qualified",
         "proposal_sent",
         "negotiation",
         "closed_won",
         "closed_lost",
+        "wrong_number",
         "invalid",
       ],
       default: "new",
@@ -259,7 +265,8 @@ const existingLeadStatusEnum = existingLeadModel?.schema.path("status")?.options
 // predate the `prospecting` sub-document entirely.
 if (
   existingLeadModel &&
-  ((Array.isArray(existingLeadStatusEnum) && !existingLeadStatusEnum.includes("invalid")) ||
+  ((Array.isArray(existingLeadStatusEnum) &&
+    !existingLeadStatusEnum.includes("not_picking_call")) ||
     !existingLeadModel.schema.path("prospecting"))
 ) {
   delete models.Lead;

@@ -14,6 +14,7 @@ export { IndustrySegmentModel } from "@/models/IndustrySegment";
 export { ImportJobModel } from "@/models/ImportJob";
 export { KpiModel } from "@/models/Kpi";
 export { LeadModel } from "@/models/Lead";
+export { LeadFollowUpModel } from "@/models/LeadFollowUp";
 export { LeadNoteModel } from "@/models/LeadNote";
 export { LeaveBalanceModel } from "@/models/LeaveBalance";
 export { LeaveRequestModel } from "@/models/LeaveRequest";

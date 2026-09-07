@@ -1,18 +1,41 @@
 import { notFound } from "next/navigation";
-import { DashboardHeader } from "@/components/dashboard/header";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  BarChart3,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ClipboardList,
+  Edit3,
+  ExternalLink,
+  FileCheck2,
+  FileText,
+  Globe2,
+  Mail,
+  NotebookText,
+  Pencil,
+  Phone,
+  User,
+  Users,
+  Zap,
+} from "lucide-react";
 import { LeadDairy } from "@/components/leads/lead-dairy";
+import { LeadFollowUpPanel, type LeadFollowUpItem } from "@/components/leads/lead-follow-up-panel";
 import { LeadStatusSelect } from "@/components/leads/lead-status-select";
 import { LeadFieldsEditor } from "@/components/leads/lead-fields-editor";
 import { AuditReportPanel } from "@/components/leads/audit-report-panel";
 import { ClientInvitePanel, type ClientInvitePanelProps } from "@/components/leads/client-invite-panel";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import {
   BlueprintModel,
   ClientModel,
   ClientInviteModel,
   LeadModel,
+  LeadFollowUpModel,
   LeadNoteModel,
   ProposalModel,
   ScopeManifestModel,
@@ -39,9 +62,17 @@ function urgencyVariant(urgency: string): "danger" | "warning" | "accent" | "neu
 }
 
 function statusVariant(status: string): "danger" | "warning" | "success" | "accent" | "neutral" {
-  if (status === "closed_lost") return "danger";
-  if (status === "closed_won") return "success";
-  if (status === "proposal_sent" || status === "negotiation") return "warning";
+  if (status === "closed_lost" || status === "wrong_number" || status === "invalid") return "danger";
+  if (status === "closed_won" || status === "interested") return "success";
+  if (
+    status === "proposal_sent" ||
+    status === "negotiation" ||
+    status === "not_picking_call" ||
+    status === "call_back_later" ||
+    status === "follow_up"
+  ) {
+    return "warning";
+  }
   if (status === "qualified") return "accent";
   return "neutral";
 }
@@ -192,6 +223,17 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     createdAt?: string;
   }>;
 
+  const followUpDocs = await LeadFollowUpModel.find({ leadId: leadDoc._id })
+    .sort({ status: 1, dueAt: 1 })
+    .limit(100)
+    .select(
+      "leadId status channel priority dueAt nextAction notes outcome outcomeNote completedAt assignedToUserId createdById createdAt updatedAt",
+    )
+    .populate("assignedToUserId", "fullName email role")
+    .populate("createdById", "fullName email role")
+    .lean();
+  const followUps = serializeForJson(followUpDocs) as LeadFollowUpItem[];
+
   // Guarded: a cold prospect may have no email at all.
   const fallbackClient =
     !lead.phone && lead.email
@@ -264,275 +306,445 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
     { label: "Project", state: latestProposal?.status === "signed" ? "Ready" : "Locked", variant: latestProposal?.status === "signed" ? "accent" as const : "neutral" as const },
     { label: "Delivery", state: "Queued", variant: "neutral" as const },
   ];
+  const nextFollowUp = followUps.find((item) => item.status !== "completed" && item.status !== "cancelled");
 
   return (
     <section className="space-y-4">
-      <DashboardHeader
-        title={lead.title}
-        subtitle="Structured lead profile with quick actions and pipeline controls."
-        showLeadCta={false}
-        action={{ label: "Back To Leads", href: "/leads" }}
-      />
+      <div className="space-y-3 lg:hidden">
+        <Link href="/leads" className="inline-flex items-center gap-1.5 text-xs font-medium text-vega-text-secondary">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to Leads
+        </Link>
 
-      <Card className="border-vega-purple-border">
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-vega-purple-border bg-vega-purple-soft text-sm font-semibold text-[#c4b5fd]">
-                {lead.title.slice(0, 2).toUpperCase()}
+        <header className="space-y-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h2 className="truncate text-[22px] font-semibold leading-7 text-vega-text">{lead.title}</h2>
+            <ExternalLink className="h-5 w-5 shrink-0 text-vega-purple" aria-hidden="true" />
+          </div>
+          <p className="text-sm text-vega-text-muted">
+            {lead.contactName || "No contact sourced"} - {humanize(lead.source)}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant={statusVariant(lead.status)}>{humanize(lead.status)}</Badge>
+            {lead.urgency ? <Badge variant={urgencyVariant(lead.urgency)}>{humanize(lead.urgency)} urgency</Badge> : null}
+            <Badge variant={priorityVariant(lead.priorityBand)}>{humanize(lead.priorityBand)}</Badge>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-3 gap-2">
+          <a href={callHref || undefined} className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 text-xs font-semibold text-vega-text">
+            <span className="text-success"><PhoneIcon /></span>
+            Call
+          </a>
+          <a href={messageHref || undefined} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 text-xs font-semibold text-vega-text">
+            <span className="text-[#25d366]"><WhatsAppIcon /></span>
+            WhatsApp
+          </a>
+          <a href={mailHref || undefined} className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 text-xs font-semibold text-vega-text">
+            <MailIcon />
+            Mail
+          </a>
+        </div>
+
+        <Card>
+          <CardContent className="space-y-3 p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex gap-2">
+                <User className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-[11px] text-vega-text-muted">Contact</p>
+                  <p className="truncate text-xs font-semibold text-vega-text">{lead.contactName || "Not sourced"}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h3 className="truncate text-[22px] font-semibold leading-7 text-vega-text">{lead.title}</h3>
-                <p className="mt-1 text-xs text-vega-text-muted">
-                  {lead.contactName || "No contact sourced"} / {lead.source.replaceAll("_", " ")}
-                </p>
+              <div className="flex gap-2">
+                <Phone className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-[11px] text-vega-text-muted">Phone</p>
+                  <p className="truncate text-xs font-semibold text-vega-text">{resolvedPhone || "Not shared"}</p>
+                </div>
+              </div>
+              <div className="col-span-2 flex gap-2">
+                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-[11px] text-vega-text-muted">Email</p>
+                  <p className="truncate text-xs font-semibold text-vega-text">{lead.email || "Not sourced"}</p>
+                </div>
               </div>
             </div>
-            <div className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 border-t border-vega-border-soft pt-3">
+              <div className="flex gap-2">
+                <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-vega-purple" aria-hidden="true" />
+                <div>
+                  <p className="text-[11px] text-vega-text-muted">Score</p>
+                  <p className="text-xs font-semibold text-vega-text">{lead.score ?? 0}</p>
+                  <div className="mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-vega-surface-2">
+                    <div className="h-full rounded-full bg-vega-purple" style={{ width: `${Math.min(100, lead.score ?? 0)}%` }} />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 border-l border-vega-border-soft pl-3">
+                <User className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" aria-hidden="true" />
+                <div>
+                  <p className="text-[11px] text-vega-text-muted">Assigned to</p>
+                  <p className="text-xs font-semibold text-vega-text">Somil Jain</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-4 border-b border-vega-border-soft">
+          {[
+            { label: "Overview", icon: ClipboardList, href: "#overview" },
+            { label: "Follow-ups", icon: CalendarDays, href: "#follow-ups" },
+            { label: "Activity", icon: Zap, href: "#activity" },
+            { label: "Notes", icon: NotebookText, href: "#notes" },
+          ].map((tab, index) => {
+            const Icon = tab.icon;
+            return (
+              <a
+                key={tab.label}
+                href={tab.href}
+                className={`inline-flex h-11 min-w-0 items-center justify-center gap-1.5 border-b-2 px-1 text-[11px] font-semibold ${
+                  index === 0 ? "border-vega-purple text-[#c4b5fd]" : "border-transparent text-vega-text-muted"
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {tab.label}
+              </a>
+            );
+          })}
+        </div>
+
+        <Card id="follow-ups">
+          <CardContent className="space-y-3 p-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <h3 className="text-sm font-semibold text-vega-text">Next follow-up</h3>
+            </div>
+            {nextFollowUp ? (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-vega-text">{humanize(nextFollowUp.channel)} {lead.contactName || lead.title}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-vega-text-muted">
+                      <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                      {formatDateTime(nextFollowUp.dueAt)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <Badge variant="accent">{humanize(nextFollowUp.status)}</Badge>
+                    <Badge variant={nextFollowUp.priority === "urgent" ? "danger" : "warning"}>{humanize(nextFollowUp.priority)}</Badge>
+                  </div>
+                </div>
+                <p className="text-xs leading-5 text-vega-text-secondary">{nextFollowUp.nextAction}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a href="#follow-up-panel" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 text-xs font-semibold text-vega-text-secondary">
+                    <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                    Reschedule
+                  </a>
+                  <a href="#follow-up-panel" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-vega-purple text-xs font-semibold text-white">
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                    Mark complete
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-vega-text-muted">No follow-up scheduled yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card id="overview">
+          <CardHeader className="flex-row items-center justify-between p-3 pb-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <CardTitle>Lead summary</CardTitle>
+            </div>
+            <a href="#edit-lead" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-vega-border px-2.5 text-xs font-semibold text-vega-text-secondary">
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+              Edit
+            </a>
+          </CardHeader>
+          <CardContent className="space-y-2.5 p-3 pt-1">
+            <div className="grid grid-cols-2 gap-2">
               {[
-                ["Lead Score", lead.score ?? 0],
                 ["Source", humanize(lead.source)],
+                ["Category", lead.category ? humanize(lead.category) : "Not qualified"],
                 ["Budget", formatBudget(lead.budget)],
-                ["Owner", "Sales"],
-                ["Status", humanize(lead.status)],
-                ["Next Follow-up", formatDateTime(lead.updatedAt)],
+                ["Updated", formatDateTime(lead.updatedAt)],
               ].map(([label, value]) => (
-                <div key={label} className="border-l border-vega-border-soft pl-3 first:border-l-0 first:pl-0">
-                  <p className="text-[10px] leading-4 text-vega-text-dim">{label}</p>
-                  <p className="mt-0.5 max-w-40 truncate font-medium text-vega-text-secondary">{value}</p>
+                <div key={label} className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-2.5">
+                  <p className="text-[10px] text-vega-text-muted">{label}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-vega-text">{value}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="border-t border-vega-border-soft pt-3">
+              <p className="text-[10px] text-vega-text-muted">Requirement</p>
+              <p className="mt-1 text-xs leading-5 text-vega-text">{lead.description || "No requirement captured."}</p>
+            </div>
+            {lead.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {lead.tags.map((tag) => <Badge key={tag} variant="neutral">{tag}</Badge>)}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
 
-      <div className="flex overflow-x-auto border-b border-vega-border-soft">
-        {["Overview", "Discovery", "Scope Lock", "Blueprint", "Proposal", "Activity"].map((tab, index) => (
-          <span
-            key={tab}
-            className={`whitespace-nowrap px-3 py-3 text-xs font-medium ${index === 0 ? "border-b-2 border-vega-purple text-[#c4b5fd]" : "text-vega-text-muted"}`}
-          >
-            {tab}
-          </span>
-        ))}
+        <Card>
+          <CardHeader className="flex-row items-center gap-2 p-3 pb-2">
+            <BarChart3 className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+            <CardTitle>Pipeline progress</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-1">
+            <div className="relative space-y-2 pl-6 before:absolute before:left-[9px] before:top-3 before:h-[calc(100%-24px)] before:w-px before:bg-vega-border">
+              {leadStages.map((stage, index) => (
+                <div key={stage.label} className="relative flex items-center justify-between gap-3">
+                  <span className={`absolute -left-[20px] h-4 w-4 rounded-full ${index === 0 ? "bg-success" : "bg-[#b6c7e6]"}`} />
+                  <span className="text-xs font-semibold text-vega-text">{stage.label}</span>
+                  <Badge variant={stage.variant}>{stage.state}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card id="notes" className="p-3">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between">
+              <span className="flex items-center gap-2 text-sm font-semibold text-vega-text">
+                <NotebookText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+                Notes
+              </span>
+              <span className="text-xs font-semibold text-vega-purple">+ Add note</span>
+            </summary>
+            <div className="mt-3"><LeadDairy leadId={lead._id} notes={leadNotes} /></div>
+          </details>
+          {leadNotes.length === 0 ? <p className="mt-2 flex items-center gap-2 text-xs text-vega-text-muted group-open:hidden"><NotebookText className="h-4 w-4" aria-hidden="true" />No notes added yet.</p> : null}
+        </Card>
+
+        <details className="rounded-lg border border-vega-border bg-vega-surface-1 p-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-vega-text">
+            <span className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              Next steps <Badge variant="accent">2</Badge>
+            </span>
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          </summary>
+          <div className="mt-4 space-y-3">
+            <Link href={`/blueprint/${lead._id}`} className="block rounded-md border border-vega-border-soft bg-vega-surface-2 p-3 text-sm font-semibold text-vega-text">Blueprint</Link>
+            <Link href={`/proposals/${lead._id}`} className="block rounded-md border border-vega-border-soft bg-vega-surface-2 p-3 text-sm font-semibold text-vega-text">Proposal</Link>
+          </div>
+        </details>
+
+        <details className="rounded-lg border border-vega-border bg-vega-surface-1 p-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-vega-text">
+            <span className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              Client portal
+            </span>
+            <span className="flex items-center gap-1.5 text-[11px] font-normal text-vega-text-muted">
+              {invite ? humanize(invite.status) : "Not invited"}
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </summary>
+          <div className="mt-4">
+            <ClientInvitePanel leadId={lead._id} hasEmail={Boolean(lead.email)} invite={invite} linkedClientUser={linkedClientUser} />
+          </div>
+        </details>
+
+        <div id="follow-up-panel" className="hidden scroll-mt-16 target:block">
+          <LeadFollowUpPanel leadId={lead._id} followUps={followUps} />
+        </div>
+
+        <Card id="edit-lead" className="hidden scroll-mt-16 target:block">
+          <CardHeader>
+            <CardTitle>Edit Lead</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LeadFieldsEditor
+              lead={{
+                id: lead._id,
+                title: lead.title,
+                contactName: lead.contactName ?? "",
+                email: lead.email ?? "",
+                phone: lead.phone,
+                source: lead.source,
+                category: lead.category ?? "",
+                urgency: lead.urgency ?? "",
+                description: lead.description ?? "",
+                budget: lead.budget,
+                sourceDomain: lead.sourceDomain,
+                sourcePath: lead.sourcePath,
+                sourceReferrer: lead.sourceReferrer,
+                tags: lead.tags,
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <a href="#follow-up-panel" className="sticky bottom-2 z-20 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-vega-purple text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,63,224,0.35)]">
+          <CalendarDays className="h-4 w-4" aria-hidden="true" />
+          Schedule follow-up
+        </a>
       </div>
 
-      <Card>
-        <CardContent className="p-3">
-          <div className="grid gap-2 md:grid-cols-5">
-            {leadStages.map((stage, index) => (
-              <div key={stage.label} className="flex items-center gap-2">
-                <div className="min-w-0 flex-1 rounded-md border border-vega-border-soft bg-vega-surface-2 p-2.5">
-                  <p className="text-xs font-medium text-vega-text">{stage.label}</p>
-                  <div className="mt-1">
-                    <Badge variant={stage.variant}>{stage.state}</Badge>
-                  </div>
-                </div>
-                {index < leadStages.length - 1 ? (
-                  <span className="hidden text-vega-text-dim md:block">-&gt;</span>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact and Quick Actions</CardTitle>
-              <CardDescription>Call, message, or email from one place.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
-                  <p className="text-[10px] text-vega-text-muted">Contact Name</p>
-                  <p className="mt-1 text-xs font-medium text-vega-text">
-                    {lead.contactName || "Not sourced"}
-                  </p>
-                </div>
-                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
-                  <p className="text-[10px] text-vega-text-muted">Email</p>
-                  <p className="mt-1 break-all text-xs font-medium text-vega-text">
-                    {lead.email || "Not sourced"}
-                  </p>
-                </div>
-                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3 md:col-span-2">
-                  <p className="text-[10px] text-vega-text-muted">Phone</p>
-                  <p className="mt-1 text-xs font-medium text-vega-text">{resolvedPhone || "Not shared"}</p>
-                </div>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-3">
-                {callHref ? (
-                  <a
-                    href={callHref}
-                    className="inline-flex h-[34px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
-                  >
-                    <span className="text-[#1d7a46]">
-                      <PhoneIcon />
-                    </span>
-                    Call
-                  </a>
-                ) : (
-                  <span className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-2 px-3 text-xs font-medium text-vega-text-muted">
-                    Call Unavailable
-                  </span>
-                )}
-
-                {messageHref ? (
-                  <a
-                    href={messageHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-[34px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
-                  >
-                    <span className="text-[#25d366]">
-                      <WhatsAppIcon />
-                    </span>
-                    WhatsApp
-                  </a>
-                ) : (
-                  <span className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-2 px-3 text-xs font-medium text-vega-text-muted">
-                    Message Unavailable
-                  </span>
-                )}
-
-                {mailHref ? (
-                  <a
-                    href={mailHref}
-                    className="inline-flex h-[34px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
-                  >
-                    <MailIcon />
-                    Mail
-                  </a>
-                ) : (
-                  <span className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-2 px-3 text-xs font-medium text-vega-text-muted">
-                    Mail Unavailable
-                  </span>
-                )}
-              </div>
-
-              {!resolvedPhone || !lead.email ? (
-                <p className="text-xs text-vega-text-muted">
-                  {lead.source === "cold_outreach"
-                    ? "Cold prospects are sourced from public records and often carry no contact details. Source a phone or email before any outreach."
-                    : "Add phone number in lead record to enable direct call and message actions."}
-                </p>
+      <div className="hidden space-y-4 lg:block">
+      <header className="border-b border-vega-border-soft pb-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm text-vega-text-muted">Operations / Leads</p>
+            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+              <h2 className="truncate text-[28px] font-semibold leading-[34px] tracking-normal text-vega-text">
+                {lead.title}
+              </h2>
+              <ExternalLink className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+            </div>
+            <p className="mt-1 text-sm text-vega-text-muted">
+              {lead.contactName || "No contact sourced"} / {humanize(lead.source)}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge variant={statusVariant(lead.status)}>{humanize(lead.status)}</Badge>
+              {lead.urgency ? (
+                <Badge variant={urgencyVariant(lead.urgency)}>{humanize(lead.urgency)} Urgency</Badge>
               ) : null}
-            </CardContent>
-          </Card>
+              <Badge variant={priorityVariant(lead.priorityBand)}>{humanize(lead.priorityBand)}</Badge>
+            </div>
+          </div>
 
-          {lead.prospecting ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Digital Presence Audit</CardTitle>
-                <CardDescription>
-                  Cold-prospect audit: what their online presence looks like, and the report we can
-                  send them about it.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AuditReportPanel
-                  leadId={lead._id}
-                  hasEmail={Boolean(lead.email)}
-                  prospecting={
-                    lead.prospecting as unknown as React.ComponentProps<
-                      typeof AuditReportPanel
-                    >["prospecting"]
-                  }
-                />
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
+            <Link
+              href="/leads"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-4 text-sm font-semibold text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to Leads
+            </Link>
+            <a
+              href="#edit-lead"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-vega-purple px-4 text-sm font-semibold text-white transition-colors hover:bg-vega-purple-strong"
+            >
+              <Edit3 className="h-4 w-4" aria-hidden="true" />
+              Edit Lead
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        {[
+          { label: "Contact", value: lead.contactName || "Not sourced", icon: User, tone: "text-[#8b5cf6]" },
+          { label: "Phone", value: resolvedPhone || "Not shared", icon: Phone, tone: "text-success" },
+          { label: "Email", value: lead.email || "Not sourced", icon: Mail, tone: "text-blue-300" },
+        ].map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Card key={item.label} className="border-vega-border bg-vega-surface-1">
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-vega-border-soft bg-vega-surface-2">
+                  <Icon className={`h-5 w-5 ${item.tone}`} aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <p className="text-xs text-vega-text-muted">{item.label}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-vega-text">{item.value}</p>
+                </span>
               </CardContent>
             </Card>
-          ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Client Portal Access</CardTitle>
-              <CardDescription>
-                Invite this lead&apos;s contact to log in and review their audit and requirements
-                directly.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ClientInvitePanel
+          );
+        })}
+        <Card className="border-vega-border bg-vega-surface-1">
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-vega-border-soft bg-vega-surface-2">
+              <BadgeCheck className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <p className="text-xs text-vega-text-muted">Status</p>
+              <LeadStatusSelect
+                key={`${lead._id}-${lead.status}`}
                 leadId={lead._id}
-                hasEmail={Boolean(lead.email)}
-                invite={invite}
-                linkedClientUser={linkedClientUser}
+                currentStatus={lead.status}
+                compact
+                className="mt-1"
               />
+            </span>
+          </CardContent>
+        </Card>
+        {[
+          { label: "Source", value: humanize(lead.source), icon: Globe2, tone: "text-[#9ca3ff]" },
+          { label: "Score", value: String(lead.score ?? 0), icon: BarChart3, tone: "text-[#8b5cf6]" },
+        ].map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Card key={item.label} className="border-vega-border bg-vega-surface-1">
+              <CardContent className="flex items-center gap-3 p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-vega-border-soft bg-vega-surface-2">
+                  <Icon className={`h-5 w-5 ${item.tone}`} aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <p className="text-xs text-vega-text-muted">{item.label}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-vega-text">{item.value}</p>
+                </span>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="space-y-4">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-vega-border-soft p-0">
+              <div className="flex min-w-0 overflow-x-auto">
+                {[
+                  { label: "Overview", icon: ClipboardList, active: true, href: "#overview" },
+                  { label: "Follow-ups", icon: CalendarDays, active: false, href: "#follow-ups" },
+                  { label: "Activity", icon: Zap, active: false, href: "#activity" },
+                  { label: "Notes", icon: NotebookText, active: false, href: "#notes" },
+                  { label: "Edit Lead", icon: Pencil, active: false, href: "#edit-lead" },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <a
+                      key={tab.label}
+                      href={tab.href}
+                      className={`inline-flex h-12 shrink-0 items-center gap-2 border-b-2 px-6 text-sm font-semibold transition-colors ${
+                        tab.active
+                          ? "border-vega-purple bg-vega-purple-soft text-[#ddd6fe]"
+                          : "border-transparent text-vega-text-muted hover:bg-vega-surface-hover hover:text-vega-text"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      {tab.label}
+                    </a>
+                  );
+                })}
+              </div>
+            </CardHeader>
+            <CardContent id="follow-ups" className="p-3">
+              <LeadFollowUpPanel leadId={lead._id} followUps={followUps} />
             </CardContent>
           </Card>
 
+          <div id="overview" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Card>
-            <CardHeader>
-              <CardTitle>Requirements Blueprint</CardTitle>
-              <CardDescription>
-                Discovery-call questionnaire, recommended components, and estimate range.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-3">
-              {latestBlueprint ? (
-                <Badge variant={latestBlueprint.status === "approved" ? "success" : "neutral"}>
-                  v{latestBlueprint.version} - {latestBlueprint.status}
-                </Badge>
-              ) : (
-                <span className="text-xs text-vega-text-muted">No blueprint created yet.</span>
-              )}
+            <CardHeader className="flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+                <CardTitle>Lead Summary</CardTitle>
+              </div>
               <a
-                href={`/blueprint/${lead._id}`}
-                className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                href="#edit-lead"
+                className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:text-vega-text"
               >
-                {latestBlueprint ? "Open Blueprint" : "Start Blueprint"}
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                Edit
               </a>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Proposal</CardTitle>
-              <CardDescription>
-                Formal scope, pricing, and signature - generated from the signed Scope Manifest.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-3">
-              {latestProposal ? (
-                <Badge variant={latestProposal.status === "signed" ? "success" : "neutral"}>
-                  v{latestProposal.version} - {latestProposal.status}
-                </Badge>
-              ) : hasSignedScope ? (
-                <span className="text-xs text-vega-text-muted">No proposal generated yet.</span>
-              ) : (
-                <span className="text-xs text-vega-text-muted">Lock scope first.</span>
-              )}
-              <a
-                href={`/proposals/${lead._id}`}
-                className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
-              >
-                {latestProposal ? "Open Proposal" : "Start Proposal"}
-              </a>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Lead Dairy</CardTitle>
-              <CardDescription>Add and review lead notes from one place.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LeadDairy leadId={lead._id} notes={leadNotes} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Lead Overview</CardTitle>
-              <CardDescription>Structured business context and requirement summary.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="grid gap-3 md:grid-cols-2">
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 md:grid-cols-4">
                 <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
                   <p className="text-[10px] text-vega-text-muted">Source</p>
                   <p className="mt-1 text-xs font-medium text-vega-text">{humanize(lead.source)}</p>
@@ -556,51 +768,57 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
                 <p className="text-[10px] text-vega-text-muted">Requirement Description</p>
                 <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-vega-text-secondary">
-                  {lead.description || "No requirement captured - this lead has not spoken to us yet."}
+                  {lead.description || "No requirement captured."}
                 </p>
               </div>
 
               {lead.tags?.length ? (
-                <div className="space-y-2">
-                  <p className="text-xs text-vega-text-muted">Tags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {lead.tags.map((tag) => (
-                      <Badge key={tag} variant="neutral">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {lead.tags.map((tag) => (
+                    <Badge key={tag} variant="neutral">
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
               ) : null}
-
-              <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
-                <p className="text-[10px] text-vega-text-muted">Source Tracking</p>
-                <div className="mt-2 space-y-1 text-sm">
-                  <p>
-                    <span className="text-vega-text-muted">Domain:</span>{" "}
-                    {lead.sourceDomain || "Not captured"}
-                  </p>
-                  <p>
-                    <span className="text-vega-text-muted">Path:</span> {lead.sourcePath || "Not captured"}
-                  </p>
-                  <p className="break-all">
-                    <span className="text-vega-text-muted">Referrer:</span>{" "}
-                    {lead.sourceReferrer || "Not captured"}
-                  </p>
-                  <p>
-                    <span className="text-vega-text-muted">Created:</span> {formatDateTime(lead.createdAt)}
-                  </p>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="notes">
+            <CardHeader className="flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <NotebookText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+                <CardTitle>Notes</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <LeadDairy leadId={lead._id} notes={leadNotes} />
+            </CardContent>
+          </Card>
+          </div>
+
+          {lead.prospecting ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Digital Presence Audit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AuditReportPanel
+                  leadId={lead._id}
+                  hasEmail={Boolean(lead.email)}
+                  prospecting={
+                    lead.prospecting as unknown as React.ComponentProps<
+                      typeof AuditReportPanel
+                    >["prospecting"]
+                  }
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card id="edit-lead">
             <CardHeader>
-              <CardTitle>Edit Lead Fields</CardTitle>
-              <CardDescription>
-                Admin, sales, and digital marketing can update core lead details from here.
-              </CardDescription>
+              <CardTitle>Edit Lead</CardTitle>
             </CardHeader>
             <CardContent>
               <LeadFieldsEditor
@@ -627,67 +845,145 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Pipeline Control</CardTitle>
-              <CardDescription>Track urgency, status, and priority in one panel.</CardDescription>
+            <CardHeader className="flex-row items-center gap-2">
+              <Zap className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
-                  <p className="text-[10px] text-vega-text-muted">Current Status</p>
-                  <div className="mt-1">
-                    <Badge variant={statusVariant(lead.status)}>{humanize(lead.status)}</Badge>
-                  </div>
-                </div>
-                <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
-                  <p className="text-[10px] text-vega-text-muted">Urgency</p>
-                  <div className="mt-1">
-                    {lead.urgency ? (
-                      <Badge variant={urgencyVariant(lead.urgency)}>{humanize(lead.urgency)}</Badge>
-                    ) : (
-                      <span className="text-xs text-vega-text-muted">Not set</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+            <CardContent className="grid gap-2 sm:grid-cols-3 xl:grid-cols-3">
+              {callHref ? (
+                <a
+                  href={callHref}
+                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                >
+                  <span className="text-[#1d7a46]">
+                    <PhoneIcon />
+                  </span>
+                  Call
+                </a>
+              ) : null}
 
-              <div className="space-y-1">
-                <p className="text-xs text-vega-text-muted">Change Status</p>
-                <LeadStatusSelect
-                  key={`${lead._id}-${lead.status}`}
-                  leadId={lead._id}
-                  currentStatus={lead.status}
-                />
-              </div>
+              {messageHref ? (
+                <a
+                  href={messageHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                >
+                  <span className="text-[#25d366]">
+                    <WhatsAppIcon />
+                  </span>
+                  WhatsApp
+                </a>
+              ) : null}
+
+              {mailHref ? (
+                <a
+                  href={mailHref}
+                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                >
+                  <MailIcon />
+                  Mail
+                </a>
+              ) : null}
+
+              {!callHref && !messageHref && !mailHref ? (
+                <p className="text-xs leading-5 text-vega-text-muted">No contact action available.</p>
+              ) : null}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Lead Health</CardTitle>
+            <CardHeader className="flex-row items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <CardTitle>Pipeline Progress</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-4xl font-semibold leading-none">{lead.score ?? 0}</p>
-              <Badge variant={priorityVariant(lead.priorityBand)}>{humanize(lead.priorityBand)}</Badge>
-              <p className="text-xs leading-5 text-vega-text-muted">
-                {lead.priorityFlag
-                  ? "Flagged as high-priority lead for fast follow-up."
-                  : "This lead is currently in the standard follow-up path."}
-              </p>
+              <div className="relative space-y-2 pl-5 before:absolute before:left-[7px] before:top-3 before:h-[calc(100%-24px)] before:w-px before:bg-vega-border">
+                {leadStages.map((stage, index) => (
+                  <div
+                    key={stage.label}
+                    className="relative flex items-center justify-between gap-3 rounded-md bg-vega-surface-2 px-3 py-2"
+                  >
+                    <span
+                      className={`absolute -left-[20px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-vega-surface-1 ${
+                        index === 0 ? "bg-success" : "bg-vega-text-dim"
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <span className="text-xs font-medium text-vega-text">{stage.label}</span>
+                    <Badge variant={stage.variant}>{stage.state}</Badge>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Follow-up Guide</CardTitle>
+            <CardHeader className="flex-row items-center gap-2">
+              <Zap className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <CardTitle>Next Steps</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-xs leading-5 text-vega-text-muted">
-              <p>1. Use Call for immediate discussion and qualification.</p>
-              <p>2. Use Message to send a quick acknowledgement and next step.</p>
-              <p>3. Use Mail for detailed scope or document-based follow-up.</p>
+            <CardContent className="space-y-3">
+              <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <FileCheck2 className="h-4 w-4 text-[#c4b5fd]" aria-hidden="true" />
+                    <div>
+                      <p className="text-xs font-medium text-vega-text">Blueprint</p>
+                      <p className="text-[11px] text-vega-text-muted">Create project blueprint</p>
+                    </div>
+                  </div>
+                  {latestBlueprint ? (
+                    <Badge variant={latestBlueprint.status === "approved" ? "success" : "neutral"}>
+                      v{latestBlueprint.version}
+                    </Badge>
+                  ) : (
+                    <Badge variant="neutral">Pending</Badge>
+                  )}
+                </div>
+                <a
+                  href={`/blueprint/${lead._id}`}
+                  className="mt-3 inline-flex h-[32px] w-full items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                >
+                  {latestBlueprint ? "Open Blueprint" : "Start Blueprint"}
+                </a>
+              </div>
+
+              <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#c4b5fd]" aria-hidden="true" />
+                    <div>
+                      <p className="text-xs font-medium text-vega-text">Proposal</p>
+                      <p className="text-[11px] text-vega-text-muted">Create and send proposal</p>
+                    </div>
+                  </div>
+                  {latestProposal ? (
+                    <Badge variant={latestProposal.status === "signed" ? "success" : "neutral"}>
+                      v{latestProposal.version}
+                    </Badge>
+                  ) : (
+                    <Badge variant="neutral">{hasSignedScope ? "Pending" : "Locked"}</Badge>
+                  )}
+                </div>
+                <a
+                  href={`/proposals/${lead._id}`}
+                  className="mt-3 inline-flex h-[32px] w-full items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                >
+                  {latestProposal ? "Open Proposal" : "Start Proposal"}
+                </a>
+              </div>
+
+              <ClientInvitePanel
+                leadId={lead._id}
+                hasEmail={Boolean(lead.email)}
+                invite={invite}
+                linkedClientUser={linkedClientUser}
+              />
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </section>
   );

@@ -2,6 +2,9 @@ import type { BaseDocument, ObjectId } from "@/types/common";
 
 export type ActivityAction =
   | "lead_status_changed"
+  | "lead_follow_up_created"
+  | "lead_follow_up_updated"
+  | "lead_follow_up_completed"
   | "proposal_generated"
   | "proposal_sent"
   | "proposal_signed"

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { Bell, ChevronDown, Menu, Plus, Search, Settings } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { PageRefreshButton } from "@/components/dashboard/page-refresh-button";
 import {
   getDashboardNavItems,
   isDashboardNavItemActive,
@@ -83,11 +84,27 @@ export function DashboardTopNav({ role, userLabel }: DashboardTopNavProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 min-h-[62px] border-b border-vega-border-soft bg-vega-topbar px-3 text-vega-text sm:px-5 lg:px-[22px]">
-      <div className="flex min-h-[62px] w-full items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-vega-purple-border bg-vega-purple-soft text-[13px] font-semibold text-[#c4b5fd] lg:hidden">
+    <header className="sticky top-0 z-40 min-h-[56px] border-b border-vega-border-soft bg-vega-topbar px-3 text-vega-text md:min-h-[62px] sm:px-5 lg:hidden">
+      <div className="flex min-h-[56px] w-full items-center justify-between gap-2 md:min-h-[62px]">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            aria-controls={mobileNavId}
+            aria-expanded={isMobileNavOpen}
+            onClick={() =>
+              setMobileNavAnchorPath((prev) => (prev === pathname ? null : pathname))
+            }
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-vega-text-secondary transition-colors hover:bg-vega-surface-hover hover:text-vega-text lg:hidden"
+            aria-label={isMobileNavOpen ? "Close menu" : "Open menu"}
+          >
+            <Menu className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+          </button>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-vega-purple-border bg-vega-purple-soft text-sm font-semibold text-[#c4b5fd] md:h-9 md:w-9 md:text-[13px] lg:hidden">
             V
+          </div>
+          <div className="min-w-0 lg:hidden">
+            <p className="truncate text-lg font-semibold leading-5 text-vega-text">Vega</p>
+            <p className="max-w-[78px] truncate text-[11px] leading-3.5 text-vega-text-muted sm:max-w-none">Nemnidhi Command</p>
           </div>
           <div className="hidden h-[34px] w-[410px] max-w-[36vw] items-center gap-2 rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs text-vega-text-muted md:flex">
             <Search className="h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
@@ -110,17 +127,17 @@ export function DashboardTopNav({ role, userLabel }: DashboardTopNavProps) {
           >
             <Settings className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
           </button>
-          <div className="relative hidden md:block">
+          <div className="relative">
             <button
               type="button"
               aria-label="Notifications"
               aria-expanded={notificationsOpen}
               onClick={() => void markNotificationsRead()}
-              className="relative inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 transition-colors duration-150 hover:bg-vega-surface-hover hover:text-vega-text"
+              className="relative inline-flex h-8 w-8 items-center justify-center rounded-md text-vega-text-secondary transition-colors duration-150 hover:bg-vega-surface-hover hover:text-vega-text md:h-[34px] md:w-[34px] md:border md:border-vega-border md:bg-vega-surface-1"
             >
-              <Bell className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+              <Bell className="h-5 w-5 md:h-4 md:w-4" strokeWidth={1.8} aria-hidden="true" />
               {unreadCount > 0 ? (
-                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-vega-red px-1 text-[9px] font-semibold leading-4 text-white">
+                <span className="absolute right-0 top-0 min-w-4 rounded-full bg-vega-red px-1 text-[9px] font-semibold leading-4 text-white md:-right-1 md:-top-1">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               ) : null}
@@ -168,19 +185,11 @@ export function DashboardTopNav({ role, userLabel }: DashboardTopNavProps) {
             </div>
             <ChevronDown className="h-4 w-4 text-vega-text-muted" strokeWidth={1.8} aria-hidden="true" />
           </div>
-          <button
-            type="button"
-            aria-controls={mobileNavId}
-            aria-expanded={isMobileNavOpen}
-            onClick={() =>
-              setMobileNavAnchorPath((prev) => (prev === pathname ? null : pathname))
-            }
-            className="inline-flex h-[34px] items-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:bg-vega-surface-hover hover:text-vega-text lg:hidden"
-          >
-            <Menu className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
-            {isMobileNavOpen ? "Close" : "Menu"}
-          </button>
-          <LogoutButton />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-vega-purple text-xs font-semibold text-white md:hidden">
+            {userLabel.slice(0, 2).toUpperCase()}
+          </div>
+          <ChevronDown className="h-4 w-4 text-vega-text-muted md:hidden" strokeWidth={1.8} aria-hidden="true" />
+          <LogoutButton className="hidden md:inline-flex" />
         </div>
       </div>
 
@@ -212,6 +221,9 @@ export function DashboardTopNav({ role, userLabel }: DashboardTopNavProps) {
               </Link>
             );
           })}
+          <div className="mt-1 border-t border-vega-border-soft pt-1">
+            <PageRefreshButton />
+          </div>
         </nav>
       </div>
     </header>

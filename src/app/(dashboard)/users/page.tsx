@@ -1,12 +1,6 @@
-import { DashboardHeader } from "@/components/dashboard/header";
-import {
-  UserManagementPanel,
-  type StaffUserItem,
-} from "@/components/users/user-management-panel";
-import {
-  PasswordChangeRequestsPanel,
-  type PasswordChangeRequestItem,
-} from "@/components/users/password-change-requests-panel";
+import type { StaffUserItem } from "@/components/users/user-management-panel";
+import type { PasswordChangeRequestItem } from "@/components/users/password-change-requests-panel";
+import { UsersAccessWorkspace } from "@/components/users/users-access-workspace";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import { getPasswordChangeRequests, getStaffUsers } from "@/lib/dashboard/queries";
 
@@ -42,13 +36,12 @@ export default async function UsersPage() {
   }));
 
   return (
-    <section className="space-y-6">
-      <DashboardHeader
-        title="User Access"
-        subtitle="Admin-only staff access control for creating, updating, and deleting staff users."
-      />
-      <PasswordChangeRequestsPanel initialRequests={passwordChangeRequests} />
-      <UserManagementPanel initialUsers={initialUsers} currentUserId={session.userId} />
-    </section>
+    <UsersAccessWorkspace
+      initialUsers={initialUsers}
+      initialRequests={passwordChangeRequests}
+      currentUserId={session.userId}
+      userLabel={session.fullName ?? session.email}
+      userRole={session.role}
+    />
   );
 }
