@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- the models are untyped at the call site;
    only the aggregate() shape matters here and it is asserted on the rows below. */
-import type { Model, PipelineStage } from "mongoose";
+import type { PipelineStage } from "mongoose";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { normalizeTaskStatus } from "@/lib/tasks/status";
 import { serializeForJson } from "@/lib/utils/serialize";
@@ -61,6 +61,29 @@ export type HomeDashboardPayload = {
   todaysTasksCompleted: number;
 };
 
+type DashboardCountRow = { total: number; thisMonth: number; lastMonth: number };
+type MonthlyRow = { _id: { year: number; month: number }; count: number };
+type SourceRow = { _id: string | null; count: number };
+type StatusRow = { _id: { status: string; overdue: boolean }; count: number };
+type MeetingRow = {
+  _id: unknown;
+  title?: string;
+  contactName?: string;
+  purpose?: string;
+  startAt: Date | string;
+  durationMinutes?: number;
+};
+type TaskRow = {
+  _id: unknown;
+  title: string;
+  status: string;
+  priority?: string;
+};
+type LeadSummary = { counts: DashboardCountRow[]; monthly: MonthlyRow[]; sources: SourceRow[] };
+type ClientSummary = { counts: DashboardCountRow[]; monthly: MonthlyRow[] };
+type TaskSummary = { counts: DashboardCountRow[]; statuses: StatusRow[]; today: TaskRow[] };
+type MeetingSummary = { counts: Array<Omit<DashboardCountRow, "total">>; upcoming: MeetingRow[] };
+
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const LEAD_SOURCE_LABEL: Record<string, string> = {
@@ -109,28 +132,13 @@ function percentOf(value: number, total: number) {
 }
 
 /**
- * Counts documents per month for the last six months.
- *
- * One aggregation per collection rather than six count queries: the dashboard is the first
- * screen every admin loads, so it should not fan out into a dozen round trips.
+ * Maps a compact monthly aggregation back onto the six fixed labels the dashboard renders.
  */
-async function monthlySeries(
-  model: Model<any>,
-  since: Date,
-  match: Record<string, unknown> = {},
+function monthlySeriesFromRows(
+  rows: MonthlyRow[],
+  now: Date,
 ) {
-  const rows: Array<{ _id: { year: number; month: number }; count: number }> = await model.aggregate([
-    { $match: { ...match, createdAt: { $gte: since } } },
-    {
-      $group: {
-        _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
-        count: { $sum: 1 },
-      },
-    },
-  ] as PipelineStage[]);
-
   const byKey = new Map(rows.map((row) => [`${row._id.year}-${row._id.month}`, row.count]));
-  const now = new Date();
 
   return Array.from({ length: 6 }, (_, index) => {
     const date = monthStart(now, 5 - index);
@@ -151,60 +159,169 @@ export async function getHomeDashboard(): Promise<HomeDashboardPayload> {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
-  const thisMonth = { createdAt: { $gte: thisMonthStart } };
-  const lastMonth = { createdAt: { $gte: lastMonthStart, $lt: thisMonthStart } };
-
-  const [
-    totalLeads,
-    leadsThisMonth,
-    leadsLastMonth,
-    totalClients,
-    clientsThisMonth,
-    clientsLastMonth,
-    meetingsThisMonth,
-    meetingsLastMonth,
-    openTasks,
-    tasksThisMonth,
-    tasksLastMonth,
-  ] = await Promise.all([
-    LeadModel.countDocuments({}),
-    LeadModel.countDocuments(thisMonth),
-    LeadModel.countDocuments(lastMonth),
-    ClientModel.countDocuments({}),
-    ClientModel.countDocuments(thisMonth),
-    ClientModel.countDocuments(lastMonth),
-    MeetingModel.countDocuments({ status: "confirmed", startAt: { $gte: thisMonthStart } }),
-    MeetingModel.countDocuments({ status: "confirmed", startAt: { $gte: lastMonthStart, $lt: thisMonthStart } }),
-    TaskModel.countDocuments({ parentTaskId: null, archivedAt: null }),
-    TaskModel.countDocuments({ parentTaskId: null, archivedAt: null, ...thisMonth }),
-    TaskModel.countDocuments({ parentTaskId: null, archivedAt: null, ...lastMonth }),
-  ]);
-
-  const [leadsOverview, clientGrowth, sourceRows, statusRows, activityLogs, meetings, todaysTaskRows] =
+  const [leadSummary, clientSummary, taskSummary, meetingSummary, activityLogs] =
     await Promise.all([
-      monthlySeries(LeadModel, sixMonthsAgo),
-      monthlySeries(ClientModel, sixMonthsAgo),
-      LeadModel.aggregate([{ $group: { _id: "$source", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+      LeadModel.aggregate([
+        {
+          $facet: {
+            counts: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  thisMonth: { $sum: { $cond: [{ $gte: ["$createdAt", thisMonthStart] }, 1, 0] } },
+                  lastMonth: {
+                    $sum: {
+                      $cond: [
+                        { $and: [{ $gte: ["$createdAt", lastMonthStart] }, { $lt: ["$createdAt", thisMonthStart] }] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            monthly: [
+              { $match: { createdAt: { $gte: sixMonthsAgo } } },
+              { $group: { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+            ],
+            sources: [
+              { $group: { _id: "$source", count: { $sum: 1 } } },
+              { $sort: { count: -1 } },
+            ],
+          },
+        },
+      ] as PipelineStage[]),
+      ClientModel.aggregate([
+        {
+          $facet: {
+            counts: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  thisMonth: { $sum: { $cond: [{ $gte: ["$createdAt", thisMonthStart] }, 1, 0] } },
+                  lastMonth: {
+                    $sum: {
+                      $cond: [
+                        { $and: [{ $gte: ["$createdAt", lastMonthStart] }, { $lt: ["$createdAt", thisMonthStart] }] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            monthly: [
+              { $match: { createdAt: { $gte: sixMonthsAgo } } },
+              { $group: { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+            ],
+          },
+        },
+      ] as PipelineStage[]),
       TaskModel.aggregate([
-        { $match: { parentTaskId: null, archivedAt: null } },
-        { $group: { _id: { status: "$status", overdue: { $and: [{ $ne: ["$dueAt", null] }, { $lt: ["$dueAt", now] }] } }, count: { $sum: 1 } } },
-      ]),
+        {
+          $match: {
+            parentTaskId: null,
+            archivedAt: null,
+          },
+        },
+        {
+          $facet: {
+            counts: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  thisMonth: { $sum: { $cond: [{ $gte: ["$createdAt", thisMonthStart] }, 1, 0] } },
+                  lastMonth: {
+                    $sum: {
+                      $cond: [
+                        { $and: [{ $gte: ["$createdAt", lastMonthStart] }, { $lt: ["$createdAt", thisMonthStart] }] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            statuses: [
+              {
+                $group: {
+                  _id: { status: "$status", overdue: { $and: [{ $ne: ["$dueAt", null] }, { $lt: ["$dueAt", now] }] } },
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            today: [
+              { $match: { dueAt: { $gte: todayStart, $lt: todayEnd } } },
+              { $sort: { priority: -1, dueAt: 1 } },
+              { $limit: 5 },
+              { $project: { title: 1, status: 1, priority: 1 } },
+            ],
+          },
+        },
+      ] as PipelineStage[]),
+      MeetingModel.aggregate([
+        {
+          $match: {
+            status: "confirmed",
+            startAt: { $gte: lastMonthStart },
+          },
+        },
+        {
+          $facet: {
+            counts: [
+              {
+                $group: {
+                  _id: null,
+                  thisMonth: { $sum: { $cond: [{ $gte: ["$startAt", thisMonthStart] }, 1, 0] } },
+                  lastMonth: {
+                    $sum: {
+                      $cond: [
+                        { $and: [{ $gte: ["$startAt", lastMonthStart] }, { $lt: ["$startAt", thisMonthStart] }] },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            upcoming: [
+              { $match: { startAt: { $gte: now } } },
+              { $sort: { startAt: 1 } },
+              { $limit: 4 },
+              { $project: { title: 1, contactName: 1, purpose: 1, startAt: 1, durationMinutes: 1 } },
+            ],
+          },
+        },
+      ] as PipelineStage[]),
       ActivityLogModel.find({}).sort({ createdAt: -1 }).limit(5).select("action entityType createdAt").lean(),
-      MeetingModel.find({ status: "confirmed", startAt: { $gte: now } })
-        .sort({ startAt: 1 })
-        .limit(4)
-        .select("title contactName purpose startAt durationMinutes")
-        .lean(),
-      TaskModel.find({ parentTaskId: null, archivedAt: null, dueAt: { $gte: todayStart, $lt: todayEnd } })
-        .sort({ priority: -1, dueAt: 1 })
-        .limit(5)
-        .select("title status priority")
-        .lean(),
     ]);
 
-  const sourceTotal = sourceRows.reduce((total: number, row: { count: number }) => total + row.count, 0);
-  const leadSources: HomeSlice[] = sourceRows.map((row: { _id: string; count: number }) => ({
-    label: LEAD_SOURCE_LABEL[row._id] ?? titleCase(row._id ?? "other"),
+  const leadResult = (leadSummary[0] ?? { counts: [], monthly: [], sources: [] }) as LeadSummary;
+  const clientResult = (clientSummary[0] ?? { counts: [], monthly: [] }) as ClientSummary;
+  const taskResult = (taskSummary[0] ?? { counts: [], statuses: [], today: [] }) as TaskSummary;
+  const meetingResult = (meetingSummary[0] ?? { counts: [], upcoming: [] }) as MeetingSummary;
+
+  const leadCounts = leadResult.counts[0] ?? { total: 0, thisMonth: 0, lastMonth: 0 };
+  const clientCounts = clientResult.counts[0] ?? { total: 0, thisMonth: 0, lastMonth: 0 };
+  const taskCounts = taskResult.counts[0] ?? { total: 0, thisMonth: 0, lastMonth: 0 };
+  const meetingCounts = meetingResult.counts[0] ?? { thisMonth: 0, lastMonth: 0 };
+  const leadsOverview = monthlySeriesFromRows(leadResult.monthly, now);
+  const clientGrowth = monthlySeriesFromRows(clientResult.monthly, now);
+  const sourceRows = leadResult.sources;
+  const statusRows = taskResult.statuses;
+  const meetings = meetingResult.upcoming;
+  const todaysTaskRows = taskResult.today;
+
+  const sourceTotal = sourceRows.reduce((total, row) => total + row.count, 0);
+  const leadSources: HomeSlice[] = sourceRows.map((row) => ({
+    label: LEAD_SOURCE_LABEL[row._id ?? "other"] ?? titleCase(row._id ?? "other"),
     value: row.count,
     percent: percentOf(row.count, sourceTotal),
   }));
@@ -212,7 +329,7 @@ export async function getHomeDashboard(): Promise<HomeDashboardPayload> {
   // Overdue is a derived bucket, not a stored status, so it is counted first and the remaining
   // rows fall through to their normalised status.
   const buckets = { Completed: 0, "In Progress": 0, Pending: 0, Overdue: 0 };
-  for (const row of statusRows as Array<{ _id: { status: string; overdue: boolean }; count: number }>) {
+  for (const row of statusRows) {
     const status = normalizeTaskStatus(row._id.status);
     if (status === "COMPLETED") buckets.Completed += row.count;
     else if (row._id.overdue) buckets.Overdue += row.count;
@@ -227,10 +344,10 @@ export async function getHomeDashboard(): Promise<HomeDashboardPayload> {
   }));
 
   const stats: HomeStat[] = [
-    { key: "leads", label: "Total Leads", value: totalLeads, deltaPercent: deltaPercent(leadsThisMonth, leadsLastMonth) },
-    { key: "clients", label: "Active Clients", value: totalClients, deltaPercent: deltaPercent(clientsThisMonth, clientsLastMonth) },
-    { key: "meetings", label: "Meetings", value: meetingsThisMonth, deltaPercent: deltaPercent(meetingsThisMonth, meetingsLastMonth) },
-    { key: "tasks", label: "Tasks", value: openTasks, deltaPercent: deltaPercent(tasksThisMonth, tasksLastMonth) },
+    { key: "leads", label: "Total Leads", value: leadCounts.total, deltaPercent: deltaPercent(leadCounts.thisMonth, leadCounts.lastMonth) },
+    { key: "clients", label: "Active Clients", value: clientCounts.total, deltaPercent: deltaPercent(clientCounts.thisMonth, clientCounts.lastMonth) },
+    { key: "meetings", label: "Meetings", value: meetingCounts.thisMonth, deltaPercent: deltaPercent(meetingCounts.thisMonth, meetingCounts.lastMonth) },
+    { key: "tasks", label: "Tasks", value: taskCounts.total, deltaPercent: deltaPercent(taskCounts.thisMonth, taskCounts.lastMonth) },
   ];
 
   const timeFormat = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
