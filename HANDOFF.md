@@ -1,5 +1,403 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-04 (later session, daytime): the audit report got a real web view, a real booking widget, real catalog tags, and the platform's own tenant model got audited - read this before anything below
+
+Picks up right after the evening/night session below (which built the gap→feature recommendation
+engine into the audit report PDF). This session built the piece that session explicitly scoped but
+didn't build: a public, no-login web page for that same report - the actual thing an ad-driven
+WhatsApp lead needs, since a cold lead has no portal account to send a PDF-download link to.
+**Everything below is pushed to `origin/master`** (`033e8bb`..`c7fb464`) and deployed live on
+`vega.nemnidhi.com` as of this entry, confirmed via `curl .../api/health` after each deploy.
+
+**1. Public web view of the audit report - the actual Phase 3 gap from the last entry, now closed.**
+New `shareToken` field on `Report` (unguessable, stable across regenerations so a link already
+pasted into WhatsApp never breaks), plus a `reportData` JSON snapshot built from the exact same
+`computeReportFacts()`/`buildReportDocument()` pipeline the PDF uses (`report-data.ts`, `report-
+template.tsx`'s `computeReportFacts` extracted and shared, not duplicated) - the web view and the
+PDF can never show different recommendations for the same lead. Two new public routes:
+`GET /api/public/audit-report/[token]` (JSON) and `/[token]/pdf` (raw bytes), both gated by the
+same `LEAD_CAPTURE_ALLOWED_ORIGINS` origin-allowlist every other `/api/public/*` route already
+uses. Staff get a "Copy Web Link" button on the lead's audit panel (`audit-report-panel.tsx`) -
+paste it straight into a WhatsApp conversation, no email needed.
+
+**Real design iteration, not first-draft-and-done** - three real rounds of direct feedback, each
+fixed for real reasons, not just accepted:
+- **Round 1 (colors/fonts unreadable)**: the report's PDF template still used generic indigo/gray
+  colors and the internal "SAMVID LEAD ENGINE" codename in its header - fixed with the real
+  Nemnidhi logo (fetched live from `nemnidhi.com/images/logo.png`), brand teal, and a real drawn
+  SVG arrow (`Svg`/`Path`) replacing a literal `"->"` text glyph that had been sitting in the flow
+  diagram since who knows when. `report-config.ts`'s `COMPANY.phone` was a **personal number**
+  going out on every report to the public now that ads are live - corrected to the real business
+  number (`8269150205`).
+- **Round 2 ("just changing colors, no animation/design")**: the web page got a real makeover
+  using the `ui-ux-pro-max-skill` design-intelligence tool (cloned locally, `python design_system.py`)
+  for an evidence-based typography pick (Poppins/Open Sans, the "Modern Professional" pairing for
+  professional-services reports) instead of a guessed font swap, plus a genuinely new
+  `AuditFlowDiagram.tsx` component on the website side reusing the same connected-node +
+  traveling-signal-dot animation technique the homepage's `HeroSystemDiagram` already proves.
+- **Round 3 (contrast bug)**: the gold eyebrow badge and tier pill used a pale tint color as both
+  background AND text - fine in dark mode, nearly invisible in light mode. Fixed by switching every
+  status chip to a solid fill + a text color chosen for that fill specifically (the exact pattern
+  `TIER_COLOR` in the PDF already used correctly) - contrast-safe in both themes since it never
+  depends on the page's own background luminance.
+
+**Real bug found and fixed post-deploy, not before**: the very first real (non-test) report record
+predates `todayFlowStages`/`automationFlow` existing on `reportData` - loading it crashed the page
+outright (`report.automationFlow.entryChain` on `undefined`). Both new flow-diagram sections are
+now conditionally rendered only when the data is present, same pattern the department/appendix
+sections already used. Caught by loading the real production URL right after deploying, not
+assumed safe - worth remembering that "generated before this field existed" is a real state to plan
+for whenever a report's stored shape grows.
+
+**2. Real "book a strategy call" widget, closing another real gap.** The web view's CTA used a
+WhatsApp deep-link as a placeholder. New `GET /api/public/audit-report/[token]/meeting-slots` and
+`POST .../book-meeting`, both keyed by the same shareToken (leadId resolved server-side from the
+token, never trusted from the client), reusing the exact `computeOpenSlots`/`MeetingModel` engine
+and slot-revalidation/race-recheck logic `client-portal/meetings/*` and Dashboard-WhatsApp's
+`integrations/meetings/*` already use - a third caller of the same engine, not a fourth
+implementation. Online-only by design (a cold digital lead could be anywhere). **Not yet meaningful
+in production**: no `MeetingAvailability` is configured yet (same open item the 2026-08-17 entry
+already flagged) - the widget correctly shows its "no online slots open" fallback until an admin
+sets one up at `vega.nemnidhi.com/meetings` → Availability tab.
+
+**3. Pricing catalog: 7 real components tagged, not a bulk guess.** Read all 158 components'
+titles against the audit's real gap vocabulary (`website`/`google`/`seo`/`social`, from
+`toMissingGapTags` in `lead-adapter.ts`) - only 7 genuinely answer it (`B2B_CORPORATE_WEBSITE...`,
+`SEO_LOCAL_SEO...`, `META_ADS...`, `B2B_CATALOGUE_WEBSITE...`, `SEO_GOOGLE_BUSINESS_PROFILE...`,
+`WEBSITE_E_COMMERCE...`, `LOCAL_SEO_GOOGLE_BUSINESS_PROFILE...`), all `scaleTiers: ["smb"]` since
+the audit report only ever asks for that tier. The other 151 are real CRM/inventory/billing/
+dealer-management/production-tracking components that correctly have nothing to do with digital-
+presence gaps - same honest conclusion the 2026-09-03 entry's first 6 reached, just now complete.
+Closes a real, previously-flagged gap: **Meta Ads now answers "social"** (it directly fixes "no
+meta ad activity found", one of that tag's two triggers) - before this, nothing in the catalog
+answered social at all. Also fixed `seed-pricing-catalog.ts` itself: it was silently dropping
+`answersGapTags`/`scaleTiers` from every `$set` even though 6 components had been tagged directly
+in the database in a past session (bypassing this seed file) - re-running the seed would have
+silently erased those hand-set tags. Triggered live via `POST /api/pricing-catalog/seed` in the
+browser console (real session cookie) after deploying - confirmed `{industries: 22, segments: 83,
+tiers: 4, components: 158, packages: 208}`, matching the real historical totals exactly (nothing
+lost or corrupted by the reseed).
+
+**4. Real question surfaced, not resolved - the platform has no cross-tenant admin surface, and
+neither does Dashboard-WhatsApp until this session.** Investigating "where do I create/see a new
+tenant" for Dashboard-WhatsApp (see that repo's own HANDOFF) surfaced the same open question here:
+Vega has no multi-tenancy concept at all by design (see `vega-source-of-truth` framing - one client
+record, not a per-tenant operational system), so this doesn't apply to Vega directly, but worth
+remembering when reasoning about "the platform" as a whole - Vega is the relationship spine, tenant
+management lives in Dashboard-WhatsApp, not here.
+
+**Verification tier, be honest about this**: `tsc --noEmit` clean and a full real local `next build`
+(Turbopack compile, not just types) for every change this session, plus loading real production
+URLs after each deploy (the crash bug above was caught exactly this way). Could **not** verify the
+booking widget or the reseed's effect on a real report end-to-end locally - Vega's local dev needs
+the same Atlas cluster this machine has repeatedly failed to reach directly; every local-dev
+verification this session used `next build`/`tsc` instead, not a running dev server.
+
+**What's still genuinely open, none of it touched this session:**
+- No `MeetingAvailability` configured - the new booking widget has nothing to actually book yet.
+- The remaining 151 pricing components could still get gap tags where genuinely applicable, but
+  after this session's real judgment pass, there may not be many more honest matches left within
+  the narrow 4-tag vocabulary - the real remaining need is `scaleTiers` for midmarket/enterprise
+  matching (a different, package-tier-driven system per the 2026-08-17 entry, not blocking today).
+- Google/WhatsApp OAuth on the client-portal signup page - still email/password only.
+
+**How to apply**: read this before touching the audit-report public routes, the pricing catalog's
+gap-tag system, or the meeting-booking engine again - three real, separately-diagnosed bugs got fixed
+in the process of shipping this (error-message truncation on Dashboard-WhatsApp's side, the
+platform-owner entitlement gate, and this repo's own reportData-shape-crash) - re-deriving any of
+them would waste real time. See Dashboard-WhatsApp's own HANDOFF.md for the tenant-admin-surface and
+platform-owner-entitlement-bypass work referenced in point 4.
+
+---
+
+## 2026-09-04 (evening/night session): audit pipeline resurrected, WhatsApp→Vega lead push built, and real gap→feature recommendations wired into the audit report - read this before anything below
+
+Long session, three real, separate pieces of work, all verified against real production data (the
+`samvidcluster.raeqtkm.mongodb.net` Atlas cluster the deployed app actually uses) - not just typechecked.
+**Everything below is pushed to `origin/master`** as of this entry.
+
+**1. The automated enrichment/classification pipeline was completely dead for 13+ days.**
+`.github/workflows/audit-pipeline.yml` (every 15 min) had been failing on every single run since at
+least 2026-08-22 - `Error: Missing MONGODB_URI`. Root cause: the repo had **zero** Actions secrets
+configured at all (not wrong values - genuinely none), confirmed by the user directly in the GitHub
+UI. Fixed by the user adding `MONGODB_URI`/`MONGODB_DB_NAME`/`GOOGLE_PLACES_API_KEY` as real repo
+secrets. `META_AD_LIBRARY_ACCESS_TOKEN` deliberately left unset - still pending Meta App Review, the
+pipeline already treats that as "not checked", never a false "not found".
+
+**Also found and disabled**: `Nemnidhi/samvid-lead-engine` (the old, fully-migrated-away-from repo)
+still had its OWN duplicate `enrich-leads.yml` on the same 15-minute schedule, 653 runs, all failing
+for a *different* reason (`npm ci` - stale lockfile). Real risk beyond wasted CI minutes: that old
+script wrote to a different, incompatible schema (separate leads/enrichment/classification
+collections) that this migration replaced. If it had ever started working again by someone
+innocently fixing the lockfile, it would have silently written stale-shape data into the same shared
+production database Vega now uses. Disabled via the GitHub API (`disabled_manually` - reversible,
+not deleted) - the user confirmed this repo is genuinely unused now.
+
+**2. WhatsApp conversations can now become real Vega Leads - this integration didn't exist at all
+before tonight.** Every existing Dashboard→Vega event (`dashboard-events/route.ts`) only ever
+updates an existing `Client` - none of them could handle "this is someone we've never talked to
+before," so an ad-driven (or organic) WhatsApp conversation never touched Vega. New
+`POST /api/integrations/dashboard-leads` (commit `033e8bb`): same shared-secret auth as the existing
+integration routes, creates a real `Lead` (`source: "paid_ads"` only when a genuine `ctwa_clid` is
+present, never guessed), idempotent on a new `Lead.dashboardConversationId` (unique/sparse, same
+dedupe shape as the existing `metaLeadId` field). Dashboard-WhatsApp's own side (`crm.js`/
+`vegaIntegration.js`) fires this exactly once per contact, gated on `!crm.addedToCrmAt` - see that
+repo's own HANDOFF.md. Verified live: a fresh push creates a real Lead, a repeat push with the same
+`conversationId` returns the same lead (no duplicate), wrong secret → 401. Test document deleted
+after.
+
+**3. The audit report now shows real, catalog-matched recommendations grouped by department, no
+pricing.** The old "What Fixes What" section (`report-config.ts`'s hardcoded `SOLUTION_MAP`) never
+touched the real pricing catalog or the Sales/Marketing/Operations/Billing department classification
+done 2026-09-02/03. `recommendComponents()` already accepted a `missingGapTags` parameter - built
+for exactly this - but nothing had ever called it with real gaps (the self-service questionnaire
+always passes `[]`, since no audit runs there). New `toMissingGapTags()` (`lead-adapter.ts`) turns a
+lead's real measured signals into the catalog's real tag vocabulary (`website`/`google`/`seo`/
+`social`); the audit-report route now calls the real catalog + recommender + `getProductBrand()`,
+reusing exactly what the self-service flow already proved live, not a second implementation
+(commit `ffc5948`).
+
+**Real catalog gap found and fixed while verifying this against production data, not assumed
+working**: all 158 real `PricingComponent` documents had **empty `answersGapTags` AND empty
+`scaleTiers`** - so `recommendComponents` matched nothing even with a real gap tag present. Tagged
+the 6 components whose title unambiguously answers what this audit measures (website/SEO/Google
+Business) with `scaleTiers: ["smb"]` - **not** a bulk guess across the other 152, which needs real
+business judgment this session didn't have. **No component in the catalog answers "social" at
+all** - a genuine content gap, left visible rather than papered over; worth building a real "social
+media setup" line item if that gap matters for a real client.
+
+Also removed the "Packages" pricing section from the PDF entirely - price stays deferred to the
+strategy call per direct instruction, not shown anywhere in this report now. Added a second appendix
+page (Samvid OS / `<Industry> OS` per `getProductBrand`) summarizing the five platform pillars, per
+direct instruction ("appendix inside the audit report").
+
+**Verified end-to-end against a real already-classified lead** ("Bharatavas Yojna Limited"): real
+gap tag detected (`google`), the 2 newly-tagged components matched and rendered under "Marketing"
+with real measured-fact rationale text (not generic copy), real Samvid OS appendix present, real
+21KB PDF produced and sent to the user for visual confirmation. Verification scripts and the test
+PDF were deleted after - nothing left in the repo from this.
+
+**What's still genuinely open from the original plan, none of it touched tonight:**
+- The "single-page attractive web view" (Phase 3 of the plan discussed this session) - the client
+  portal only ever serves the raw PDF today, no styled web rendering exists yet. This would live on
+  the **nemnidhi-website** repo, not here, consuming a new JSON-shaped endpoint this session scoped
+  but didn't build (the PDF route currently only returns bytes, not the structured data a web page
+  would need).
+- Client-portal self-service signup still email/password only - no Google/WhatsApp OAuth, confirmed
+  missing this session (`app/portal/signup/page.tsx` on nemnidhi-website).
+- The Pricing Components admin UI (`(dashboard)/pricing-components/page.tsx`) has no form fields for
+  `answersGapTags`/`scaleTiers` at all - every tag has to go through a direct DB script until that's
+  added, which is real friction if this needs doing again for more of the 158 components.
+- Tagging the remaining 152 catalog components with real gap tags/scale tiers where applicable -
+  needs real business judgment, not a name-match guess.
+- Building a real "social presence" sellable component so that gap tag has something to recommend.
+
+**How to apply**: read this entry in full before touching the audit-report pipeline, the pricing
+catalog's gap-tag system, or the Dashboard→Vega integration again - the mechanics are non-obvious
+(especially the gap-tag vocabulary split between this and the older website/social-only knowledge-
+bank tagging system, see `report-template.tsx`'s own comment on `ROW_TO_GAP_TAG`) and re-deriving
+them would waste real time.
+
+---
+
+## 2026-09-04: new `POST /api/integrations/meetings/[id]/cancel` route, for Dashboard-WhatsApp's new reschedule flow
+
+Dashboard-WhatsApp's meeting-reminder sweep sends Confirm/Reschedule buttons but nothing ever
+handled a tap on either - see its own `HANDOFF.md` (2026-09-04 entry) for the full satellite-flows
+build this pairs with. Reschedule needs to cancel the old meeting before offering new slots; Vega
+had a `/remind` route but nothing to cancel.
+
+New `src/app/api/integrations/meetings/[id]/cancel/route.ts` - a near-exact copy of the existing
+`[id]/remind/route.ts` (same `assertValidDashboardSecret` shared-secret auth, same
+`objectIdSchema`/find-or-404 shape). Sets `status: "cancelled"`, `cancelledAt`, `cancelledReason`
+from the request body. No model change - `MeetingModel`'s `status`/`cancelledAt`/`cancelledReason`
+fields already existed, just never had a route that set them from the Dashboard-WhatsApp side.
+
+Verified against local dev with the shared secret: bad secret → 401 `Unauthorized: invalid
+integration secret`, valid secret → 200 with the correct `status`/`cancelledAt` in the response.
+Hit the documented Turbopack stale-route-cache flakiness getting there ([[vega-deployment]]) - a
+brand-new API route 404'd through two plain dev-server restarts and only came up after a full
+`rm -rf .next` + restart. Worth remembering: a new route file that 404s locally isn't necessarily
+a routing bug, check the cache first.
+
+## Follow-up needed 2026-09-07 (Monday): delete old nemnidhi-website backup directories on the shared VPS, once reviewed
+
+While shipping the business-audit redesign below, the website's production deploy was found to have
+no real pipeline at all (see the same-day entry further down) and got fixed with a new
+`scripts/deploy.sh` (Nemnidhi-website repo) - both the one-off manual fix and the first real run of
+that script left backup copies of the previous release on `srv1132041`:
+- `/home/nemnidhi/apps/nemnidhi.bak.20260903171XXX` (from the manual clone/build/swap done before
+  `deploy.sh` existed)
+- `/home/nemnidhi/apps/nemnidhi-backup-20260903172439` (from the first real run of `deploy.sh`)
+
+User explicitly asked to keep both for now rather than delete immediately. **Action for Monday
+2026-09-07**: review that the live site has stayed stable since, then delete these two directories
+(`rm -rf` as the `nemnidhi` user) to reclaim disk space - each is a full `node_modules` + `.next`
+build, non-trivial size. Not urgent, no functional impact either way, just cleanup.
+
+## 2026-09-03 (later same day): `PricingComponent.department` shipped, business-audit results page redesign wired end to end — HEAD `f705e76`, pushed, **not yet deployed to production**.
+
+Closes the two real next-steps this same day's earlier handoff entry flagged as not done.
+
+**`department` field**: `PricingComponentModel` gained a real `department` enum
+(`sales`/`marketing`/`operations`/`billing`, required, default `operations`) instead of the
+approved Sales/Marketing/Operations/Billing classification sitting unused in
+`docs/pricing-catalog/component-department-classification.json`. Merged that classification
+straight into `src/lib/seed/pricing-catalog-seed-data.json` (one `department` field added per
+component, all 158 matched cleanly, zero fallbacks needed) and `seed-pricing-catalog.ts` now
+writes it on every upsert. `Blueprint`'s `selectedComponentSchema` gained the same field so a
+saved blueprint's components carry their department too. `recommendComponents()` carries it
+through (`component.department ?? "operations"` - the placeholder `smb-catalog.ts` catalog used
+by the staff Blueprint route has no real classification pass yet, so it deliberately falls back
+rather than blocking on it, same "not fixed this round" note as before).
+
+**Results page wired into real code**: the public `/api/public/questionnaire/submit` route no
+longer returns the full priced blueprint to the browser - it returns a redacted shape
+(`industryLabel`, `productBrand`, `components[]` with `department`/`rationale`/no price,
+`deliveryWeeksMin/Max`, `assumptions`). The full priced `Blueprint` document still gets created
+and stored exactly as before, for staff follow-up - only the JSON response back to the client
+was stripped. Real bug caught while testing this against a non-real-estate industry: the first
+version reused `getIndustryProfile()`'s segment-qualified label ("IT & Technology Services -
+Freelancer / Small Agency") for both the lead title and the new client-facing copy - fine for the
+former, ugly for the latter ("...Small Agency OS" as a product name). Fixed by adding a second,
+bare-label lookup (`getIndustryKnowledge(industry)?.label`) used only for the public response and
+`productBrand`, while the lead title keeps the fuller descriptive label.
+
+**Product branding fallback, decided this session** (task 3 from the prior handoff, previously
+unresolved): new `src/lib/pricing/product-branding.ts`. Real estate gets its real name, **Samvid
+OS**. Every other industry gets `"<Industry> OS"` (e.g. "IT & Technology Services OS") - not a
+made-up placeholder brand, but the same naming pattern Samvid OS itself follows, kept generic
+until an industry gets an actual paying client and (per the confirmed "20 industries is a
+marketing motion" sales model, see nemnidhi-ecosystem-map memory) earns a real named build.
+
+**On the website side** (`D:\Nemnidhi-website`): `app/business-audit/page.tsx`'s result step was
+rewritten - a `BusinessFlowDiagram` across Marketing/Sales/Operations/Billing (dot + count per
+stage, faint when empty), recommendations grouped under each department with a one-line blurb, a
+delivery-timeframe line replacing the old price range, and a "BUILT ON {productBrand}" strip. No
+price anywhere on the page now, matching the API change - the hero copy's leftover "an indicative
+price" line was also fixed. Pushed as `feature/business-audit-department-results` on the website
+repo (PR not yet opened - this environment's safety classifier blocked the GitHub API call used
+to open it in a prior session; the user needs to open it manually from
+https://github.com/abhishekprajapat-hg/Nemnidhi/pull/new/feature/business-audit-department-results).
+
+**Verified live against real local dev servers, not just typechecked**: ran both dev servers
+(Vega on :3000, the website on :3100 - new `.claude/launch.json` entries in the `Samvid Lead
+engine` root, `vega-public-dev`/`nemnidhi-website-dev`), seeded the local dev DB with the real
+158-component catalog (it had none before - `npx tsx --env-file=.env.local
+scripts/seed-pricing-catalog.ts`-equivalent one-off run, since the seed route needs an
+authenticated admin session this environment doesn't have), then drove the actual `/business-audit`
+UI in a real browser end to end for Real Estate / Broker-Agent: department flow diagram, grouped
+recommendations, delivery timeframe, and the Samvid OS strip all rendered correctly with zero price
+anywhere. Also `curl`-verified the submit endpoint directly for a second, non-real-estate industry
+to catch the label bug above. Test leads/blueprints created during verification were deleted from
+local dev DB afterward.
+
+**Deployed and re-seeded live, same session, after the user confirmed go-ahead.** `4f88295` pulled
+and built on the VPS as `hrmsdeploy` (never root - see the near-miss two sections below), `pm2
+restart hrms`, health check green, stable ~3min uptime with 0 restarts after the restart. Then
+ran the pricing-catalog seed directly against production (same one-off `tsx --env-file=.env.local`
+script approach used locally, run over SSH as `hrmsdeploy` - the HTTP `POST /api/pricing-catalog/seed`
+route needs an authenticated admin/partner browser session this environment doesn't have) -
+`{"industries":22,"segments":83,"tiers":4,"components":158,"packages":208}`. Verified for real, not
+just trusted: `curl`'d the public submit endpoint before and after the reseed and confirmed the
+158-catalog codes (e.g. `CRM_LEAD_MANAGEMENT_40000_8000`) now carry real `department` values
+(`sales`, `marketing`, ...), while older/duplicate component codes still active in the DB from
+before this catalog existed (`CRM_PIPELINE`, `WHATSAPP_UPDATES`, `GST_INVOICE_AUTOMATION` - a
+known pre-existing catalog-duplication issue, not something this session touched) correctly fall
+back to `"operations"` via the `?? "operations"` guard in `recommendComponents()`, since those
+older documents were never written with the field at all and `.lean()` reads skip Mongoose schema
+defaults (same gotcha already documented in the 2026-08-17 addendum above). Test leads/blueprints
+created while verifying were deleted from production afterward.
+
+**Not done, real next steps**:
+1. **Website PR not opened** (see above) - branch `feature/business-audit-department-results` is
+   pushed to the website repo, needs a human click at
+   https://github.com/abhishekprajapat-hg/Nemnidhi/pull/new/feature/business-audit-department-results
+   (this environment's safety classifier blocked the GitHub API call used to open PRs directly).
+   Until that PR is merged and the website's own deploy runs, the live `/business-audit` page still
+   shows the old flat price-first result view even though Vega's API already serves the new
+   price-free, department-grouped shape.
+2. The staff-facing Blueprint route (`api/blueprint/[leadId]/route.ts`) still uses the
+   `smb-catalog.ts` placeholder catalog with no real department classification - out of scope for
+   this round (matches the pre-existing "category/pillar not unified between the two Blueprint
+   routes" gap noted in earlier handoffs), falls back to `"operations"` rather than breaking.
+
+## 2026-09-03: real industry segments added for 11 previously-generic industries, deployed and DB-seeded live — HEAD `70e725f`. Also: a production deploy near-miss on `hrms`, root-caused, worth reading before the next manual deploy.
+
+**Starting point**: the user's team complained the self-service `/business-audit` questionnaire
+(on `D:\Nemnidhi-website`, proxies to Vega's `/api/public/questionnaire/*`) gave identical generic
+recommendations to very different businesses — a doctor and a lawyer, a wholesaler and a retailer,
+all landed in one undifferentiated bucket per industry. Checked the real data before assuming a fix:
+of the 22 industries in `pricing-catalog-seed-data.json`, only the 10 manufacturing-adjacent ones
+(Textile, Food Processing, Automobile, Metals, Chemicals, Pharma, Electronics, Paper/Packaging,
+Leather, Cement) had real segments (Manufacturer/Wholesaler/Distributor/Retailer) — the other 12,
+including **Professional Services** and **Healthcare Services**, had zero.
+
+**What was actually added** (43 new `IndustrySegment` rows, `src/lib/seed/pricing-catalog-seed-data.json`):
+Professional Services (Law Firm, CA/Accounting Firm, Consultant, Architect/Design Studio),
+Healthcare Services (Clinic/Individual Doctor, Diagnostic Center/Lab, Hospital, Pharmacy), Trade &
+Commerce (Wholesaler/Distributor/Retailer/Trader-Importer — same pattern as the 10 manufacturing
+industries), Construction, IT & Technology Services, Financial Services, Logistics &
+Transportation, Education Services, Hospitality & Tourism, Media & Communication, Real Estate.
+Entertainment & Others deliberately left as one bucket (explicit catch-all, not a real gap).
+Full list with reasoning is in the conversation this was built in, not repeated here.
+
+**Important system-design finding, worth knowing before touching segments again**: segments
+actually live in three separate systems, not one, with very different risk profiles:
+1. `IndustryModel`/`IndustrySegmentModel` (DB) — just the dropdown list. Adding a row here is safe.
+2. `src/lib/prospecting/industry-knowledge.ts` — a **separate, hardcoded** file with real
+   pain-points/flow-stages content per segment, used to make the AI's recommendation rationale sound
+   specific instead of generic. Not touched this session (would need real content-writing per
+   segment) — currently these new segments degrade gracefully to a generic rationale rather than
+   breaking, confirmed by reading `getIndustryProfile()`'s null-handling and `recommend.ts`'s
+   `profile?.label` optional chaining.
+3. `resolvePricingPackage()` (`src/lib/pricing/package-lookup.ts`) — used **only** by the
+   authenticated client-portal questionnaire (`/api/client-portal/questionnaire/submit`), a
+   completely different, stricter flow from the public business-audit. This one hard-fails
+   (`return null` → "not set up yet" error) if a segment has no matching `PricingPackage` document
+   for the exact (industry, segment, tier) combination. **Deliberately not touched** — building real
+   priced packages for 43 new segments needs actual pricing decisions, not something to invent
+   unilaterally. If anyone selects one of these new segments inside the client portal (not the
+   public audit page), they'll hit that "not set up yet" error until packages are built. Real
+   follow-up, not done.
+
+**Verified live, not just deployed**: `curl https://vega.nemnidhi.com/api/public/industries` (the
+exact endpoint the public business-audit page calls) confirmed Professional Services, Healthcare
+Services, Real Estate, and Trade & Commerce all serving their real new segment lists, and the seed
+migration's own response confirmed `segments: 83` (40 existing + 43 new) landed in the DB, run via
+the (admin/partner-only) `POST /api/pricing-catalog/seed` endpoint, triggered by the user from their
+own logged-in browser console (no UI button exists for this, it's a deliberate one-time migration
+trigger — `src/app/api/pricing-catalog/seed/route.ts`).
+
+**Separate, real production incident found and fixed along the way — not caused by the segment
+change itself, but it's what deploying that change surfaced**: the manual deploy hit a genuine `502`
+outage. Root cause: an *earlier* manual deploy had apparently been run as `root` directly instead of
+`sudo -u hrmsdeploy`, leaving `.env`, `.env.local`, and the entire `.next` build directory owned by
+`root:root` with `600` perms. When this session's deploy correctly ran as `hrmsdeploy`, the build
+couldn't read its own env files and PM2 kept restarting a broken build in a crash loop (`✓ Ready`
+appearing repeatedly in the logs, seconds apart — that pattern **is** a crash loop, not health).
+Fixed with `chown -R hrmsdeploy:hrmsdeploy /home/hrmsdeploy/apps/hrms`, then `rm -rf .next` (a stale
+build folder had a genuinely corrupted chunk — `MODULE_NOT_FOUND` for an admin-page chunk — from the
+earlier broken build; a normal rebuild on top of it wasn't enough, needed a full wipe) before
+rebuilding clean. **Always deploy `hrms` as `sudo -u hrmsdeploy`, never as root** — this is the same
+lesson Dashboard-WhatsApp's HANDOFF already documents for its own `dashboard` user, now confirmed
+true for Vega too.
+
+**Not done this session, real next step**: the actual redesigned `/business-audit` **results page**
+on `D:\Nemnidhi-website` — a full mockup was designed and approved (department-grouped
+recommendations instead of a flat list, no price shown to the client per explicit user instruction —
+showing a price was creating negative psychological impact, a visual "business flow" diagram, a
+"what it's built on" product strip naming Samvid OS for real estate specifically since that's the
+real branded product name for that vertical — other industries' product branding not yet decided,
+needs a fallback label like "Your CRM" until named) — but the mockup was never wired into the real
+`app/business-audit/page.tsx` + `app/api/questionnaire/submit/route.ts` code. Also not done: the 158
+pricing components were classified into Sales/Marketing/Operations/Billing departments (reviewed and
+approved by the user) but that classification exists only as scratch JSON/CSV files from this
+session, not written into any real schema field yet — `PricingComponentModel.category` is still the
+broken all-"operations" default from the original migration; a real `department` field (or fixing
+`category` properly) needs adding before the results page redesign can actually use it.
+
+
 **Repo:** `D:\Vega-main`
 **Remote:** https://github.com/Nemnidhi/Vega.git
 **Branch:** `master`

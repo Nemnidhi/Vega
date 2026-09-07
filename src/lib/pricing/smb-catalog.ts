@@ -23,7 +23,7 @@
  * `basePrice` is the delivery cost BEFORE margin. The pricing engine applies
  * the margin floor, so these are deliberately the cost side, not the sticker.
  */
-import type { ComponentFeature, PricingCategory } from "@/types/pricing-component";
+import type { ComponentFeature, PricingCategory, PricingDepartment } from "@/types/pricing-component";
 
 export type ScaleTier = "smb" | "midmarket" | "enterprise";
 
@@ -32,6 +32,14 @@ export interface CatalogComponent {
   title: string;
   description: string;
   category: PricingCategory;
+  /**
+   * Client-facing department grouping (Sales/Marketing/Operations/Billing).
+   * Optional here because this placeholder catalog predates the field and
+   * hasn't had a real classification pass - recommendComponents() falls
+   * back to "operations" where it's missing. The real DB-backed catalog
+   * (catalog-source.ts) always sets it.
+   */
+  department?: PricingDepartment;
   basePrice: number;
   complexityMultiplier: number;
   marginPercentage: number;

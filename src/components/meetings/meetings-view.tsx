@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
 type PopulatedUser = { _id: string; fullName: string; email: string } | string | null;
@@ -21,6 +22,8 @@ type Meeting = {
   clientUserId: PopulatedUser;
   location: string;
 };
+
+type Slot = { dateKey: string; timeKey: string };
 
 type WeeklyWindow = { dayOfWeek: number; startTime: string; endTime: string };
 
@@ -89,6 +92,96 @@ export function MeetingsView({
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [message, setMessage] = useState("");
   const canManage = ["admin", "partner", "sales", "project_manager"].includes(currentUserRole);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createType, setCreateType] = useState<"online" | "in_person">("online");
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [createNotes, setCreateNotes] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
+  async function loadSlots(type: "online" | "in_person") {
+    setLoadingSlots(true);
+    setSelectedSlot(null);
+    try {
+      const data = await callApi<{ slots: Slot[] }>(`/api/meetings/slots?type=${type}`);
+      setSlots(data.slots);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Failed to load available slots.");
+    } finally {
+      setLoadingSlots(false);
+    }
+  }
+
+  function openCreate() {
+    setShowCreate(true);
+    setCreateError("");
+    loadSlots(createType);
+  }
+
+  function closeCreate() {
+    setShowCreate(false);
+    setCreateError("");
+    setSelectedSlot(null);
+    setContactName("");
+    setContactEmail("");
+    setContactPhone("");
+    setCreateNotes("");
+  }
+
+  function changeCreateType(type: "online" | "in_person") {
+    setCreateType(type);
+    loadSlots(type);
+  }
+
+  async function submitCreate() {
+    if (!selectedSlot) {
+      setCreateError("Pick a time slot.");
+      return;
+    }
+    if (!contactName.trim()) {
+      setCreateError("Contact name is required.");
+      return;
+    }
+    if (!contactEmail.trim() && !contactPhone.trim()) {
+      setCreateError("Provide an email or phone number for the contact.");
+      return;
+    }
+    setCreating(true);
+    setCreateError("");
+    try {
+      const result = await callApi<{ meeting: Meeting }>("/api/meetings", {
+        method: "POST",
+        body: JSON.stringify({
+          type: createType,
+          dateKey: selectedSlot.dateKey,
+          timeKey: selectedSlot.timeKey,
+          contactName: contactName.trim(),
+          contactEmail: contactEmail.trim() || undefined,
+          contactPhone: contactPhone.trim() || undefined,
+          notes: createNotes.trim() || undefined,
+        }),
+      });
+      setMeetings((prev) =>
+        [...prev, result.meeting].sort((a, b) => a.startAt.localeCompare(b.startAt)),
+      );
+      closeCreate();
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Failed to create meeting.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const slotsByDate = slots.reduce<Record<string, Slot[]>>((acc, slot) => {
+    (acc[slot.dateKey] ??= []).push(slot);
+    return acc;
+  }, {});
 
   async function assign(meeting: Meeting) {
     const updated = await callApi<Meeting>(`/api/meetings/${meeting._id}`, {
@@ -159,16 +252,116 @@ export function MeetingsView({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button variant={tab === "upcoming" ? "primary" : "secondary"} onClick={() => setTab("upcoming")}>
-          Upcoming
-        </Button>
-        {canManage ? (
-          <Button variant={tab === "availability" ? "primary" : "secondary"} onClick={() => setTab("availability")}>
-            Availability
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <Button variant={tab === "upcoming" ? "primary" : "secondary"} onClick={() => setTab("upcoming")}>
+            Upcoming
           </Button>
+          {canManage ? (
+            <Button variant={tab === "availability" ? "primary" : "secondary"} onClick={() => setTab("availability")}>
+              Availability
+            </Button>
+          ) : null}
+        </div>
+        {canManage && tab === "upcoming" ? (
+          showCreate ? (
+            <Button variant="secondary" onClick={closeCreate}>
+              Cancel
+            </Button>
+          ) : (
+            <Button onClick={openCreate}>New meeting</Button>
+          )
         ) : null}
       </div>
+
+      {tab === "upcoming" && showCreate ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>New meeting</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant={createType === "online" ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => changeCreateType("online")}
+              >
+                Online
+              </Button>
+              <Button
+                variant={createType === "in_person" ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => changeCreateType("in_person")}
+              >
+                In person
+              </Button>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm font-medium">Pick a time</p>
+              {loadingSlots ? (
+                <p className="text-sm text-muted-foreground">Loading available slots...</p>
+              ) : Object.keys(slotsByDate).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No open slots - check Availability is configured.</p>
+              ) : (
+                <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+                  {Object.entries(slotsByDate).map(([dateKey, daySlots]) => (
+                    <div key={dateKey}>
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">{dateKey}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {daySlots.map((slot) => (
+                          <Button
+                            key={slot.timeKey}
+                            variant={
+                              selectedSlot?.dateKey === slot.dateKey && selectedSlot?.timeKey === slot.timeKey
+                                ? "primary"
+                                : "secondary"
+                            }
+                            size="sm"
+                            onClick={() => setSelectedSlot(slot)}
+                          >
+                            {slot.timeKey}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-sm font-medium">Contact name</p>
+                <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Full name" />
+              </div>
+              <div>
+                <p className="mb-1 text-sm font-medium">Email</p>
+                <Input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="name@example.com"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-sm font-medium">Phone</p>
+                <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+91..." />
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 text-sm font-medium">Notes</p>
+              <Textarea value={createNotes} onChange={(e) => setCreateNotes(e.target.value)} placeholder="Optional" />
+            </div>
+
+            {createError ? <p className="text-sm text-danger">{createError}</p> : null}
+            <Button onClick={submitCreate} disabled={creating}>
+              {creating ? "Creating..." : "Create meeting"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {tab === "upcoming" ? (
         <Card>

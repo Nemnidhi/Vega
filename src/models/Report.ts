@@ -16,6 +16,15 @@ const reportSchema = new Schema(
     categoryUsed: { type: String, enum: ["A", "B", "C", "D"], required: true },
     /** Which LLM produced the personalised paragraph, or "fallback". */
     paragraphSource: { type: String, trim: true, maxlength: 60 },
+    /**
+     * Unguessable public link token (nemnidhi.com/audit-report/[shareToken]) - the web-view
+     * equivalent of this PDF, for a cold WhatsApp/ad lead who has no portal login. Kept stable
+     * across regenerations (same lead keeps the same link) rather than rotated. Sparse so old
+     * reports created before this field existed don't collide on `null`.
+     */
+    shareToken: { type: String, unique: true, sparse: true, index: true },
+    /** Structured JSON mirror of what the PDF renders, for the public web view - see report-data.ts. */
+    reportData: { type: Schema.Types.Mixed, default: null },
     generatedAt: { type: Date, default: Date.now, required: true },
     sentAt: { type: Date, default: null },
     sentTo: { type: String, trim: true, lowercase: true, maxlength: 180, default: null },

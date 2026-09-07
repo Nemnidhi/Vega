@@ -56,6 +56,18 @@ const pricingComponentSchema = new Schema(
       default: "operations",
       index: true,
     },
+    // Client-facing department grouping for the self-service business-audit
+    // results page (Marketing/Sales/Operations/Billing) - a real pass over
+    // all 158 migrated components, reviewed and approved 2026-09-02/03 (see
+    // docs/pricing-catalog/). Separate from `pillar`, which is Vega's own
+    // internal commercial grouping.
+    department: {
+      type: String,
+      enum: ["sales", "marketing", "operations", "billing"],
+      required: true,
+      default: "operations",
+      index: true,
+    },
     basePrice: { type: Number, required: true, min: 0 },
     complexityMultiplier: { type: Number, required: true, min: 1, default: 1 },
     marginPercentage: { type: Number, required: true, min: 0, max: 300, default: 30 },
@@ -102,7 +114,11 @@ const existingPricingComponentModel = models.PricingComponent;
 
 // In dev HMR, an older cached model can predate the pillar/appliesToSegments
 // fields added alongside the pricing-package work.
-if (existingPricingComponentModel && !existingPricingComponentModel.schema.path("pillar")) {
+if (
+  existingPricingComponentModel &&
+  (!existingPricingComponentModel.schema.path("pillar") ||
+    !existingPricingComponentModel.schema.path("department"))
+) {
   delete models.PricingComponent;
 }
 

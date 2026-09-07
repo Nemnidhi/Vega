@@ -54,6 +54,12 @@ const selectedComponentSchema = new Schema(
       enum: ["marketing_sales", "operations", "documentation_admin", "service_support"],
       default: "operations",
     },
+    /** Sales / Marketing / Operations / Billing - the self-service results page's own grouping, separate from `pillar` above. */
+    department: {
+      type: String,
+      enum: ["sales", "marketing", "operations", "billing"],
+      default: "operations",
+    },
     features: { type: [selectedFeatureSchema], default: [] },
     oneTimePrice: { type: Number, required: true, min: 0 },
     monthlyPrice: { type: Number, default: 0, min: 0 },
@@ -168,7 +174,11 @@ const existingBlueprintModel = models.Blueprint;
 // In dev HMR, an older cached model can predate the package-flow fields
 // (packageId/pricingTierKey/packageBaselinePrice) - same pattern as
 // PricingComponent.ts and ActivityLog.ts.
-if (existingBlueprintModel && !existingBlueprintModel.schema.path("packageId")) {
+if (
+  existingBlueprintModel &&
+  (!existingBlueprintModel.schema.path("packageId") ||
+    !existingBlueprintModel.schema.path("components.department"))
+) {
   delete models.Blueprint;
 }
 

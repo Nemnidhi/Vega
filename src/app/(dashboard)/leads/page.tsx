@@ -1,4 +1,6 @@
 import { CheckCircle2, Phone, TrendingUp, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { TIER_LABEL, TIER_ORDER, TIER_VARIANT } from "@/lib/prospecting/tier-display";
 import { LeadIntakeLauncher } from "@/components/leads/lead-intake-launcher";
 import { LeadListWithStatusTabs } from "@/components/leads/lead-list-with-status-tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +46,17 @@ export default async function LeadsPage() {
   const newThisWeek = leads.filter((lead) => isWithinDays(lead.createdAt, 7)).length;
   const contacted = leads.filter((lead) => lead.status === "contacted").length;
   const converted = leads.filter((lead) => lead.status === "closed_won").length;
+  // Cold-prospect audit coverage: only leads that went through enrichment carry `prospecting`,
+  // so tier counts are scoped to those rather than the whole 200-lead page.
+  const prospects = leads.filter((lead) => Boolean(lead.prospecting));
+  const tierCounts = TIER_ORDER.map((tier) => ({
+    tier,
+    count: prospects.filter((lead) => lead.prospecting?.classification?.category === tier).length,
+  }));
+  const unclassified = prospects.filter(
+    (lead) => !lead.prospecting?.classification?.category,
+  ).length;
+
   const metrics = [
     { label: "Total Leads", value: totalLeads, delta: "+12%", icon: Users, tone: "text-[#c4b5fd]", tile: "bg-vega-purple-soft" },
     { label: "New This Week", value: newThisWeek, delta: "+20%", icon: TrendingUp, tone: "text-blue-300", tile: "bg-blue-500/15" },
@@ -91,6 +104,38 @@ export default async function LeadsPage() {
           );
         })}
       </div>
+
+      {prospects.length > 0 ? (
+        <Card className="border-vega-border bg-vega-surface-1">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold text-vega-text">Cold Prospect Audit Coverage</h3>
+            <p className="mt-0.5 text-xs text-vega-text-muted">
+              Digital-presence tiers across {prospects.length} cold prospects in this view. Tier A is
+              the strongest opportunity for us - nothing found online at all.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {tierCounts.map(({ tier, count }) => (
+                <div key={tier} className="rounded-lg border border-vega-border bg-vega-surface-2 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant={TIER_VARIANT[tier]}>Tier {tier}</Badge>
+                    <span className="text-2xl font-semibold text-vega-text">{count}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-vega-text-muted">{TIER_LABEL[tier]}</p>
+                </div>
+              ))}
+              <div className="rounded-lg border border-vega-border bg-vega-surface-2 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="neutral">Unclassified</Badge>
+                  <span className="text-2xl font-semibold text-vega-text">{unclassified}</span>
+                </div>
+                <p className="mt-2 text-xs text-vega-text-muted">
+                  Awaiting enrichment or classification.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <LeadListWithStatusTabs leads={leads} />
     </section>

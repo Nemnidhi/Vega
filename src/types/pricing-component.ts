@@ -18,6 +18,15 @@ export type PricingPillar =
   | "service_support";
 
 /**
+ * Which internal department a component's work belongs to - coarser and
+ * client-facing-friendlier grouping than `pillar` above, used to group the
+ * self-service business-audit results page into sections a prospect
+ * recognises (Marketing / Sales / Operations / Billing) instead of Vega's
+ * own internal pillar vocabulary.
+ */
+export type PricingDepartment = "sales" | "marketing" | "operations" | "billing";
+
+/**
  * A selectable option within a component - "Website" is one thing to sell,
  * but "with online payments" is a decision made on the call.
  *
@@ -41,6 +50,7 @@ export interface PricingComponent extends BaseDocument {
   description: string;
   category: PricingCategory;
   pillar: PricingPillar;
+  department: PricingDepartment;
   basePrice: number;
   complexityMultiplier: number;
   marginPercentage: number;

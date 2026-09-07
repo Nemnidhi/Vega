@@ -75,4 +75,11 @@ export const permissionRules = {
   // Gates cancelling a meeting and editing the shared availability config - viewing the
   // upcoming list and self-assigning are open to any staff role, enforced in the route.
   manageMeetings: ["admin", "partner", "sales", "project_manager"] as UserRole[],
+  // Project (thin container, no embedded tasks - see models/Project.ts) team-assignment gates,
+  // same roles as assignTasksToOthers since a project's team is who tasks under it get assigned
+  // to - kept as a separate key so project-assignment routes can be audited independently.
+  manageProjectAssignments: ["admin", "partner", "project_manager"] as UserRole[],
+  // Broader than manageProjectAssignments - anyone non-client can view/read a project's
+  // assignments, only managers can change them.
+  accessProjectAssignments: ["admin", "partner", "project_manager", "sales", "digital_marketing", "developer"] as UserRole[],
 };

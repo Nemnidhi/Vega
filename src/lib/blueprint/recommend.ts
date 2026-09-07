@@ -14,6 +14,7 @@
 import { getIndustryProfile } from "@/lib/prospecting/industry-knowledge";
 import type { CatalogComponent, ScaleTier } from "@/lib/pricing/smb-catalog";
 import { computeFinalPrice } from "@/lib/pricing/engine";
+import type { PricingDepartment } from "@/types/pricing-component";
 
 export interface RecommendationInput {
   industry?: string | null;
@@ -39,6 +40,8 @@ export interface RecommendedComponent {
   title: string;
   rationale: string;
   origin: "recommended" | "manual";
+  /** Sales/Marketing/Operations/Billing - falls back to "operations" for placeholder catalog entries with no real classification yet. */
+  department: PricingDepartment;
   features: Array<{ code: string; label: string; priceImpact: number }>;
   oneTimePrice: number;
   monthlyPrice: number;
@@ -142,6 +145,7 @@ export function recommendComponents(
       title: component.title,
       rationale,
       origin: wasRequested ? "manual" : "recommended",
+      department: component.department ?? "operations",
       features: priced.features,
       oneTimePrice: priced.oneTimePrice,
       monthlyPrice: component.monthlyPrice,

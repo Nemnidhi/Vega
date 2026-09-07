@@ -41,6 +41,8 @@ export default async function ChatConversationPage({ params }: { params: Params 
     notFound();
   }
 
+  const target = initialUsers.find((item) => item._id === userId);
+
   return (
     <section>
       <ChatPageChrome thread />

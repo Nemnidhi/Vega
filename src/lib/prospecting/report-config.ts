@@ -20,7 +20,9 @@ export const COMPANY = {
   tagline: "Engineering Software That Scales",
   gst: "23CGZPB7175E1Z5",
   address: "B20 - 5th Floor, Gravity Mall, Mechanic Nagar, Indore, Madhya Pradesh, India",
-  phone: "7000445463",
+  // The real Nemnidhi business WhatsApp/contact number - was a personal number before, now
+  // corrected since this goes out on every audit report to the public.
+  phone: "8269150205",
   email: "info@nemnidhi.com",
 } as const;
 
@@ -122,6 +124,31 @@ export const RESPONSE_TIME_NOTE = "We reply within 24 hours.";
 // wa.me expects the full international number, no leading zero or symbols.
 // COMPANY.phone is a 10-digit Indian mobile number, so prefix the country code.
 export const WHATSAPP_LINK = `https://wa.me/91${COMPANY.phone}`;
+
+// The five-pillar platform pitch shown on the appendix page (report-template.tsx) and mirrored on
+// the public web view (report-data.ts) - one copy so the two surfaces can't say different things.
+export const PLATFORM_PILLARS: { title: string; body: string }[] = [
+  {
+    title: "CRM & Client Management",
+    body: "One place to track every lead, proposal, client and project from first contact to delivery.",
+  },
+  {
+    title: "WhatsApp Business Automation",
+    body: "A shared team inbox with automated replies, broadcast campaigns and catalog & order sharing - the channel your customers already use.",
+  },
+  {
+    title: "AI Assistance",
+    body: "AI-drafted replies, lead scoring, and automation flows that handle repetitive conversations.",
+  },
+  {
+    title: "Websites & Digital Presence",
+    body: "A fast, SEO-ready website with lead capture and click-to-WhatsApp ad integration.",
+  },
+  {
+    title: "Billing, Invoicing & Compliance",
+    body: "GST-ready invoicing, subscription billing and financial reporting, sold standalone or as part of the full platform.",
+  },
+];
 
 export const NEXT_STEPS: string[] = [
   "Reply on WhatsApp or email - takes 30 seconds",

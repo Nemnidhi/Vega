@@ -88,6 +88,34 @@ export function toEnrichmentSignals(lead: LeadLike): EnrichmentSignals {
 }
 
 /**
+ * Which of the catalog's real gap tags (website/google/seo/social - see
+ * recommend.ts's GAP_RATIONALE, the only tags any PricingComponent is ever
+ * tagged against) this lead's measured signals actually support. A channel
+ * that was never checked contributes nothing - "not checked" must never be
+ * read as "missing", same rule the classifier already follows.
+ */
+export function toMissingGapTags(enrichment: EnrichmentSignals): string[] {
+  const tags: string[] = [];
+
+  if (enrichment.website && !enrichment.website.found) tags.push("website");
+  if (enrichment.googleBusiness?.checked && !enrichment.googleBusiness.found) tags.push("google");
+  // A poorly-scoring site is a real gap, but only once a site exists to score -
+  // no site to audit is already covered by the "website" tag above.
+  if (
+    enrichment.website?.found &&
+    enrichment.technicalSeo?.checked &&
+    (enrichment.technicalSeo.seoScore ?? 100) < 70
+  ) {
+    tags.push("seo");
+  }
+  const noMetaAds = enrichment.metaAds?.checked && !enrichment.metaAds.found;
+  const noFacebook = enrichment.metaPresence?.checked && enrichment.metaPresence.facebookFound === false;
+  if (noMetaAds || noFacebook) tags.push("social");
+
+  return tags;
+}
+
+/**
  * The stored classification, or null when the lead hasn't been classified.
  * Callers decide whether to classify on the fly or refuse - a report should
  * never invent a tier.

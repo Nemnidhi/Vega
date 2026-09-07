@@ -89,6 +89,8 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
   const router = useRouter();
   const [busy, setBusy] = useState<null | "generate" | "send">(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [webUrl, setWebUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const classification = prospecting?.classification;
   const tier = classification?.category;
@@ -110,6 +112,11 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
       if (!res.ok) {
         setMessage({ kind: "error", text: body?.error?.message ?? `Request failed (${res.status})` });
         return;
+      }
+
+      if (kind === "generate" && body.data.webUrl) {
+        setWebUrl(body.data.webUrl);
+        setCopied(false);
       }
 
       setMessage({
@@ -306,7 +313,26 @@ export function AuditReportPanel({ leadId, hasEmail, prospecting }: AuditPanelPr
         >
           {busy === "send" ? "Sending..." : "Send To Lead"}
         </Button>
+        {webUrl ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              navigator.clipboard.writeText(webUrl).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }}
+          >
+            {copied ? "Copied!" : "Copy Web Link"}
+          </Button>
+        ) : null}
       </div>
+      {webUrl ? (
+        <p className="text-xs text-muted-foreground">
+          Web version (no email needed - paste this into WhatsApp): <span className="font-mono">{webUrl}</span>
+        </p>
+      ) : null}
 
       {!hasEmail ? (
         <p className="text-xs text-muted-foreground">

@@ -19,7 +19,8 @@ import {
 import { recommendComponents, summariseEstimate } from "@/lib/blueprint/recommend";
 import { getDbPricingCatalog } from "@/lib/pricing/catalog-source";
 import { resolveToRealCatalogCodes } from "@/lib/blueprint/legacy-trigger-map";
-import { getIndustryProfile } from "@/lib/prospecting/industry-knowledge";
+import { getIndustryProfile, getIndustryKnowledge } from "@/lib/prospecting/industry-knowledge";
+import { getProductBrand } from "@/lib/pricing/product-branding";
 
 function buildCorsHeaders(origin: string, request: Request): HeadersInit {
   const requestedHeaders = request.headers.get("access-control-request-headers");
@@ -138,6 +139,12 @@ export async function POST(request: Request) {
     const estimate = summariseEstimate(recommended, "indicative");
 
     const industryLabel = getIndustryProfile(payload.industry, { segment: payload.segment })?.label ?? payload.industry;
+    // The bare industry label ("IT & Technology Services"), not the
+    // segment-qualified knowledge-bank one above ("IT & Technology Services
+    // - Freelancer / Small Agency") - that longer form reads fine as an
+    // internal lead title but is the wrong shape for client-facing copy
+    // (the results-page summary sentence and the product-brand strip).
+    const cleanIndustryLabel = getIndustryKnowledge(payload.industry)?.label ?? industryLabel;
 
     const lead = await LeadModel.create({
       title: `${payload.contactName} - ${industryLabel} self-service audit`,
@@ -161,6 +168,7 @@ export async function POST(request: Request) {
       title: c.title,
       rationale: c.rationale,
       origin: c.origin,
+      department: c.department,
       included: true,
       features: c.features,
       oneTimePrice: c.oneTimePrice,
@@ -188,11 +196,33 @@ export async function POST(request: Request) {
       preparedBy: null,
     });
 
+    // The results page shows what's recommended and why, grouped by
+    // department - never a price. The full blueprint (with real numbers)
+    // stays in the DB for staff follow-up; only this redacted shape goes
+    // back to the browser. See HANDOFF.md 2026-09-03 for why - showing a
+    // price on this page was creating negative psychological impact for the
+    // prospect, per direct client feedback.
     return withCors(
       ok(
         {
           leadId: String(lead._id),
-          blueprint: serializeForJson(blueprint.toObject()),
+          blueprint: serializeForJson({
+            industry: payload.industry,
+            industryLabel: cleanIndustryLabel,
+            segment: payload.segment ?? null,
+            productBrand: getProductBrand(payload.industry, cleanIndustryLabel),
+            components: recommended.map((c) => ({
+              code: c.code,
+              title: c.title,
+              rationale: c.rationale,
+              department: c.department,
+              deliveryWeeksMin: c.deliveryWeeksMin,
+              deliveryWeeksMax: c.deliveryWeeksMax,
+            })),
+            deliveryWeeksMin: estimate.deliveryWeeksMin,
+            deliveryWeeksMax: estimate.deliveryWeeksMax,
+            assumptions: blueprint.assumptions,
+          }),
         },
         { status: 201 },
       ),

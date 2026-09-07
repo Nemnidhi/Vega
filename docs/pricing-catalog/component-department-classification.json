@@ -1,0 +1,950 @@
+[
+ {
+  "code": "B2B_CORPORATE_WEBSITE_40000_3000",
+  "title": "B2B / Corporate Website",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "SEO_LOCAL_SEO_15000_12000",
+  "title": "SEO & Local SEO",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "GOOGLE_ADS_15000_15000",
+  "title": "Google Ads",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "META_ADS_15000_15000",
+  "title": "Meta Ads",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "CRM_LEAD_MANAGEMENT_40000_8000",
+  "title": "CRM & Lead Management",
+  "pillar": "marketing_sales",
+  "department": "sales"
+ },
+ {
+  "code": "WHATSAPP_BUSINESS_API_20000_5000",
+  "title": "WhatsApp Business API",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "EMAIL_FOLLOW_UP_AUTOMATION_30000_6000",
+  "title": "Email / Follow-up Automation",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "PRODUCTION_JOB_MANAGEMENT_70000_12000",
+  "title": "Production / Job Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "JOB_LOT_TRACKING_70000_12000",
+  "title": "Job / Lot Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "SKU_VARIANT_INVENTORY_50000_9000",
+  "title": "SKU / Variant Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DEALER_ORDERS_55000_10000",
+  "title": "Dealer Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PURCHASE_VENDOR_MANAGEMENT_35000_6000",
+  "title": "Purchase / Vendor Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "MANAGEMENT_DASHBOARD_45000_8000",
+  "title": "Management Dashboard",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DOCUMENT_MANAGEMENT_SYSTEM_30000_5000",
+  "title": "Document Management System",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "DIGITAL_SALES_WORK_ORDERS_70000_12000",
+  "title": "Digital Sales / Work Orders",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "QUOTATION_MANAGEMENT_35000_6000",
+  "title": "Quotation Management",
+  "pillar": "documentation_admin",
+  "department": "sales"
+ },
+ {
+  "code": "INVOICE_PAYMENT_RECORDS_35000_6000",
+  "title": "Invoice & Payment Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "VENDOR_DOCUMENTATION_30000_5000",
+  "title": "Vendor Documentation",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "COMPLIANCE_CERTIFICATE_TRACKING_30000_5000",
+  "title": "Compliance / Certificate Tracking",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "MIS_REPORTING_30000_5000",
+  "title": "MIS Reporting",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "CUSTOMER_SUPPORT_CRM_40000_8000",
+  "title": "Customer Support CRM",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "COMPLAINT_MANAGEMENT_35000_6000",
+  "title": "Complaint Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "WHATSAPP_SUPPORT_20000_5000",
+  "title": "WhatsApp Support",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "CUSTOMER_PORTAL_75000_10000",
+  "title": "Customer Portal",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "RETURN_REPLACEMENT_MANAGEMENT_35000_6000",
+  "title": "Return / Replacement Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "QUALITY_COMPLAINT_TRACKING_35000_6000",
+  "title": "Quality Complaint Tracking",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "ESCALATION_MANAGEMENT_35000_6000",
+  "title": "Escalation Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "B2B_CATALOGUE_WEBSITE_40000_3000",
+  "title": "B2B Catalogue Website",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "SEO_GOOGLE_BUSINESS_PROFILE_15000_12000",
+  "title": "SEO & Google Business Profile",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "BUYER_CRM_40000_8000",
+  "title": "Buyer CRM",
+  "pillar": "marketing_sales",
+  "department": "sales"
+ },
+ {
+  "code": "PROMOTIONAL_CAMPAIGN_AUTOMATION_30000_6000",
+  "title": "Promotional Campaign Automation",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "BULK_ORDER_MANAGEMENT_35000_7000",
+  "title": "Bulk Order Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PURCHASE_MANAGEMENT_35000_6000",
+  "title": "Purchase Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "WAREHOUSE_CAPACITY_MANAGEMENT_50000_9000",
+  "title": "Warehouse / Capacity Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "CUSTOMER_PRICING_35000_7000",
+  "title": "Customer Pricing",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "UDHARI_COLLECTIONS_35000_6000",
+  "title": "Udhari / Collections",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "DOCUMENT_MANAGEMENT_30000_5000",
+  "title": "Document Management",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "PURCHASE_SALES_ORDERS_35000_6000",
+  "title": "Purchase & Sales Orders",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "INVOICE_MANAGEMENT_35000_6000",
+  "title": "Invoice Management",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "CUSTOMER_SUPPLIER_RECORDS_35000_6000",
+  "title": "Customer / Supplier Records",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "CREDIT_RECORDS_35000_6000",
+  "title": "Credit Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "RECEIVABLE_RECORDS_35000_6000",
+  "title": "Receivable Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "BUYER_SUPPORT_CRM_40000_8000",
+  "title": "Buyer Support CRM",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "WHATSAPP_ORDER_UPDATES_20000_5000",
+  "title": "WhatsApp Order Updates",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "RETURN_MANAGEMENT_35000_6000",
+  "title": "Return Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "FEEDBACK_MANAGEMENT_35000_6000",
+  "title": "Feedback Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "DEALER_PARTNER_CRM_40000_8000",
+  "title": "Dealer / Partner CRM",
+  "pillar": "marketing_sales",
+  "department": "sales"
+ },
+ {
+  "code": "DEALER_LEAD_GENERATION_40000_8000",
+  "title": "Dealer Lead Generation",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "FIELD_SALES_CRM_40000_8000",
+  "title": "Field Sales CRM",
+  "pillar": "marketing_sales",
+  "department": "sales"
+ },
+ {
+  "code": "SCHEME_PROMOTION_AUTOMATION_55000_10000",
+  "title": "Scheme / Promotion Automation",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "DEALER_PARTNER_ORDER_MANAGEMENT_55000_10000",
+  "title": "Dealer / Partner Order Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "SECONDARY_CHANNEL_SALES_TRACKING_55000_10000",
+  "title": "Secondary / Channel Sales Tracking",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "FIELD_SALES_MANAGEMENT_55000_10000",
+  "title": "Field Sales Management",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "TERRITORY_ROUTE_MANAGEMENT_55000_10000",
+  "title": "Territory / Route Management",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "COLLECTIONS_35000_6000",
+  "title": "Collections",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "DEALER_DOCUMENTATION_55000_10000",
+  "title": "Dealer Documentation",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "DIGITAL_ONBOARDING_FORMS_35000_7000",
+  "title": "Digital Onboarding Forms",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "ORDER_INVOICE_RECORDS_35000_6000",
+  "title": "Order & Invoice Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "CREDIT_LIMIT_RECORDS_35000_6000",
+  "title": "Credit Limit Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "COLLECTION_RECORDS_35000_6000",
+  "title": "Collection Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "SCHEME_DOCUMENTATION_55000_10000",
+  "title": "Scheme Documentation",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "DEALER_SUPPORT_PORTAL_75000_10000",
+  "title": "Dealer Support Portal",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "WHATSAPP_DEALER_SUPPORT_20000_5000",
+  "title": "WhatsApp Dealer Support",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "TICKETING_ESCALATION_35000_6000",
+  "title": "Ticketing & Escalation",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "DEALER_FEEDBACK_55000_10000",
+  "title": "Dealer Feedback",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "WEBSITE_E_COMMERCE_75000_5000",
+  "title": "Website / E-commerce",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "LOCAL_SEO_GOOGLE_BUSINESS_PROFILE_15000_12000",
+  "title": "Local SEO & Google Business Profile",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "CUSTOMER_CRM_40000_8000",
+  "title": "Customer CRM",
+  "pillar": "marketing_sales",
+  "department": "sales"
+ },
+ {
+  "code": "LOYALTY_RETENTION_AUTOMATION_30000_6000",
+  "title": "Loyalty / Retention Automation",
+  "pillar": "marketing_sales",
+  "department": "marketing"
+ },
+ {
+  "code": "POS_BILLING_OR_CUSTOMER_ORDER_MANAGEMENT_35000_6000",
+  "title": "POS / Billing or Customer Order Management",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "PURCHASE_REPLENISHMENT_35000_6000",
+  "title": "Purchase / Replenishment",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "CUSTOMER_CRM_RETENTION_40000_8000",
+  "title": "Customer CRM / Retention",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "ONLINE_DIGITAL_INTEGRATION_35000_7000",
+  "title": "Online / Digital Integration",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "RETURNS_SERVICE_MANAGEMENT_35000_6000",
+  "title": "Returns / Service Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DIGITAL_INVOICE_MANAGEMENT_35000_6000",
+  "title": "Digital Invoice Management",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "PURCHASE_INVOICE_MANAGEMENT_35000_6000",
+  "title": "Purchase Invoice Management",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "STOCK_RECORDS_50000_9000",
+  "title": "Stock Records",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "SUPPLIER_DOCUMENTATION_30000_5000",
+  "title": "Supplier Documentation",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "EXPENSE_RECORDS_35000_7000",
+  "title": "Expense Records",
+  "pillar": "documentation_admin",
+  "department": "billing"
+ },
+ {
+  "code": "EMPLOYEE_DOCUMENTS_30000_5000",
+  "title": "Employee Documents",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "AUTOMATED_REPORTS_30000_5000",
+  "title": "Automated Reports",
+  "pillar": "documentation_admin",
+  "department": "operations"
+ },
+ {
+  "code": "WHATSAPP_CUSTOMER_SUPPORT_20000_5000",
+  "title": "WhatsApp Customer Support",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "AI_FAQ_CHATBOT_30000_8000",
+  "title": "AI / FAQ Chatbot",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "ORDER_TRACKING_35000_7000",
+  "title": "Order Tracking",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "RETURN_EXCHANGE_MANAGEMENT_35000_6000",
+  "title": "Return / Exchange Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "FEEDBACK_REVIEW_MANAGEMENT_35000_6000",
+  "title": "Feedback / Review Management",
+  "pillar": "service_support",
+  "department": "operations"
+ },
+ {
+  "code": "RETENTION_AUTOMATION_30000_6000",
+  "title": "Retention Automation",
+  "pillar": "service_support",
+  "department": "marketing"
+ },
+ {
+  "code": "BATCH_LOT_MANAGEMENT_70000_12000",
+  "title": "Batch / Lot Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "EXPIRY_FEFO_INVENTORY_50000_9000",
+  "title": "Expiry / FEFO Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PRODUCTION_RECIPE_MANAGEMENT_70000_12000",
+  "title": "Production / Recipe Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DISTRIBUTOR_ORDERS_55000_10000",
+  "title": "Distributor Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "RFQ_WORK_ORDERS_70000_12000",
+  "title": "RFQ / Work Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PARTS_SKU_INVENTORY_50000_9000",
+  "title": "Parts / SKU Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "WARRANTY_SERVICE_35000_6000",
+  "title": "Warranty / Service",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "RFQ_JOB_ORDERS_70000_12000",
+  "title": "RFQ / Job Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PRODUCTION_FABRICATION_TRACKING_70000_12000",
+  "title": "Production / Fabrication Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "RAW_MATERIAL_INVENTORY_50000_9000",
+  "title": "Raw Material Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "ORDER_COSTING_35000_7000",
+  "title": "Order Costing",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BATCH_LOT_TRACKING_70000_12000",
+  "title": "Batch / Lot Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PRODUCTION_MANAGEMENT_70000_12000",
+  "title": "Production Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DISPATCH_TRACKING_35000_7000",
+  "title": "Dispatch Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BATCH_EXPIRY_TRACKING_70000_12000",
+  "title": "Batch & Expiry Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PRODUCTION_ORDERS_70000_12000",
+  "title": "Production Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "INVENTORY_WAREHOUSE_50000_9000",
+  "title": "Inventory / Warehouse",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "STOCKIST_ORDERS_50000_9000",
+  "title": "Stockist Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PRODUCTION_WORK_ORDERS_70000_12000",
+  "title": "Production / Work Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "SKU_SERIAL_INVENTORY_50000_9000",
+  "title": "SKU / Serial Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "WARRANTY_TRACKING_35000_6000",
+  "title": "Warranty Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PRODUCTION_TRACKING_70000_12000",
+  "title": "Production Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "WASTAGE_TRACKING_35000_7000",
+  "title": "Wastage Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "SIZE_COLOUR_SKU_INVENTORY_50000_9000",
+  "title": "Size / Colour SKU Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BUYER_ORDERS_35000_7000",
+  "title": "Buyer Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "SECONDARY_SALES_55000_10000",
+  "title": "Secondary Sales",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "INVENTORY_50000_9000",
+  "title": "Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DISPATCH_DELIVERY_35000_7000",
+  "title": "Dispatch / Delivery",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PROJECT_WORK_ORDERS_70000_12000",
+  "title": "Project / Work Orders",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "MATERIAL_MANAGEMENT_35000_7000",
+  "title": "Material Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "VENDOR_SUBCONTRACTOR_MANAGEMENT_35000_6000",
+  "title": "Vendor / Subcontractor Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PROJECT_COSTING_70000_12000",
+  "title": "Project Costing",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "CRM_SALES_PIPELINE_40000_8000",
+  "title": "CRM / Sales Pipeline",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "PROJECT_TASK_MANAGEMENT_70000_12000",
+  "title": "Project / Task Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "RESOURCE_MANAGEMENT_35000_7000",
+  "title": "Resource Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BILLING_RENEWALS_35000_6000",
+  "title": "Billing / Renewals",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "LEAD_CRM_40000_8000",
+  "title": "Lead CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "DOCUMENT_WORKFLOW_30000_5000",
+  "title": "Document Workflow",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "CUSTOMER_ONBOARDING_35000_7000",
+  "title": "Customer Onboarding",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "RENEWAL_MANAGEMENT_35000_7000",
+  "title": "Renewal Management",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "CLIENT_CRM_40000_8000",
+  "title": "Client CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "PROPOSAL_MANAGEMENT_35000_6000",
+  "title": "Proposal Management",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "PROJECT_CASE_MANAGEMENT_70000_12000",
+  "title": "Project / Case Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BILLING_TIMESHEETS_35000_6000",
+  "title": "Billing / Timesheets",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "ORDER_MANAGEMENT_35000_7000",
+  "title": "Order Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "DEALER_MANAGEMENT_55000_10000",
+  "title": "Dealer Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BOOKING_SHIPMENT_MANAGEMENT_40000_7000",
+  "title": "Booking / Shipment Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "FLEET_TRIP_MANAGEMENT_35000_7000",
+  "title": "Fleet / Trip Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "POD_TRACKING_35000_7000",
+  "title": "POD Tracking",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BILLING_COLLECTIONS_35000_6000",
+  "title": "Billing / Collections",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "PATIENT_ENQUIRY_CRM_40000_8000",
+  "title": "Patient Enquiry CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "APPOINTMENT_MANAGEMENT_40000_7000",
+  "title": "Appointment Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BILLING_35000_6000",
+  "title": "Billing",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "MULTI_BRANCH_OPERATIONS_35000_7000",
+  "title": "Multi-Branch Operations",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "ADMISSION_CRM_40000_8000",
+  "title": "Admission CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "STUDENT_MANAGEMENT_35000_7000",
+  "title": "Student Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "FEE_MANAGEMENT_35000_7000",
+  "title": "Fee Management",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "BATCH_ATTENDANCE_70000_12000",
+  "title": "Batch / Attendance",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "ENQUIRY_CRM_40000_8000",
+  "title": "Enquiry CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "BOOKING_RESERVATION_MANAGEMENT_40000_7000",
+  "title": "Booking / Reservation Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "GUEST_TRAVELLER_CRM_40000_8000",
+  "title": "Guest / Traveller CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "PAYMENTS_35000_6000",
+  "title": "Payments",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "CAMPAIGN_PROJECT_MANAGEMENT_70000_12000",
+  "title": "Campaign / Project Management",
+  "pillar": "operations",
+  "department": "marketing"
+ },
+ {
+  "code": "APPROVAL_WORKFLOW_35000_7000",
+  "title": "Approval Workflow",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "BOOKING_EVENT_MANAGEMENT_40000_7000",
+  "title": "Booking / Event Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "VENDOR_MANAGEMENT_35000_6000",
+  "title": "Vendor Management",
+  "pillar": "operations",
+  "department": "operations"
+ },
+ {
+  "code": "PAYMENT_TRACKING_35000_6000",
+  "title": "Payment Tracking",
+  "pillar": "operations",
+  "department": "billing"
+ },
+ {
+  "code": "REAL_ESTATE_CRM_40000_8000",
+  "title": "Real Estate CRM",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "LEAD_ASSIGNMENT_40000_8000",
+  "title": "Lead Assignment",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "SITE_VISIT_MANAGEMENT_40000_7000",
+  "title": "Site Visit Management",
+  "pillar": "operations",
+  "department": "sales"
+ },
+ {
+  "code": "PROPERTY_UNIT_INVENTORY_50000_9000",
+  "title": "Property / Unit Inventory",
+  "pillar": "operations",
+  "department": "operations"
+ }
+]
