@@ -71,7 +71,7 @@ function followUpDotClass(value: string) {
   if (value === "completed") return "bg-success";
   if (value === "missed" || value === "urgent") return "bg-danger";
   if (value === "high" || value === "scheduled") return "bg-warning";
-  return "bg-vega-purple";
+  return "bg-vega-accent";
 }
 
 function actorName(actor?: UserRef) {
@@ -171,7 +171,7 @@ export function LeadFollowUpPanel({
       <form className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-4" onSubmit={createFollowUp}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+            <CalendarDays className="h-5 w-5 text-vega-accent" aria-hidden="true" />
             <p className="text-base font-semibold text-vega-text">Follow-up Scheduler</p>
           </div>
           <p className="text-xs text-vega-text-muted">Schedule the next follow-up for this lead</p>
@@ -220,7 +220,7 @@ export function LeadFollowUpPanel({
       <div className="rounded-md border border-vega-border-soft bg-vega-surface-1 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Clock3 className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+            <Clock3 className="h-5 w-5 text-vega-accent" aria-hidden="true" />
             <p className="text-base font-semibold text-vega-text">Upcoming & Recent Follow-ups</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">

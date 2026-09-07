@@ -369,7 +369,7 @@ export function SubtaskContextDrawer({
                     onChange={(event) =>
                       item._id ? void onToggleChecklistItem(item._id, event.target.checked) : undefined
                     }
-                    className="mt-0.5 h-3.5 w-3.5 accent-[#8b5cf6]"
+                    className="mt-0.5 h-3.5 w-3.5 accent-[#3b82f6]"
                     aria-label={item.title}
                   />
                   <span
@@ -427,7 +427,7 @@ export function SubtaskContextDrawer({
               onChange={(event) => setCommentDraft(event.target.value)}
               placeholder="Add a comment..."
               rows={2}
-              className="w-full rounded-md border border-vega-border bg-[#0b141f] px-3 py-2 text-xs text-vega-text placeholder:text-vega-text-muted/85 focus-visible:border-vega-purple/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vega-purple/20"
+              className="w-full rounded-md border border-vega-border bg-[#0b141f] px-3 py-2 text-xs text-vega-text placeholder:text-vega-text-muted/85 focus-visible:border-vega-accent/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vega-accent/20"
             />
             <Button
               size="sm"
@@ -466,7 +466,7 @@ export function SubtaskContextDrawer({
       <div className="mt-auto border-t border-vega-border-soft p-4">
         <Link
           href={`/tasks/${subtask._id}`}
-          className="inline-flex h-[34px] w-full items-center justify-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+          className="inline-flex h-[34px] w-full items-center justify-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
         >
           Open as task
           <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />

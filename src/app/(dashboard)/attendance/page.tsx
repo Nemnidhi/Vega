@@ -48,8 +48,6 @@ export default async function AttendancePage() {
         initialMonthKey={initialMonthKey}
         initialMonthlyData={initialMonthlyData}
         initialGeofenceSettings={initialGeofenceSettings}
-        userLabel={session.fullName ?? session.email}
-        userRole={session.role}
       />
     );
   }

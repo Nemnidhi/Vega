@@ -12,7 +12,7 @@ type UserProfilePageProps = {
 };
 
 export default async function UserProfilePage({ params, searchParams }: UserProfilePageProps) {
-  const session = await requireRoleAccess(["admin"]);
+  await requireRoleAccess(["admin"]);
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const requestedMonth = typeof query.month === "string" && /^\d{4}-\d{2}$/.test(query.month)
     ? query.month
@@ -20,5 +20,5 @@ export default async function UserProfilePage({ params, searchParams }: UserProf
   const profile = await getUserProfile(id, requestedMonth);
   if (!profile) notFound();
 
-  return <UserProfileWorkspace initialProfile={profile} userLabel={session.fullName ?? session.email} userRole={session.role} />;
+  return <UserProfileWorkspace initialProfile={profile} />;
 }

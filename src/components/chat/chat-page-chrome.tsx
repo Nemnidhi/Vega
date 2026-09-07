@@ -26,7 +26,7 @@ export function ChatPageChrome({ thread = false }: { thread?: boolean }) {
           <h1 className="text-[26px] font-semibold leading-8 text-vega-text lg:text-[28px]">Team chat</h1>
           <p className="mt-1 text-sm text-vega-text-muted">{thread ? "Stay connected with your team." : "Message your team."}</p>
         </div>
-        <a href="#chat-user-search" className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-vega-purple text-white shadow-[0_8px_24px_rgba(124,63,224,0.28)] hover:bg-vega-purple-strong lg:hidden" aria-label="Find a teammate" title="Find a teammate">
+        <a href="#chat-user-search" className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-vega-accent text-white shadow-[0_8px_24px_rgba(124,63,224,0.28)] hover:bg-vega-accent-strong lg:hidden" aria-label="Find a teammate" title="Find a teammate">
           <SquarePen className="h-5 w-5" aria-hidden="true" />
         </a>
         <div className="hidden items-center gap-2 pt-2 text-xs font-medium text-vega-text lg:flex">

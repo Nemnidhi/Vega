@@ -175,14 +175,14 @@ function formatFollowUpTime(value: string) {
 function getFollowUpAccentClass(priority: string) {
   if (priority === "urgent") return "border-danger/40 bg-danger/15 text-danger";
   if (priority === "high") return "border-warning/45 bg-warning/15 text-warning";
-  if (priority === "medium") return "border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]";
+  if (priority === "medium") return "border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]";
   return "border-success/35 bg-success/10 text-success";
 }
 
 function getFollowUpDotClass(priority: string) {
   if (priority === "urgent") return "bg-danger";
   if (priority === "high") return "bg-warning";
-  if (priority === "medium") return "bg-vega-purple";
+  if (priority === "medium") return "bg-vega-accent";
   return "bg-success";
 }
 
@@ -709,7 +709,7 @@ export function HolidayCalendarView({
               type="button"
               className={cn(
                 "h-11 rounded-md px-5 text-base font-semibold text-vega-text-muted transition-colors xl:h-9 xl:text-sm",
-                item === "Month" ? "bg-vega-purple text-white shadow-sm" : "hover:bg-vega-surface-hover hover:text-vega-text",
+                item === "Month" ? "bg-vega-accent text-white shadow-sm" : "hover:bg-vega-surface-hover hover:text-vega-text",
               )}
             >
               {item}
@@ -741,7 +741,7 @@ export function HolidayCalendarView({
           </Button>
           <Link
             href="/meetings"
-            className="ml-auto inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-vega-purple px-5 text-base font-semibold text-white transition-colors hover:bg-vega-purple-strong xl:ml-0 xl:h-9 xl:rounded-md xl:px-4 xl:text-sm"
+            className="ml-auto inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-vega-accent px-5 text-base font-semibold text-white transition-colors hover:bg-vega-accent-strong xl:ml-0 xl:h-9 xl:rounded-md xl:px-4 xl:text-sm"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             <span className="xl:hidden">Event</span>
@@ -802,16 +802,16 @@ export function HolidayCalendarView({
                       "min-h-[62px] border-b border-r border-border p-1.5 text-center transition-colors sm:min-h-[78px] xl:min-h-[104px] xl:p-2 xl:text-left 2xl:min-h-[118px]",
                       "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
                       cell.inCurrentMonth ? "bg-vega-surface-1" : "bg-vega-surface-2/60 text-vega-text-dim",
-                      isInSelectedRange && !isSelected ? "bg-vega-purple-soft/50" : null,
-                      isSelected ? "bg-vega-purple-soft ring-1 ring-inset ring-vega-purple-border" : "hover:bg-vega-surface-hover",
+                      isInSelectedRange && !isSelected ? "bg-vega-accent-soft/50" : null,
+                      isSelected ? "bg-vega-accent-soft ring-1 ring-inset ring-vega-accent-border" : "hover:bg-vega-surface-hover",
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <span
                         className={cn(
                           "inline-flex h-10 w-10 items-center justify-center rounded-full text-lg font-semibold xl:h-7 xl:w-7 xl:text-sm",
-                          cell.isToday ? "bg-vega-purple text-white" : "text-vega-text",
-                          isRangeStart || isRangeEnd ? "bg-vega-purple text-white" : null,
+                          cell.isToday ? "bg-vega-accent text-white" : "text-vega-text",
+                          isRangeStart || isRangeEnd ? "bg-vega-accent text-white" : null,
                           !cell.inCurrentMonth && !cell.isToday ? "text-vega-text-dim" : null,
                         )}
                       >
@@ -845,7 +845,7 @@ export function HolidayCalendarView({
                     <div className="mt-1 flex justify-center gap-1 xl:hidden">
                       {cell.holidays.length > 0 ? <span className="h-2 w-2 rounded-full bg-pink-400" /> : null}
                       {cell.followUps.length > 0 ? <span className="h-2 w-2 rounded-full bg-success" /> : null}
-                      {cell.leaveEntries.length > 0 || attendanceStatusBadge ? <span className="h-2 w-2 rounded-full bg-vega-purple" /> : null}
+                      {cell.leaveEntries.length > 0 || attendanceStatusBadge ? <span className="h-2 w-2 rounded-full bg-vega-accent" /> : null}
                     </div>
 
                     <div className="mt-2 hidden space-y-1 xl:block">
@@ -907,7 +907,7 @@ export function HolidayCalendarView({
             </div>
           </CardContent>
           <div className="flex gap-5 border-t border-border px-4 py-3 text-sm text-vega-text-muted xl:hidden">
-            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-vega-purple" />Meetings</span>
+            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-vega-accent" />Meetings</span>
             <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-warning" />Calls</span>
             <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-success" />Follow-ups</span>
           </div>
@@ -929,7 +929,7 @@ export function HolidayCalendarView({
             <CardContent className="space-y-3 pt-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-vega-text">Selected Day Events</p>
-                <span className="text-xs font-semibold text-[#c4b5fd]">{selectedDayAgendaCount} total</span>
+                <span className="text-xs font-semibold text-[#93c5fd]">{selectedDayAgendaCount} total</span>
               </div>
 
               {selectedDayFollowUps.map((followUp) => {
@@ -967,7 +967,7 @@ export function HolidayCalendarView({
                       </div>
                       <Link
                         href={leadId ? `/leads/${leadId}` : "/leads"}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-vega-surface-2 text-vega-text-muted transition-colors hover:border-vega-purple-border hover:text-vega-text"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-vega-surface-2 text-vega-text-muted transition-colors hover:border-vega-accent-border hover:text-vega-text"
                         aria-label="Open lead"
                       >
                         <Phone className="h-4 w-4" aria-hidden="true" />
@@ -1012,7 +1012,7 @@ export function HolidayCalendarView({
             <CardHeader className="border-b border-border pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Holidays This Month</CardTitle>
-                <span className="text-xs font-semibold text-[#c4b5fd]">{visibleMonthHolidays.length}</span>
+                <span className="text-xs font-semibold text-[#93c5fd]">{visibleMonthHolidays.length}</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-2 pt-4">
@@ -1049,7 +1049,7 @@ export function HolidayCalendarView({
                 <CalendarCheck className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
                 Add Holiday
               </Link>
-              <Link href="/leads" className="rounded-md border border-vega-purple-border bg-vega-purple-soft p-3 text-center text-xs font-semibold text-[#c4b5fd]">
+              <Link href="/leads" className="rounded-md border border-vega-accent-border bg-vega-accent-soft p-3 text-center text-xs font-semibold text-[#93c5fd]">
                 <Bell className="mx-auto mb-2 h-5 w-5" aria-hidden="true" />
                 Set Reminder
               </Link>

@@ -93,7 +93,7 @@ export function LeadIntakeLauncher() {
                     className={cn(
                       "h-[34px] rounded-md px-3 text-xs font-medium transition-colors",
                       openTab === tab.key
-                        ? "border border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]"
+                        ? "border border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]"
                         : "border border-transparent text-vega-text-muted hover:bg-vega-surface-hover hover:text-vega-text",
                     )}
                   >

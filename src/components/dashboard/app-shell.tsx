@@ -12,7 +12,7 @@ export function AppShell({ children, session }: AppShellProps) {
   return (
     <div className="min-h-screen bg-vega-bg text-vega-text">
       <div className="flex min-h-screen">
-        <DashboardSidebar role={session.role} userLabel={session.fullName ?? session.email} />
+        <DashboardSidebar role={session.role} />
         <div className="min-w-0 flex-1">
           <DashboardTopNav
             role={session.role}

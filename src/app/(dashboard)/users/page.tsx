@@ -40,8 +40,6 @@ export default async function UsersPage() {
       initialUsers={initialUsers}
       initialRequests={passwordChangeRequests}
       currentUserId={session.userId}
-      userLabel={session.fullName ?? session.email}
-      userRole={session.role}
     />
   );
 }

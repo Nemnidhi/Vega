@@ -42,7 +42,7 @@ export const STATUS_TONE: Record<CanonicalTaskStatus, string> = {
 export const PRIORITY_TONE: Record<string, string> = {
   URGENT: "border-vega-red/30 bg-vega-red/10 text-vega-red",
   HIGH: "border-vega-orange/30 bg-vega-orange/10 text-vega-orange",
-  MEDIUM: "border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]",
+  MEDIUM: "border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]",
   LOW: "border-vega-border bg-vega-surface-2 text-vega-text-muted",
 };
 

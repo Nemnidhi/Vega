@@ -58,9 +58,9 @@ export default async function LeadsPage() {
   ).length;
 
   const metrics = [
-    { label: "Total Leads", value: totalLeads, delta: "+12%", icon: Users, tone: "text-[#c4b5fd]", tile: "bg-vega-purple-soft" },
+    { label: "Total Leads", value: totalLeads, delta: "+12%", icon: Users, tone: "text-[#93c5fd]", tile: "bg-vega-accent-soft" },
     { label: "New This Week", value: newThisWeek, delta: "+20%", icon: TrendingUp, tone: "text-blue-300", tile: "bg-blue-500/15" },
-    { label: "Contacted", value: contacted, delta: "+8%", icon: Phone, tone: "text-[#a855f7]", tile: "bg-purple-500/15" },
+    { label: "Contacted", value: contacted, delta: "+8%", icon: Phone, tone: "text-[#3b82f6]", tile: "bg-purple-500/15" },
     { label: "Converted", value: converted, delta: "+25%", icon: CheckCircle2, tone: "text-success", tile: "bg-success/15" },
   ];
 

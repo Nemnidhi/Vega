@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BarChart3,
-  Bell,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -21,7 +20,6 @@ import {
   Pencil,
   Phone,
   Plus,
-  Search,
   Target,
   UsersRound,
   X,
@@ -33,12 +31,10 @@ import type { UserProfilePayload, UserProfileTask } from "@/lib/users/profile";
 
 interface UserProfileWorkspaceProps {
   initialProfile: UserProfilePayload;
-  userLabel: string;
-  userRole: string;
 }
 
 const panelClass = "rounded-lg border border-vega-border bg-vega-surface-1";
-const selectClass = "h-[38px] w-full rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs text-vega-text outline-none focus:border-vega-purple/70";
+const selectClass = "h-[38px] w-full rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs text-vega-text outline-none focus:border-vega-accent/70";
 const profileTabs = [
   { id: "profile-overview", label: "Overview" },
   { id: "profile-attendance", label: "Attendance" },
@@ -109,14 +105,14 @@ function activityDetail(entityType: string, action: string) {
 }
 
 function Avatar({ name, small = false }: { name: string; small?: boolean }) {
-  return <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-[#5432d5] font-semibold text-white", small ? "h-8 w-8 text-[11px]" : "h-16 w-16 text-xl lg:h-[72px] lg:w-[72px] lg:text-2xl")}>{initials(name)}</span>;
+  return <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-[#2563eb] font-semibold text-white", small ? "h-8 w-8 text-[11px]" : "h-16 w-16 text-xl lg:h-[72px] lg:w-[72px] lg:text-2xl")}>{initials(name)}</span>;
 }
 
 function OverdueBadge() {
   return <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-vega-red-soft px-1.5 py-0.5 text-[10px] font-medium text-[#ff707a]"><CircleAlert className="h-3 w-3" />Overdue</span>;
 }
 
-export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: UserProfileWorkspaceProps) {
+export function UserProfileWorkspace({ initialProfile }: UserProfileWorkspaceProps) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [activeTab, setActiveTab] = useState<string>(profileTabs[0].id);
@@ -139,7 +135,7 @@ export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: Us
   const monthDays = attendance.totalMarked + attendance.leave;
   const donutSegments = [
     { key: "Present", value: attendance.present, color: "#39db7e" },
-    { key: "Late", value: attendance.late, color: "#8359ef" },
+    { key: "Late", value: attendance.late, color: "#3b82f6" },
     { key: "Leave", value: attendance.leave, color: "#f2b842" },
     { key: "Absent", value: attendance.absent, color: "#f3626d" },
   ];
@@ -202,11 +198,6 @@ export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: Us
 
   return (
     <section className="min-w-0">
-      <div className="-mx-[22px] -mt-[18px] mb-4 hidden h-14 items-center justify-between border-b border-vega-border-soft bg-vega-topbar px-6 lg:flex">
-        <div className="text-xs text-vega-text-muted">Team <span className="px-2">/</span> Users <span className="px-2">/</span><span className="font-medium text-vega-text">Profile</span></div>
-        <div className="flex h-9 w-[430px] max-w-[38vw] items-center gap-2 rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs text-vega-text-muted"><Search className="h-4 w-4" />Search across Vega...</div>
-        <div className="flex items-center gap-3"><Bell className="h-4 w-4 text-vega-text-secondary" /><Avatar name={userLabel} small /><div><p className="text-xs font-medium">{userLabel}</p><p className="text-[10px] capitalize text-vega-text-muted">{userRole.replaceAll("_", " ")}</p></div><ChevronDown className="h-4 w-4 text-vega-text-muted" /></div>
-      </div>
 
       <Link href="/users" className="mb-1 inline-flex items-center gap-2 text-xs font-medium text-[#7db7f3] hover:text-[#a6d0ff]"><ArrowLeft className="h-3.5 w-3.5" />Back to users</Link>
       <div className="mb-3"><h1 className="text-[26px] font-semibold leading-8 text-vega-text lg:text-[28px]">User profile</h1><p className="hidden text-xs text-vega-text-muted sm:block">View and manage user information, performance and activity.</p></div>
@@ -233,7 +224,7 @@ export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: Us
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid h-10 grid-cols-5 overflow-hidden rounded-md border border-vega-border sm:w-[610px]">{profileTabs.map((tab) => <button key={tab.id} type="button" onClick={() => openTab(tab.id)} className={cn("border-r border-vega-border px-2 text-[11px] font-medium transition-colors last:border-r-0", activeTab === tab.id ? "bg-vega-purple text-white" : "text-vega-text-secondary hover:bg-vega-surface-hover")}>{tab.label}</button>)}</div>
+        <div className="grid h-10 grid-cols-5 overflow-hidden rounded-md border border-vega-border sm:w-[610px]">{profileTabs.map((tab) => <button key={tab.id} type="button" onClick={() => openTab(tab.id)} className={cn("border-r border-vega-border px-2 text-[11px] font-medium transition-colors last:border-r-0", activeTab === tab.id ? "bg-vega-accent text-white" : "text-vega-text-secondary hover:bg-vega-surface-hover")}>{tab.label}</button>)}</div>
         <label className="relative ml-auto flex h-10 w-[185px] items-center gap-2 rounded-md border border-vega-border bg-[#0b141f] px-3 text-xs font-medium"><CalendarDays className="h-4 w-4 text-vega-text-muted" /><span>{monthLabel(profile.monthKey)}</span><ChevronDown className="ml-auto h-4 w-4 text-vega-text-muted" /><input type="month" value={profile.monthKey} onChange={(event) => changeMonth(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" /></label>
       </div>
 
@@ -257,7 +248,7 @@ export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: Us
           <div className="mt-3 border-t border-vega-border-soft lg:hidden">
             {tasks.items.slice(0, 3).map((task) => <Link key={task.id} href={`/tasks/${task.id}`} className="flex items-center gap-2 border-b border-vega-border-soft py-2.5 text-xs"><span className="min-w-0 flex-1 truncate">{task.title}</span><span className={cn("shrink-0 rounded-md px-2 py-1 text-[10px]", taskStatusClass(task))}>{statusLabel(task.status)}</span><span className="shrink-0 text-vega-text-muted">{shortDateLabel(task.dueAt)}</span>{task.overdue ? <OverdueBadge /> : null}<span className={cn("shrink-0 rounded-md px-2 py-1 text-[10px]", priorityClass(task.priority))}>{titleCase(task.priority)}</span><ChevronRight className="h-4 w-4 shrink-0 text-vega-text-muted" /></Link>)}
             {tasks.items.length === 0 ? <p className="py-4 text-center text-xs text-vega-text-muted">No tasks assigned to this user.</p> : null}
-            <Link href="/tasks" className="flex items-center gap-2 py-3 text-xs font-medium text-vega-purple">View all tasks <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/tasks" className="flex items-center gap-2 py-3 text-xs font-medium text-vega-accent">View all tasks <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </section>
 
@@ -267,17 +258,17 @@ export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: Us
           <div className="mt-3 flex items-center gap-3"><div className="h-3 flex-1 overflow-hidden rounded-full bg-[#1a3044]"><div className="h-full rounded-full bg-[#39d77e]" style={{ width: `${targets.progressPercent}%` }} /></div><strong className="hidden text-sm lg:block">{targets.progressPercent}%</strong></div>
           <p className="mt-4 text-xs text-vega-text-muted">{targets.met} completed <span className="px-1">·</span> {Math.max(0, targets.total - targets.met)} in progress</p>
           <div className="lg:hidden">
-            {targets.items.slice(0, 1).map((target) => <div key={target.id} className="mt-4 border-t border-vega-border-soft pt-3"><div className="mb-2 flex items-center gap-3 text-xs"><span className="min-w-0 flex-1 truncate">{target.title}</span><span className="text-vega-text-muted">{target.completed} / {target.target}</span><span className="w-10 text-right">{target.progressPercent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#1a3044]"><div className="h-full rounded-full bg-vega-purple" style={{ width: `${target.progressPercent}%` }} /></div></div>)}
+            {targets.items.slice(0, 1).map((target) => <div key={target.id} className="mt-4 border-t border-vega-border-soft pt-3"><div className="mb-2 flex items-center gap-3 text-xs"><span className="min-w-0 flex-1 truncate">{target.title}</span><span className="text-vega-text-muted">{target.completed} / {target.target}</span><span className="w-10 text-right">{target.progressPercent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#1a3044]"><div className="h-full rounded-full bg-vega-accent" style={{ width: `${target.progressPercent}%` }} /></div></div>)}
             <Link href="/tasks" className="mt-3 flex items-center gap-2 border-t border-vega-border-soft py-3 text-xs"><span className="flex-1">{targets.met} completed targets</span><ChevronRight className="h-4 w-4 text-vega-text-muted" /></Link>
-            <Link href="/tasks" className="flex items-center gap-2 text-xs font-medium text-vega-purple">View targets <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/tasks" className="flex items-center gap-2 text-xs font-medium text-vega-accent">View targets <ArrowRight className="h-4 w-4" /></Link>
           </div>
-          <Link href="/tasks" className="mt-5 hidden items-center justify-end gap-2 text-xs font-medium text-vega-purple lg:flex">View targets <ArrowRight className="h-4 w-4" /></Link>
+          <Link href="/tasks" className="mt-5 hidden items-center justify-end gap-2 text-xs font-medium text-vega-accent lg:flex">View targets <ArrowRight className="h-4 w-4" /></Link>
         </section>
       </div>
 
       <div className="mt-3 hidden gap-3 lg:grid lg:grid-cols-[1.7fr_1fr]">
         <section className={cn(panelClass, "overflow-hidden")}>
-          <div className="flex items-center justify-between border-b border-vega-border px-4 py-3"><div className="flex gap-3"><ClipboardCheck className="h-5 w-5 text-vega-text-muted" /><div><h2 className="text-sm font-semibold">Assigned tasks</h2><p className="text-[10px] text-vega-text-muted">Key tasks and their current status</p></div></div><div className="flex items-center gap-3"><Link href="/tasks" className="inline-flex h-8 items-center gap-2 rounded-md bg-vega-purple px-3 text-[11px] font-medium text-white"><Plus className="h-3.5 w-3.5" />Assign task</Link><Link href="/tasks" className="inline-flex items-center gap-1.5 text-[11px] font-medium text-vega-purple">View all <ArrowRight className="h-3.5 w-3.5" /></Link></div></div>
+          <div className="flex items-center justify-between border-b border-vega-border px-4 py-3"><div className="flex gap-3"><ClipboardCheck className="h-5 w-5 text-vega-text-muted" /><div><h2 className="text-sm font-semibold">Assigned tasks</h2><p className="text-[10px] text-vega-text-muted">Key tasks and their current status</p></div></div><div className="flex items-center gap-3"><Link href="/tasks" className="inline-flex h-8 items-center gap-2 rounded-md bg-vega-accent px-3 text-[11px] font-medium text-white"><Plus className="h-3.5 w-3.5" />Assign task</Link><Link href="/tasks" className="inline-flex items-center gap-1.5 text-[11px] font-medium text-vega-accent">View all <ArrowRight className="h-3.5 w-3.5" /></Link></div></div>
           <div className="grid grid-cols-[1.6fr_1fr_1.2fr_.8fr] bg-[#102031] px-4 py-2 text-[10px] text-vega-text-muted"><span>Task</span><span>Status</span><span>Due date</span><span>Priority</span></div>
           {tasks.items.slice(0, 4).map((task) => <Link href={`/tasks/${task.id}`} key={task.id} className="grid grid-cols-[1.6fr_1fr_1.2fr_.8fr] items-center border-t border-vega-border-soft px-4 py-2 text-xs hover:bg-vega-surface-hover"><span className="truncate">{task.title}</span><span><span className={cn("rounded-md px-2 py-1 text-[10px]", taskStatusClass(task))}>{statusLabel(task.status)}</span></span><span className="flex items-center gap-2 text-vega-text-secondary">{dateLabel(task.dueAt)}{task.overdue ? <OverdueBadge /> : null}</span><span><span className={cn("rounded-md px-2 py-1 text-[10px]", priorityClass(task.priority))}>{titleCase(task.priority)}</span></span></Link>)}
           {tasks.items.length === 0 ? <p className="px-4 py-8 text-center text-xs text-vega-text-muted">No tasks assigned to this user.</p> : null}
@@ -285,17 +276,17 @@ export function UserProfileWorkspace({ initialProfile, userLabel, userRole }: Us
 
         <section className={cn(panelClass, "overflow-hidden")}>
           <div className="flex items-center gap-3 border-b border-vega-border px-4 py-3"><Target className="h-5 w-5 text-vega-text-muted" /><div><h2 className="text-sm font-semibold">Monthly targets</h2><p className="text-[10px] text-vega-text-muted">Individual target breakdown for {monthLabel(profile.monthKey)}</p></div></div>
-          <div className="space-y-4 p-4">{targets.items.map((target) => <div key={target.id} className="flex items-center gap-3 text-xs"><span className="min-w-0 flex-1 truncate">{target.title}</span><div className="h-2 w-[110px] shrink-0 overflow-hidden rounded-full bg-[#1a3044]"><div className="h-full rounded-full bg-vega-purple" style={{ width: `${target.progressPercent}%` }} /></div><span className="w-12 shrink-0 text-right text-vega-text-secondary">{target.completed} / {target.target}</span><span className="w-10 shrink-0 text-right">{target.progressPercent}%</span></div>)}{targets.items.length === 0 ? <p className="py-5 text-center text-xs text-vega-text-muted">No targets for this month.</p> : null}</div>
+          <div className="space-y-4 p-4">{targets.items.map((target) => <div key={target.id} className="flex items-center gap-3 text-xs"><span className="min-w-0 flex-1 truncate">{target.title}</span><div className="h-2 w-[110px] shrink-0 overflow-hidden rounded-full bg-[#1a3044]"><div className="h-full rounded-full bg-vega-accent" style={{ width: `${target.progressPercent}%` }} /></div><span className="w-12 shrink-0 text-right text-vega-text-secondary">{target.completed} / {target.target}</span><span className="w-10 shrink-0 text-right">{target.progressPercent}%</span></div>)}{targets.items.length === 0 ? <p className="py-5 text-center text-xs text-vega-text-muted">No targets for this month.</p> : null}</div>
         </section>
       </div>
 
       <section id="profile-activity" className={cn(panelClass, "mt-3 scroll-mt-20 overflow-hidden")}>
-        <div className="flex items-center justify-between gap-3 border-b border-vega-border px-4 py-3"><div className="flex items-center gap-3"><span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#142537]"><FileText className="h-4 w-4 text-[#b1c7dd]" /></span><div><h2 className="text-sm font-semibold">Recent activity</h2><p className="text-[10px] text-vega-text-muted">Latest activity from {monthLabel(profile.monthKey)}</p></div></div><Link href="/tasks" className="hidden items-center gap-1.5 text-[11px] font-medium text-vega-purple lg:inline-flex">View activity <ArrowRight className="h-3.5 w-3.5" /></Link></div>
+        <div className="flex items-center justify-between gap-3 border-b border-vega-border px-4 py-3"><div className="flex items-center gap-3"><span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#142537]"><FileText className="h-4 w-4 text-[#b1c7dd]" /></span><div><h2 className="text-sm font-semibold">Recent activity</h2><p className="text-[10px] text-vega-text-muted">Latest activity from {monthLabel(profile.monthKey)}</p></div></div><Link href="/tasks" className="hidden items-center gap-1.5 text-[11px] font-medium text-vega-accent lg:inline-flex">View activity <ArrowRight className="h-3.5 w-3.5" /></Link></div>
         <div className="divide-y divide-vega-border-soft px-4">
-          {activity.map((item, index) => <div key={item.id} className="flex items-center gap-3 py-2.5 text-xs"><span className={cn("hidden h-2.5 w-2.5 shrink-0 rounded-full lg:block", index % 2 === 0 ? "bg-vega-purple" : "bg-vega-green")} /><span className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md lg:hidden", index % 2 === 0 ? "bg-vega-green-soft text-[#62df90]" : "bg-vega-purple-soft text-[#a98bf5]")}>{index % 2 === 0 ? <FileText className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block truncate">{activityLabel(item.action)}</span><span className="block truncate text-[10px] text-vega-text-muted">{activityDetail(item.entityType, item.action)}</span></span><span className="shrink-0 text-vega-text-muted">{dateLabel(item.createdAt)}</span></div>)}
+          {activity.map((item, index) => <div key={item.id} className="flex items-center gap-3 py-2.5 text-xs"><span className={cn("hidden h-2.5 w-2.5 shrink-0 rounded-full lg:block", index % 2 === 0 ? "bg-vega-accent" : "bg-vega-green")} /><span className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md lg:hidden", index % 2 === 0 ? "bg-vega-green-soft text-[#62df90]" : "bg-vega-accent-soft text-[#60a5fa]")}>{index % 2 === 0 ? <FileText className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}</span><span className="min-w-0 flex-1"><span className="block truncate">{activityLabel(item.action)}</span><span className="block truncate text-[10px] text-vega-text-muted">{activityDetail(item.entityType, item.action)}</span></span><span className="shrink-0 text-vega-text-muted">{dateLabel(item.createdAt)}</span></div>)}
           {activity.length === 0 ? <p className="py-6 text-center text-xs text-vega-text-muted">No recent activity found.</p> : null}
         </div>
-        <Link href="/tasks" className="flex items-center gap-2 px-4 py-3 text-xs font-medium text-vega-purple lg:hidden">View activity <ArrowRight className="h-4 w-4" /></Link>
+        <Link href="/tasks" className="flex items-center gap-2 px-4 py-3 text-xs font-medium text-vega-accent lg:hidden">View activity <ArrowRight className="h-4 w-4" /></Link>
       </section>
 
       {editing ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center" role="dialog" aria-modal="true" aria-label="Edit user profile"><form onSubmit={saveProfile} className={cn(panelClass, "max-h-[92dvh] w-full max-w-lg overflow-y-auto bg-[#0a141f]")}><div className="flex items-center justify-between border-b border-vega-border px-4 py-3"><div><h2 className="text-base font-semibold">Edit profile</h2><p className="text-[11px] text-vega-text-muted">Update account and work details.</p></div><button type="button" onClick={() => setEditing(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-vega-text-muted" aria-label="Close"><X className="h-4 w-4" /></button></div><div className="space-y-3 p-4"><label className="block text-[11px] text-vega-text-muted">Full name<Input className="mt-1 h-[38px]" value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} required /></label><label className="block text-[11px] text-vega-text-muted">Work email<Input type="email" className="mt-1 h-[38px]" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required /></label><div className="grid grid-cols-2 gap-3"><label className="text-[11px] text-vega-text-muted">Phone<Input className="mt-1 h-[38px]" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} /></label><label className="text-[11px] text-vega-text-muted">Department<Input className="mt-1 h-[38px]" value={form.department} onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))} /></label></div><label className="block text-[11px] text-vega-text-muted">Reports to<select className={cn(selectClass, "mt-1")} value={form.managerId} onChange={(event) => setForm((current) => ({ ...current, managerId: event.target.value }))}><option value="">Not assigned</option>{profile.managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.fullName}</option>)}</select></label><div className="grid grid-cols-2 gap-3"><label className="text-[11px] text-vega-text-muted">Role<select className={cn(selectClass, "mt-1")} value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}><option value="admin">Admin</option><option value="developer">Developer</option><option value="sales">Sales</option><option value="digital_marketing">Digital marketing</option></select></label><label className="text-[11px] text-vega-text-muted">Status<select className={cn(selectClass, "mt-1")} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as typeof form.status }))}><option value="active">Active</option><option value="inactive">Inactive</option><option value="invited">Invited</option></select></label></div><div className="grid grid-cols-2 gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button></div></div></form></div> : null}

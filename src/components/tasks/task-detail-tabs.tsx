@@ -1373,7 +1373,7 @@ export function TaskDetailTabs({
                   key={step}
                   className={`rounded-md border px-2 py-1 text-[10px] ${
                     importStep === step
-                      ? "border-vega-purple-border bg-vega-surface-selected text-[#c4b5fd]"
+                      ? "border-vega-accent-border bg-vega-surface-selected text-[#93c5fd]"
                       : "border-vega-border-soft text-vega-text-muted"
                   }`}
                 >
@@ -1672,7 +1672,7 @@ export function TaskDetailTabs({
                       </td>
                       <td className="px-3 py-3 text-vega-text-muted">{(page - 1) * pageSize + index + 1}</td>
                       <td className="min-w-64 px-3 py-3">
-                        <button type="button" className="text-left text-xs font-medium text-vega-text hover:text-[#c4b5fd]" onClick={() => setContextSubtaskId(subtask._id)}>
+                        <button type="button" className="text-left text-xs font-medium text-vega-text hover:text-[#93c5fd]" onClick={() => setContextSubtaskId(subtask._id)}>
                           {subtask.title}
                         </button>
                         <p className="mt-1 text-[10px] text-vega-text-muted">{subtask.code ?? "No code"}</p>
@@ -1741,7 +1741,7 @@ export function TaskDetailTabs({
             onClick={() => setActiveTab(tab)}
             className={`whitespace-nowrap px-3 py-3 text-xs font-medium transition-colors ${
               activeTab === tab
-                ? "border-b-2 border-vega-purple text-[#c4b5fd]"
+                ? "border-b-2 border-vega-accent text-[#93c5fd]"
                 : "text-vega-text-muted hover:text-vega-text-secondary"
             }`}
           >

@@ -298,7 +298,7 @@ export function TasksView({
             onClick={() => setActiveTab(tab)}
             className={`whitespace-nowrap px-3 py-3 text-xs font-medium capitalize transition-colors ${
               activeTab === tab
-                ? "border-b-2 border-vega-purple text-[#c4b5fd]"
+                ? "border-b-2 border-vega-accent text-[#93c5fd]"
                 : "text-vega-text-muted hover:text-vega-text-secondary"
             }`}
           >

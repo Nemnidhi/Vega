@@ -319,7 +319,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <header className="space-y-1.5">
           <div className="flex min-w-0 items-center gap-1.5">
             <h2 className="truncate text-[22px] font-semibold leading-7 text-vega-text">{lead.title}</h2>
-            <ExternalLink className="h-5 w-5 shrink-0 text-vega-purple" aria-hidden="true" />
+            <ExternalLink className="h-5 w-5 shrink-0 text-vega-accent" aria-hidden="true" />
           </div>
           <p className="text-sm text-vega-text-muted">
             {lead.contactName || "No contact sourced"} - {humanize(lead.source)}
@@ -373,12 +373,12 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
             </div>
             <div className="grid grid-cols-2 gap-3 border-t border-vega-border-soft pt-3">
               <div className="flex gap-2">
-                <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-vega-purple" aria-hidden="true" />
+                <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-vega-accent" aria-hidden="true" />
                 <div>
                   <p className="text-[11px] text-vega-text-muted">Score</p>
                   <p className="text-xs font-semibold text-vega-text">{lead.score ?? 0}</p>
                   <div className="mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-vega-surface-2">
-                    <div className="h-full rounded-full bg-vega-purple" style={{ width: `${Math.min(100, lead.score ?? 0)}%` }} />
+                    <div className="h-full rounded-full bg-vega-accent" style={{ width: `${Math.min(100, lead.score ?? 0)}%` }} />
                   </div>
                 </div>
               </div>
@@ -406,7 +406,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 key={tab.label}
                 href={tab.href}
                 className={`inline-flex h-11 min-w-0 items-center justify-center gap-1.5 border-b-2 px-1 text-[11px] font-semibold ${
-                  index === 0 ? "border-vega-purple text-[#c4b5fd]" : "border-transparent text-vega-text-muted"
+                  index === 0 ? "border-vega-accent text-[#93c5fd]" : "border-transparent text-vega-text-muted"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -419,7 +419,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <Card id="follow-ups">
           <CardContent className="space-y-3 p-3">
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <CalendarDays className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               <h3 className="text-sm font-semibold text-vega-text">Next follow-up</h3>
             </div>
             {nextFollowUp ? (
@@ -443,7 +443,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                     <CalendarDays className="h-4 w-4" aria-hidden="true" />
                     Reschedule
                   </a>
-                  <a href="#follow-up-panel" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-vega-purple text-xs font-semibold text-white">
+                  <a href="#follow-up-panel" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-vega-accent text-xs font-semibold text-white">
                     <Check className="h-4 w-4" aria-hidden="true" />
                     Mark complete
                   </a>
@@ -458,7 +458,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <Card id="overview">
           <CardHeader className="flex-row items-center justify-between p-3 pb-2">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <FileText className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               <CardTitle>Lead summary</CardTitle>
             </div>
             <a href="#edit-lead" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-vega-border px-2.5 text-xs font-semibold text-vega-text-secondary">
@@ -494,7 +494,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
         <Card>
           <CardHeader className="flex-row items-center gap-2 p-3 pb-2">
-            <BarChart3 className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+            <BarChart3 className="h-5 w-5 text-vega-accent" aria-hidden="true" />
             <CardTitle>Pipeline progress</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-1">
@@ -514,10 +514,10 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between">
               <span className="flex items-center gap-2 text-sm font-semibold text-vega-text">
-                <NotebookText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+                <NotebookText className="h-5 w-5 text-vega-accent" aria-hidden="true" />
                 Notes
               </span>
-              <span className="text-xs font-semibold text-vega-purple">+ Add note</span>
+              <span className="text-xs font-semibold text-vega-accent">+ Add note</span>
             </summary>
             <div className="mt-3"><LeadDairy leadId={lead._id} notes={leadNotes} /></div>
           </details>
@@ -527,7 +527,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <details className="rounded-lg border border-vega-border bg-vega-surface-1 p-3">
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-vega-text">
             <span className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <Zap className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               Next steps <Badge variant="accent">2</Badge>
             </span>
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -541,7 +541,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <details className="rounded-lg border border-vega-border bg-vega-surface-1 p-3">
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-vega-text">
             <span className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <Users className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               Client portal
             </span>
             <span className="flex items-center gap-1.5 text-[11px] font-normal text-vega-text-muted">
@@ -584,7 +584,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
           </CardContent>
         </Card>
 
-        <a href="#follow-up-panel" className="sticky bottom-2 z-20 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-vega-purple text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,63,224,0.35)]">
+        <a href="#follow-up-panel" className="sticky bottom-2 z-20 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-vega-accent text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,63,224,0.35)]">
           <CalendarDays className="h-4 w-4" aria-hidden="true" />
           Schedule follow-up
         </a>
@@ -599,7 +599,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               <h2 className="truncate text-[28px] font-semibold leading-[34px] tracking-normal text-vega-text">
                 {lead.title}
               </h2>
-              <ExternalLink className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <ExternalLink className="h-5 w-5 text-vega-accent" aria-hidden="true" />
             </div>
             <p className="mt-1 text-sm text-vega-text-muted">
               {lead.contactName || "No contact sourced"} / {humanize(lead.source)}
@@ -616,14 +616,14 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
           <div className="flex shrink-0 flex-wrap items-center gap-3">
             <Link
               href="/leads"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-4 text-sm font-semibold text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-4 text-sm font-semibold text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to Leads
             </Link>
             <a
               href="#edit-lead"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-vega-purple px-4 text-sm font-semibold text-white transition-colors hover:bg-vega-purple-strong"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-vega-accent px-4 text-sm font-semibold text-white transition-colors hover:bg-vega-accent-strong"
             >
               <Edit3 className="h-4 w-4" aria-hidden="true" />
               Edit Lead
@@ -634,7 +634,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {[
-          { label: "Contact", value: lead.contactName || "Not sourced", icon: User, tone: "text-[#8b5cf6]" },
+          { label: "Contact", value: lead.contactName || "Not sourced", icon: User, tone: "text-[#3b82f6]" },
           { label: "Phone", value: resolvedPhone || "Not shared", icon: Phone, tone: "text-success" },
           { label: "Email", value: lead.email || "Not sourced", icon: Mail, tone: "text-blue-300" },
         ].map((item) => {
@@ -657,7 +657,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <Card className="border-vega-border bg-vega-surface-1">
           <CardContent className="flex items-center gap-3 p-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-vega-border-soft bg-vega-surface-2">
-              <BadgeCheck className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <BadgeCheck className="h-5 w-5 text-vega-accent" aria-hidden="true" />
             </span>
             <span className="min-w-0">
               <p className="text-xs text-vega-text-muted">Status</p>
@@ -673,7 +673,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         </Card>
         {[
           { label: "Source", value: humanize(lead.source), icon: Globe2, tone: "text-[#9ca3ff]" },
-          { label: "Score", value: String(lead.score ?? 0), icon: BarChart3, tone: "text-[#8b5cf6]" },
+          { label: "Score", value: String(lead.score ?? 0), icon: BarChart3, tone: "text-[#3b82f6]" },
         ].map((item) => {
           const Icon = item.icon;
 
@@ -712,7 +712,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                       href={tab.href}
                       className={`inline-flex h-12 shrink-0 items-center gap-2 border-b-2 px-6 text-sm font-semibold transition-colors ${
                         tab.active
-                          ? "border-vega-purple bg-vega-purple-soft text-[#ddd6fe]"
+                          ? "border-vega-accent bg-vega-accent-soft text-[#bfdbfe]"
                           : "border-transparent text-vega-text-muted hover:bg-vega-surface-hover hover:text-vega-text"
                       }`}
                     >
@@ -732,12 +732,12 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+                <FileText className="h-5 w-5 text-vega-accent" aria-hidden="true" />
                 <CardTitle>Lead Summary</CardTitle>
               </div>
               <a
                 href="#edit-lead"
-                className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:text-vega-text"
+                className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:text-vega-text"
               >
                 <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                 Edit
@@ -787,7 +787,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
           <Card id="notes">
             <CardHeader className="flex-row items-center justify-between">
               <div className="flex items-center gap-2">
-                <NotebookText className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+                <NotebookText className="h-5 w-5 text-vega-accent" aria-hidden="true" />
                 <CardTitle>Notes</CardTitle>
               </div>
             </CardHeader>
@@ -846,14 +846,14 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
         <div className="space-y-4">
           <Card>
             <CardHeader className="flex-row items-center gap-2">
-              <Zap className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <Zap className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2 sm:grid-cols-3 xl:grid-cols-3">
               {callHref ? (
                 <a
                   href={callHref}
-                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
                 >
                   <span className="text-[#1d7a46]">
                     <PhoneIcon />
@@ -867,7 +867,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                   href={messageHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
                 >
                   <span className="text-[#25d366]">
                     <WhatsAppIcon />
@@ -879,7 +879,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               {mailHref ? (
                 <a
                   href={mailHref}
-                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                  className="inline-flex h-[36px] items-center justify-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
                 >
                   <MailIcon />
                   Mail
@@ -894,7 +894,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
           <Card>
             <CardHeader className="flex-row items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <ClipboardList className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               <CardTitle>Pipeline Progress</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -920,14 +920,14 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
 
           <Card>
             <CardHeader className="flex-row items-center gap-2">
-              <Zap className="h-5 w-5 text-vega-purple" aria-hidden="true" />
+              <Zap className="h-5 w-5 text-vega-accent" aria-hidden="true" />
               <CardTitle>Next Steps</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <FileCheck2 className="h-4 w-4 text-[#c4b5fd]" aria-hidden="true" />
+                    <FileCheck2 className="h-4 w-4 text-[#93c5fd]" aria-hidden="true" />
                     <div>
                       <p className="text-xs font-medium text-vega-text">Blueprint</p>
                       <p className="text-[11px] text-vega-text-muted">Create project blueprint</p>
@@ -943,7 +943,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 </div>
                 <a
                   href={`/blueprint/${lead._id}`}
-                  className="mt-3 inline-flex h-[32px] w-full items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                  className="mt-3 inline-flex h-[32px] w-full items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
                 >
                   {latestBlueprint ? "Open Blueprint" : "Start Blueprint"}
                 </a>
@@ -952,7 +952,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
               <div className="rounded-md border border-vega-border-soft bg-vega-surface-2 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-[#c4b5fd]" aria-hidden="true" />
+                    <FileText className="h-4 w-4 text-[#93c5fd]" aria-hidden="true" />
                     <div>
                       <p className="text-xs font-medium text-vega-text">Proposal</p>
                       <p className="text-[11px] text-vega-text-muted">Create and send proposal</p>
@@ -968,7 +968,7 @@ export default async function LeadDetailPage({ params }: { params: Params }) {
                 </div>
                 <a
                   href={`/proposals/${lead._id}`}
-                  className="mt-3 inline-flex h-[32px] w-full items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+                  className="mt-3 inline-flex h-[32px] w-full items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
                 >
                   {latestProposal ? "Open Proposal" : "Start Proposal"}
                 </a>

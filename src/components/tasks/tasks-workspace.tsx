@@ -367,7 +367,7 @@ export function TasksWorkspace({
             className={cn(
               "whitespace-nowrap px-3 py-3 text-xs font-medium transition-colors",
               view === item.key
-                ? "border-b-2 border-vega-purple text-[#c4b5fd]"
+                ? "border-b-2 border-vega-accent text-[#93c5fd]"
                 : "text-vega-text-muted hover:text-vega-text-secondary",
             )}
           >
@@ -507,8 +507,8 @@ export function TasksWorkspace({
 
       {/* Bulk action bar - only present when a selection exists */}
       {selectedVisible.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-vega-purple-border bg-vega-purple-soft px-3 py-2">
-          <span className="text-xs font-medium text-[#c4b5fd]">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-vega-accent-border bg-vega-accent-soft px-3 py-2">
+          <span className="text-xs font-medium text-[#93c5fd]">
             {selectedVisible.length} selected
           </span>
           <select
@@ -602,7 +602,7 @@ export function TasksWorkspace({
                     onChange={toggleAll}
                     disabled={visibleIds.length === 0}
                     aria-label="Select all tasks"
-                    className="h-3.5 w-3.5 accent-[#8b5cf6]"
+                    className="h-3.5 w-3.5 accent-[#3b82f6]"
                   />
                 </th>
                 <th className="px-3 py-3">Task</th>
@@ -660,14 +660,14 @@ export function TasksWorkspace({
                           checked={isSelected}
                           onChange={() => toggleOne(task._id)}
                           aria-label={`Select ${task.title}`}
-                          className="h-3.5 w-3.5 accent-[#8b5cf6]"
+                          className="h-3.5 w-3.5 accent-[#3b82f6]"
                         />
                       </td>
 
                       <td className="max-w-[320px] px-3 py-3">
                         <Link
                           href={`/tasks/${task._id}`}
-                          className="block truncate text-xs font-medium text-vega-text hover:text-[#c4b5fd]"
+                          className="block truncate text-xs font-medium text-vega-text hover:text-[#93c5fd]"
                         >
                           {task.title}
                         </Link>

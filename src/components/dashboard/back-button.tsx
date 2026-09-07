@@ -23,8 +23,8 @@ interface BackButtonProps {
 const STYLES =
   "inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-md border border-vega-border " +
   "bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors " +
-  "hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vega-purple/40";
+  "hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vega-accent/40";
 
 export function BackButton({ href, label = "Back", className }: BackButtonProps) {
   const router = useRouter();

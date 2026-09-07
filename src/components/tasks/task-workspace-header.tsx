@@ -58,7 +58,7 @@ export function TaskWorkspaceHeader({
   return (
     <div className="rounded-lg border border-vega-border bg-vega-surface-1">
       <div className="flex items-start gap-3 border-b border-vega-border-soft p-4">
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]">
           <ClipboardList className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
         </span>
 
@@ -69,7 +69,7 @@ export function TaskWorkspaceHeader({
 
         <Link
           href="/tasks"
-          className="inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text"
+          className="inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text"
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
           Tasks

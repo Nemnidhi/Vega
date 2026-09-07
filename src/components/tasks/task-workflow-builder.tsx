@@ -267,7 +267,7 @@ function stageColorClass(color: string) {
   if (color === "warning") return "border-vega-yellow/35 bg-vega-yellow/5";
   if (color === "danger") return "border-vega-red/35 bg-vega-red/5";
   if (color === "neutral") return "border-vega-border bg-vega-surface-1/65";
-  return "border-vega-purple-border bg-vega-purple/5";
+  return "border-vega-accent-border bg-vega-accent/5";
 }
 
 function statusTone(status: string) {
@@ -282,7 +282,7 @@ function priorityTone(priority?: Priority) {
   if (priority === "URGENT") return "bg-vega-red/15 text-vega-red";
   if (priority === "HIGH") return "bg-vega-orange/15 text-vega-orange";
   if (priority === "LOW") return "bg-vega-surface-2 text-vega-text-muted";
-  return "bg-vega-purple-soft text-[#c4b5fd]";
+  return "bg-vega-accent-soft text-[#93c5fd]";
 }
 
 function executionTone(state?: ExecutionState) {
@@ -510,18 +510,18 @@ function WorkflowSubtaskNode({ data, selected }: NodeProps<Node<WorkflowNodeData
       className={cn(
         "group w-[175px] rounded-md border p-2.5 text-left shadow-[0_10px_28px_rgba(0,0,0,0.28)] transition",
         data.mode === "execution" ? executionTone(data.executionState) : "border-[#334456] bg-[#101a27]",
-        selected ? "border-[#8090a3] shadow-[0_0_0_1px_rgba(255,255,255,0.15)]" : "hover:border-vega-purple-border",
-        data.isMatch ? "ring-2 ring-vega-purple/45" : "",
+        selected ? "border-[#8090a3] shadow-[0_0_0_1px_rgba(255,255,255,0.15)]" : "hover:border-vega-accent-border",
+        data.isMatch ? "ring-2 ring-vega-accent/45" : "",
       )}
     >
-      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !border-2 !border-vega-bg !bg-vega-purple" />
+      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !border-2 !border-vega-bg !bg-vega-accent" />
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 gap-2">
-          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-vega-purple-soft text-[#c4b5fd]">
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-vega-accent-soft text-[#93c5fd]">
             <NodeIcon size={15} />
           </span>
           <div className="min-w-0">
-            <p className="font-mono text-[10px] font-medium text-[#c4b5fd]">{subtask.code ?? subtask.workflowNodeType ?? "NODE"}</p>
+            <p className="font-mono text-[10px] font-medium text-[#93c5fd]">{subtask.code ?? subtask.workflowNodeType ?? "NODE"}</p>
             <p className="mt-1 line-clamp-2 text-xs font-medium text-vega-text">{subtask.title}</p>
           </div>
         </div>
@@ -551,7 +551,7 @@ function WorkflowSubtaskNode({ data, selected }: NodeProps<Node<WorkflowNodeData
         <span>{subtask.workflowNodeType ?? "SUBTASK"}</span>
         <span>{data.mode === "execution" ? executionLabel(data.executionState) : `${progress}%`}</span>
       </p>
-      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !border-2 !border-vega-bg !bg-vega-purple" />
+      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !border-2 !border-vega-bg !bg-vega-accent" />
     </button>
   );
 }

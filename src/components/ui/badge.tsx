@@ -6,7 +6,7 @@ const badgeVariants = {
   success: "border border-vega-green/35 bg-vega-green/10 text-[#66dc91]",
   warning: "border border-vega-yellow/35 bg-vega-yellow/10 text-vega-yellow",
   danger: "border border-vega-red/35 bg-vega-red/10 text-vega-red",
-  accent: "border border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd]",
+  accent: "border border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]",
 } as const;
 
 type BadgeVariant = keyof typeof badgeVariants;

@@ -44,7 +44,7 @@ export function DashboardHeader({
           {cta ? (
             <Link
               href={cta.href}
-              className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors duration-150 hover:border-vega-purple-border hover:bg-vega-purple-soft hover:text-vega-text"
+              className="inline-flex h-[34px] items-center justify-center rounded-md border border-vega-border bg-vega-surface-1 px-3 text-xs font-medium text-vega-text-secondary transition-colors duration-150 hover:border-vega-accent-border hover:bg-vega-accent-soft hover:text-vega-text"
             >
               {cta.label}
             </Link>

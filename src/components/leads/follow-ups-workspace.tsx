@@ -43,7 +43,7 @@ const viewMeta = {
   today: { icon: TimerReset, tone: "bg-warning/15 text-warning" },
   upcoming: { icon: ArrowUpRight, tone: "bg-blue-500/15 text-blue-300" },
   completed: { icon: CheckCircle2, tone: "bg-success/15 text-success" },
-  all: { icon: Layers, tone: "bg-vega-purple-soft text-[#c4b5fd]" },
+  all: { icon: Layers, tone: "bg-vega-accent-soft text-[#93c5fd]" },
 } satisfies Record<(typeof views)[number], { icon: typeof CalendarDays; tone: string }>;
 const statuses = ["all", "scheduled", "missed", "completed", "cancelled"] as const;
 const priorities = ["all", "low", "medium", "high", "urgent"] as const;

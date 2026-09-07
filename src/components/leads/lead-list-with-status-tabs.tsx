@@ -350,7 +350,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
   const tabClass = (active: boolean) =>
     `rounded-md border px-4 py-2 text-sm font-medium transition ${
       active
-        ? "border-vega-purple-border bg-vega-purple text-white"
+        ? "border-vega-accent-border bg-vega-accent text-white"
         : "border-border bg-vega-surface-1 text-vega-text-secondary hover:border-accent/40 hover:text-vega-text"
     }`;
   const inputClass =
@@ -382,7 +382,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
             aria-label="Filters"
           >
             <Filter className="h-5 w-5" aria-hidden="true" />
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-vega-purple px-1 text-[10px] font-semibold text-white">
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-vega-accent px-1 text-[10px] font-semibold text-white">
               {mobileFilterBadge}
             </span>
           </button>
@@ -400,7 +400,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
               }}
               className={`h-9 shrink-0 rounded-md border px-4 text-xs font-semibold ${
                 statusFilter === status
-                  ? "border-vega-purple bg-vega-purple text-white"
+                  ? "border-vega-accent bg-vega-accent text-white"
                   : "border-border bg-vega-surface-1 text-vega-text-secondary"
               }`}
             >
@@ -510,7 +510,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
                     <span className="truncate">Last activity - {formatDateTime(lead.updatedAt)}</span>
                   </p>
                   <div className="flex items-center gap-2 text-xs text-vega-text-muted">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-vega-purple text-[11px] font-semibold text-white">SJ</span>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-vega-accent text-[11px] font-semibold text-white">SJ</span>
                     <span>Assigned to SJ</span>
                   </div>
                 </div>
@@ -581,7 +581,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary hover:border-vega-purple-border hover:text-vega-text"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary hover:border-vega-accent-border hover:text-vega-text"
             >
               <Bookmark className="h-4 w-4" aria-hidden="true" />
               Save Filter
@@ -589,7 +589,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
             <button
               type="button"
               onClick={() => setShowAdvanced((value) => !value)}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary hover:border-vega-purple-border hover:text-vega-text"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-vega-surface-1 px-3 text-xs font-semibold text-vega-text-secondary hover:border-vega-accent-border hover:text-vega-text"
             >
               <Filter className="h-4 w-4" aria-hidden="true" />
               More Filters
@@ -888,7 +888,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
                     {formatDateTime(lead.updatedAt)}
                   </td>
                   <td className="px-2 py-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-vega-purple text-xs font-semibold text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-vega-accent text-xs font-semibold text-white">
                       SJ
                     </span>
                   </td>
@@ -940,7 +940,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
               onClick={() => setPage(item)}
               className={`h-10 min-w-10 rounded-md border px-3 text-sm font-semibold ${
                 currentPage === item
-                  ? "border-vega-purple bg-vega-purple text-white"
+                  ? "border-vega-accent bg-vega-accent text-white"
                   : "border-border bg-vega-surface-1 text-vega-text-secondary"
               }`}
             >
@@ -954,7 +954,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
               onClick={() => setPage(pageCount)}
               className={`h-10 min-w-10 rounded-md border px-3 text-sm font-semibold ${
                 currentPage === pageCount
-                  ? "border-vega-purple bg-vega-purple text-white"
+                  ? "border-vega-accent bg-vega-accent text-white"
                   : "border-border bg-vega-surface-1 text-vega-text-secondary"
               }`}
             >

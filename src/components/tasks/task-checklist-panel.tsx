@@ -126,7 +126,7 @@ export function TaskChecklistPanel({ items, canEdit, busy = false, onSave }: Tas
                     checked={item.completed}
                     disabled={!canEdit || busy}
                     onChange={(event) => update(index, { completed: event.target.checked })}
-                    className="h-3.5 w-3.5 shrink-0 accent-[#8b5cf6]"
+                    className="h-3.5 w-3.5 shrink-0 accent-[#3b82f6]"
                     aria-label={item.title}
                   />
                   {canEdit ? (

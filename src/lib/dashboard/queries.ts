@@ -19,49 +19,6 @@ function clampLimit(value: number | undefined, fallback: number, max: number) {
   return Math.min(Math.max(value ?? fallback, 1), max);
 }
 
-export async function getDashboardMetrics() {
-  await connectToDatabase();
-
-  const [leadMetricRows, recentActivity] = await Promise.all([
-    LeadModel.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalLeads: { $sum: 1 },
-          heavyArtilleryLeads: {
-            $sum: { $cond: [{ $eq: ["$priorityBand", "heavy_artillery"] }, 1, 0] },
-          },
-          standardPipelineLeads: {
-            $sum: { $cond: [{ $eq: ["$priorityBand", "standard_sales"] }, 1, 0] },
-          },
-          volumePipelineLeads: {
-            $sum: { $cond: [{ $eq: ["$priorityBand", "volume_pipeline"] }, 1, 0] },
-          },
-          closedWonLeads: {
-            $sum: { $cond: [{ $eq: ["$status", "closed_won"] }, 1, 0] },
-          },
-        },
-      },
-    ]),
-    ActivityLogModel.find({})
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .select("action entityType createdAt")
-      .lean(),
-  ]);
-
-  const leadMetrics = leadMetricRows[0] ?? {};
-
-  return serializeForJson({
-    totalLeads: leadMetrics.totalLeads ?? 0,
-    heavyArtilleryLeads: leadMetrics.heavyArtilleryLeads ?? 0,
-    standardPipelineLeads: leadMetrics.standardPipelineLeads ?? 0,
-    volumePipelineLeads: leadMetrics.volumePipelineLeads ?? 0,
-    closedWonLeads: leadMetrics.closedWonLeads ?? 0,
-    recentActivity,
-  });
-}
-
 export async function getLeads(options?: { limit?: number }) {
   await connectToDatabase();
   const limit = clampLimit(options?.limit, 200, 500);

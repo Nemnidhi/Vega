@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = {
   primary:
-    "border border-vega-purple bg-[#7c3fe0] text-white hover:bg-vega-purple-hover focus-visible:ring-vega-purple/40",
+    "border border-vega-accent bg-[#2563eb] text-white hover:bg-vega-accent-hover focus-visible:ring-vega-accent/40",
   secondary:
-    "border border-vega-border bg-vega-surface-1 text-vega-text-secondary hover:border-vega-purple-border hover:bg-vega-surface-hover hover:text-vega-text focus-visible:ring-vega-purple/40",
+    "border border-vega-border bg-vega-surface-1 text-vega-text-secondary hover:border-vega-accent-border hover:bg-vega-surface-hover hover:text-vega-text focus-visible:ring-vega-accent/40",
   subtle:
-    "border border-vega-purple-border bg-vega-purple-soft text-[#c4b5fd] hover:border-vega-purple hover:bg-vega-surface-selected focus-visible:ring-vega-purple/40",
+    "border border-vega-accent-border bg-vega-accent-soft text-[#93c5fd] hover:border-vega-accent hover:bg-vega-surface-selected focus-visible:ring-vega-accent/40",
   danger:
     "border border-vega-red/45 bg-vega-surface-1 text-vega-red hover:bg-vega-red/10 focus-visible:ring-vega-red/35",
 } as const;
