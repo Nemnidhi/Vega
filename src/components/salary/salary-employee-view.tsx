@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SalaryMonthDetail } from "@/lib/salary/calculator";
 import { cn } from "@/lib/utils/cn";
@@ -70,6 +70,16 @@ export function SalaryEmployeeView({ initialMonthKey, initialDetail }: SalaryEmp
         <div className={cn(panel, "p-4 text-xs text-vega-text-muted")}>Your base salary hasn&apos;t been set yet - ask an admin to configure it.</div>
       ) : (
         <>
+          <div className="flex justify-end">
+            <a
+              href={`/api/salary/pdf?month=${monthKey}`}
+              download
+              className="inline-flex items-center gap-2 rounded-md border border-vega-border bg-vega-surface-1 px-3 py-1.5 text-xs font-medium text-vega-text-secondary hover:border-vega-accent-border hover:text-vega-text"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download payslip
+            </a>
+          </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Metric label="Base salary" value={currency(detail.baseSalary)} tone="blue" />
             <Metric label="Deducted" value={currency(detail.deductionAmount)} tone="red" />

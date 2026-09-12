@@ -223,10 +223,21 @@ export function SalaryAdminDesk({ initialMonthKey, initialRows }: SalaryAdminDes
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={row.user.fullName} index={index} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="truncate font-medium text-vega-text">{row.user.fullName}</p>
                             <p className="truncate text-[10px] capitalize text-vega-text-muted">{row.user.role.replaceAll("_", " ")}</p>
                           </div>
+                          {row.baseSalary !== null ? (
+                            <a
+                              href={`/api/salary/admin/month/${row.user._id}/pdf?month=${monthKey}`}
+                              download
+                              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-vega-text-secondary hover:bg-vega-surface-hover hover:text-vega-accent"
+                              aria-label={`Download ${row.user.fullName}'s payslip for ${monthLabel(monthKey)}`}
+                              title="Download payslip"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </a>
+                          ) : null}
                         </div>
                       </td>
                       <td className="px-3 py-2.5">

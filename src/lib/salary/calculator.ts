@@ -29,8 +29,8 @@ export type SalaryDayCategory =
 // First two late-coming marks in a calendar month are free; the third and every one after costs
 // 25% of that day's pay. Counted in date order within the month, so it resets every month rather
 // than accumulating forever.
-const LATE_COMING_FREE_PER_MONTH = 2;
-const LATE_COMING_DEDUCTION_FRACTION = 0.25;
+export const LATE_COMING_FREE_PER_MONTH = 2;
+export const LATE_COMING_DEDUCTION_FRACTION = 0.25;
 
 export type SalaryDayEntry = {
   dateKey: string;
