@@ -22,6 +22,30 @@ export function getAttendanceMonthKey(date: Date = new Date()) {
   return getAttendanceDateKey(date).slice(0, 7);
 }
 
+// Minutes since midnight in Asia/Kolkata - used to compare a check-in timestamp against a
+// configured "HH:mm" shift start without going through a Date object's own (server) timezone.
+export function getAttendanceMinutesOfDay(date: Date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ATTENDANCE_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  // hourCycle "h23" can still report "24" for midnight in some Intl implementations - normalize.
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0") % 24;
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
+}
+
+export function parseTimeOfDayToMinutes(timeOfDay: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(timeOfDay);
+  if (!match) {
+    throw new Error(`Invalid HH:mm time: ${timeOfDay}`);
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
 export function calculateMinutesBetween(startAt: Date, endAt: Date) {
   const minutes = Math.floor((endAt.getTime() - startAt.getTime()) / 60000);
   return Math.max(0, minutes);

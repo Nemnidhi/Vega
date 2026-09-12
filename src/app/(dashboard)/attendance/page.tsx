@@ -9,6 +9,7 @@ import {
 } from "@/lib/attendance/constants";
 import { getAttendanceDateKey, getAttendanceMonthKey } from "@/lib/attendance/date";
 import { getAttendanceGeofenceSettings } from "@/lib/attendance/geofence";
+import { getAttendanceLateRule } from "@/lib/attendance/late-rule";
 import {
   getAdminDailyAttendance,
   getAdminLeaveRequests,
@@ -31,12 +32,14 @@ export default async function AttendancePage() {
       initialLeaveData,
       initialMonthlyData,
       initialGeofenceSettings,
+      initialLateRule,
     ] = await Promise.all([
       getAttendanceStaffUsers(),
       getAdminDailyAttendance(initialDailyDateKey),
       getAdminLeaveRequests(),
       getAdminMonthlyAttendance(initialMonthKey),
       getAttendanceGeofenceSettings(),
+      getAttendanceLateRule(),
     ]);
 
     return (
@@ -48,6 +51,7 @@ export default async function AttendancePage() {
         initialMonthKey={initialMonthKey}
         initialMonthlyData={initialMonthlyData}
         initialGeofenceSettings={initialGeofenceSettings}
+        initialLateRule={initialLateRule}
       />
     );
   }

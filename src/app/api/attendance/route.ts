@@ -8,6 +8,7 @@ import {
   attendanceLocationSchema,
 } from "@/lib/attendance/geofence";
 import { getAttendanceOverview } from "@/lib/attendance/queries";
+import { getAttendanceLateRule, resolveCheckInDayStatus } from "@/lib/attendance/late-rule";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { AttendanceModel } from "@/models";
 
@@ -49,9 +50,19 @@ export async function POST(request: Request) {
     if (existingEntry?.checkInAt) {
       return fail("You are already checked in for today.", 409);
     }
+
+    const checkInAt = new Date();
+    // Computed fresh from THIS check-in's own timestamp against the configured shift rule (see
+    // lib/attendance/late-rule.ts) - not copied from any previous value on the record, so a
+    // re-check-in after an admin reset is judged on when it actually happened, not on stale state.
+    // Returns "present" unconditionally when no rule is configured, so this stays a no-op until an
+    // admin deliberately sets a shift start time.
+    const lateRule = await getAttendanceLateRule();
+    const dayStatus = resolveCheckInDayStatus(checkInAt, lateRule);
+
     if (existingEntry) {
-      existingEntry.dayStatus = existingEntry.dayStatus === "late_coming" ? "late_coming" : "present";
-      existingEntry.checkInAt = new Date();
+      existingEntry.dayStatus = dayStatus;
+      existingEntry.checkInAt = checkInAt;
       existingEntry.checkInLocation = checkInLocation;
       existingEntry.checkOutAt = null;
       existingEntry.checkOutLocation = null;
@@ -67,8 +78,8 @@ export async function POST(request: Request) {
     const entry = await AttendanceModel.create({
       userId: actor.userId,
       dateKey: todayDateKey,
-      dayStatus: "present",
-      checkInAt: new Date(),
+      dayStatus,
+      checkInAt,
       checkInLocation,
     });
 
