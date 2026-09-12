@@ -47,6 +47,10 @@ const userSchema = new Schema(
     },
     phone: { type: String, trim: true, maxlength: 30 },
     department: { type: String, trim: true, maxlength: 120 },
+    // Monthly base salary in INR, admin-set via the Salary desk. null means not yet configured -
+    // the salary calculator refuses to compute a month for a user until this is set, rather than
+    // silently treating an unset salary as zero.
+    baseSalary: { type: Number, min: 0, default: null },
     avatarUrl: { type: String, trim: true, maxlength: 500 },
     managerId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     lastLoginAt: { type: Date, default: null },

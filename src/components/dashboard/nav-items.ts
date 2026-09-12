@@ -20,6 +20,7 @@ const dashboardNavItems: DashboardNavItem[] = [
   { label: "Meetings", href: "/meetings", group: "main", roles: ["admin", "partner", "sales", "project_manager"] },
   { label: "Calendar", href: "/calendar", group: "main", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Attendance", href: "/attendance", group: "main", roles: ["admin", "sales", "digital_marketing", "developer"] },
+  { label: "Salary", href: "/salary", group: "team", roles: ["admin"] },
   { label: "Team", href: "/users", group: "team", roles: ["admin"] },
   { label: "Queries", href: "/queries", group: "team", roles: ["admin", "sales", "digital_marketing", "developer"] },
   { label: "Pricing Catalog", href: "/pricing-components", group: "pricing", roles: ["admin", "partner", "sales", "digital_marketing"] },
