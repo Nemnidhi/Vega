@@ -16,6 +16,7 @@
     "import:sectors": "tsx --env-file=.env.local scripts/import-sector-workbook.ts",
     "backfill:industry": "tsx --env-file=.env.local scripts/backfill-industry.ts",
     "backfill:late-attendance": "tsx --env-file=.env.local scripts/backfill-late-attendance.ts",
+    "mark-empty-days-absent": "tsx --env-file=.env.local scripts/mark-empty-days-absent.ts",
     "recheck:google": "tsx --env-file=.env.local scripts/recheck-google-names.ts",
     "enrich:leads": "tsx --env-file=.env.local scripts/enrich-leads.ts",
     "classify:leads": "tsx --env-file=.env.local scripts/classify-leads.ts",

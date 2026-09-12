@@ -64,6 +64,25 @@ function parseDateKeyToUTC(dateKey: string) {
   return new Date(`${dateKey}T00:00:00.000Z`);
 }
 
+// A calendar date's weekday doesn't depend on timezone, so parsing at UTC midnight and reading
+// getUTCDay() is safe and deterministic - unlike parsing at local midnight, which can shift the
+// date across a boundary depending on the machine's own timezone.
+export function isWeekendDateKey(dateKey: string) {
+  const day = parseDateKeyToUTC(dateKey).getUTCDay();
+  return day === 0 || day === 6;
+}
+
+// Every "YYYY-MM-DD" in a given "YYYY-MM" month, in order. Used by scripts that need to enumerate
+// a month's calendar days server-side (the admin UI builds its own equivalent list client-side).
+export function getDateKeysInMonth(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    return `${monthKey}-${day}`;
+  });
+}
+
 export function calculateInclusiveDateSpanDays(startDateKey: string, endDateKey: string) {
   const start = parseDateKeyToUTC(startDateKey);
   const end = parseDateKeyToUTC(endDateKey);
