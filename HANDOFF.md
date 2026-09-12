@@ -1,5 +1,119 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-12 (evening): attendance actually computes lateness now, not just displays a manual guess - late rule, combined status badge, absent backfill with a real holiday near-miss, per-employee PDF, and a genuine desktop bug fix
+
+Everything below is pushed to `origin/master` (`87312d4`..`043075c`) and deployed live on
+`vega.nemnidhi.com` via `./deploy.sh` after each commit - confirmed via `/api/health` and, for the
+riskier pieces, by rendering real output before shipping rather than trusting typecheck alone.
+
+**The actual starting problem, and why it mattered more than it looked**: `dayStatus:
+"late_coming"` was never computed from a real check-in timestamp anywhere in the codebase - it was
+a value an admin had to pick by hand per employee per day via Admin > Mark attendance. Check-in
+always wrote `"present"` regardless of the time. The Monthly tab's calendar/badges/CSV export all
+already existed and looked complete, which is exactly what made this easy to miss - the aggregation
+was correct, the input feeding it was not.
+
+**1. Late rule (`6622d5e`)** - new `shiftStartTime`/`lateGraceMinutes` on `AttendanceSettings`
+(same document as the office geofence, `Settings > Attendance > Late rule` card), opt-in and fails
+safe: unset means every check-in stays `"present"`, exactly the old behavior, until an admin
+deliberately sets it. `lib/attendance/late-rule.ts`'s `resolveCheckInDayStatus()` is the single
+source of truth, used by both the check-in route and the backfill script below, so they can never
+disagree. Verified the exact boundary directly against real timestamps before wiring it in: 10:14
+IST -> present, 10:16 IST -> late, against a 10:00/15min rule (cutoff 10:15).
+
+**Rule had to be set directly against the database once**, not through the UI - the Settings card
+apparently never actually got clicked/saved in practice. Set via `saveAttendanceLateRule()` run
+over SSH (`tsx --env-file=.env.local -e '...'`), then read back through `getAttendanceLateRule()` -
+the exact function the API uses - to confirm it took. Currently: **10:00 start, 15min grace
+(late after 10:15)**.
+
+**2. Backfilled two months of real check-ins against the new rule (`scripts/backfill-late-
+attendance.ts`, pre-existing tonight's session but only just exercised for real)** - dry run
+first, always. **Result: 38 of 56 real check-ins in August, 22 of 34 in September, were actually
+late** and had been sitting as "Present" the whole time. That is a real finding about the team, not
+just a data-cleanup exercise - worth a second look at whether 10:00 is genuinely the intended start
+time before it becomes the record people are evaluated against.
+
+**3. Combined monthly status badge (`6f4ac8c`)** - "On time" / "3 Late" / "2 Absent" / "1 Absent, 2
+Late", severity-colored (danger if any absence, warning if late-only), one badge per employee
+replacing "read two separate numbers plus scan a calendar row" - shown in the desktop sticky Staff
+column, the mobile per-employee header, and the "other staff" list.
+
+**4. Desktop day-detail card was missing entirely (`a36ae56`)** - clicking a day cell in the
+Monthly grid updated selection state, but the card showing actual check-in/check-out time only
+ever rendered inside a `lg:hidden` block. On any desktop-width screen, clicking a cell did
+*nothing visible* - not a display bug, a missing feature on that breakpoint. Added a `lg:block`
+copy of the same card rather than restructuring the mobile one.
+
+**5. `scripts/mark-empty-days-absent.ts` (`ae7d2a7`, `ecd9041`) - a genuine near-miss caught by the
+dry run, not by review.** First run for August: 24 candidates, but `2026-08-28` had **all 5 staff**
+empty on the same day - the unmistakable signature of an office closure, not five coincidental
+absences. Confirmed with the user it *was* a holiday (not on the codebase's own
+`india-holidays-2026.ts` list, so nothing would have caught it automatically). Fixed two ways: a
+`--exclude` flag for one-off dates like this, and automatic exclusion of fixed-date national
+holidays going forward (deliberately excludes `isTentative` festivals - a moon-sighting date can be
+wrong). Applied after the fix: **19 August + 8 September absences written**, individually
+correctable later via Mark attendance if any employee turns out to have had approved leave (this
+script deliberately does not touch the separate leave-request system - that would be a second
+feature).
+
+**6. Full-month CSV (`388225c`) and per-employee PDF (`c724786`, `2087a1d`, `6989831`) downloads.**
+CSV is one row per employee per day of the month including blank days, not just the pre-existing
+totals-only export. PDF is per-employee via `@react-pdf/renderer` (same library the sales audit
+report already uses, kept in a separate template file - unrelated documents that shouldn't be
+coupled). Two things this could easily have gotten wrong, both actually verified before shipping
+rather than assumed:
+- **Timezone**: this app's VPS runs in UTC. An unqualified `toLocaleTimeString()` in the PDF route
+  would have silently printed every check-in 5.5 hours off from what the dashboard shows for the
+  same record. Verified by forcing `TZ=UTC` locally (simulating the server) and confirming a real
+  10:26:23 IST check-in still rendered as 10:26 AM, not 4:56 AM.
+- **Pagination**: a real rendered sample showed a 31-day month spilling its last row onto an
+  otherwise-empty second page. Not broken, just wasteful for a document meant to be handed to an
+  employee - fixed with tighter cell padding, re-rendered to confirm "Page 1 of 1".
+- **Placement bug, caught by the user immediately after shipping**: the download icon first landed
+  at the far right of the table, past every date column for the whole month - unreachable without
+  scrolling the entire grid first. Moved into the sticky Staff column next to the badge (`6989831`)
+  - same reasoning as item 3, just missed applying it to this button on the first pass.
+
+**7. Two more bugs found through actual use, both fixed (`7ae191e`, `043075c`)**:
+- **"Edit record" did nothing on desktop.** `openMark()` only ever set state and opened a dialog
+  hardcoded `lg:hidden`. On the Daily tab this went unnoticed because desktop already has a
+  permanent sidebar form bound to the same state - the click silently pre-filled that sidebar even
+  with the dialog itself invisible, so *something* appeared to happen. The Monthly tab has no such
+  sidebar, so the identical click did visibly nothing there. Fix: the dialog now shows on any
+  screen size (it only ever appears when explicitly triggered, so this is never intrusive),
+  centered on desktop instead of the mobile bottom-sheet layout.
+- **PDF now shows which admin changed a day, requested specifically so a manual override isn't
+  silently indistinguishable from a real check-in.** `markedByAdminId` was already being recorded
+  by Admin > Mark attendance and simply never surfaced anywhere. Populated and printed as a small
+  "by {name}" note under the status. Automated absences from item 5 correctly show no name - that
+  script sets `markedByAdminId: null` on purpose, so a system default is never mistaken for a
+  specific person's judgement call. **Confirmed working with the user's own real edits**, not just
+  synthetic test data: after the desktop-edit-dialog fix, they flipped several August days to
+  Present/Half Day through the now-working dialog, and the very next PDF pull showed exactly those
+  days tagged "by Somil Jain" while the real check-in days and the automated absences correctly
+  showed no attribution.
+
+**Reusable lesson from tonight, worth carrying into the salary calculator work below**: three
+separate features here looked complete from the code/typecheck alone and were not - the late rule
+existed but was never saved, the desktop detail card and PDF button were both placed somewhere
+genuinely unreachable, and the Edit dialog silently no-opped on an entire tab. All four were only
+caught by actually clicking through the real UI or rendering real output, not by review. Keep doing
+that before calling a UI feature done, especially anything gated by a breakpoint class like
+`lg:hidden`/`lg:block`.
+
+### Next up: a salary calculator
+
+Not started. No existing salary/payroll code in this repo yet to build on - `BillStack`
+(`AshishJatav09/billstack`, a separate repo) has `SalaryStructure`, `Payment`,
+`PaymentAllocation` models and real payroll machinery already, worth checking whether this should
+integrate with or deliberately stay separate from that before writing a schema here. The obvious
+inputs this session already has ready to feed it: `AttendanceModel`'s per-day `dayStatus`
+(present/late_coming/absent/half_day) and `workedMinutes`, now finally trustworthy after tonight's
+fixes - a salary calculator built on the attendance data from *last* week would have been
+calculating real numbers from fake "always present" data.
+
+
 ## 2026-09-04 (later session, daytime): the audit report got a real web view, a real booking widget, real catalog tags, and the platform's own tenant model got audited - read this before anything below
 
 Picks up right after the evening/night session below (which built the gap→feature recommendation
