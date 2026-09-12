@@ -22,11 +22,21 @@
  *  - Only genuinely empty entries - if ANY Attendance record already exists for that user+date,
  *    for ANY reason (present, late, half-day, an existing absent mark, anything), it is left alone.
  *    This never overwrites an existing record.
+ *  - Fixed-date national holidays (lib/calendar/india-holidays-2026.ts, category "national",
+ *    excluding anything flagged isTentative - a moon-sighting festival date can be wrong) are
+ *    excluded automatically. This was added after a real near-miss: 2026-08-28 had all 5 staff
+ *    empty on the same day - the unmistakable pattern of an office closure, not five coincidental
+ *    absences - and it wasn't even on the national list, so it still needed a manual --exclude.
+ *    Use --exclude for anything the national list doesn't cover: a company-specific closure, a
+ *    tentative festival actually observed this year, etc.
+ *
+ *   npm run mark-empty-days-absent -- --month 2026-08 --exclude 2026-08-28
  */
 import mongoose from "mongoose";
 import { AttendanceModel, UserModel } from "@/models";
 import { attendanceMemberRoles } from "@/lib/attendance/constants";
 import { getAttendanceDateKey, getDateKeysInMonth, isWeekendDateKey } from "@/lib/attendance/date";
+import { INDIA_HOLIDAYS_2026 } from "@/lib/calendar/india-holidays-2026";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -37,6 +47,12 @@ function argValue(flag: string) {
 }
 
 const MONTH = argValue("--month");
+const MANUAL_EXCLUDES = new Set((argValue("--exclude") ?? "").split(",").map((key) => key.trim()).filter(Boolean));
+const NATIONAL_HOLIDAY_DATES = new Map(
+  INDIA_HOLIDAYS_2026.filter((holiday) => holiday.category === "national" && !holiday.isTentative).map(
+    (holiday) => [holiday.dateKey, holiday.name] as const,
+  ),
+);
 
 async function main() {
   if (!MONTH || !/^\d{4}-\d{2}$/.test(MONTH)) {
@@ -56,10 +72,23 @@ async function main() {
     .select("fullName createdAt")
     .lean();
 
+  const excludedHolidays = getDateKeysInMonth(MONTH).filter((dateKey) => NATIONAL_HOLIDAY_DATES.has(dateKey));
+  if (excludedHolidays.length > 0) {
+    console.log("auto-excluding national holidays:");
+    for (const dateKey of excludedHolidays) console.log(`  ${dateKey}  ${NATIONAL_HOLIDAY_DATES.get(dateKey)}`);
+  }
+  if (MANUAL_EXCLUDES.size > 0) {
+    console.log(`manually excluded via --exclude: ${[...MANUAL_EXCLUDES].join(", ")}`);
+  }
+
   const eligibleDateKeys = getDateKeysInMonth(MONTH).filter(
-    (dateKey) => dateKey < todayDateKey && !isWeekendDateKey(dateKey),
+    (dateKey) =>
+      dateKey < todayDateKey &&
+      !isWeekendDateKey(dateKey) &&
+      !NATIONAL_HOLIDAY_DATES.has(dateKey) &&
+      !MANUAL_EXCLUDES.has(dateKey),
   );
-  console.log(`working days in scope (past, weekdays only): ${eligibleDateKeys.length}`);
+  console.log(`\nworking days in scope (past, weekdays, holidays excluded): ${eligibleDateKeys.length}`);
   console.log(`staff: ${staffUsers.length}\n`);
 
   const existing = await AttendanceModel.find({ dateKey: { $regex: `^${MONTH}` } })
