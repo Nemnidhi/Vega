@@ -214,10 +214,29 @@ export function AttendanceAdminDesk({ initialDailyDateKey, initialDailyRecords, 
     setOfficeSettingsOpen(true);
     window.setTimeout(() => document.getElementById("attendance-office-settings")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   }
+  function downloadCsv(filename: string, rows: Array<Array<string | number>>) {
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
+  }
   function exportView() {
     const rows: Array<Array<string | number>> = activeView === "daily" ? [["Staff", "Status", "Check-in", "Check-out", "Work time", "Break"], ...dailyRows.map(({ user, record }) => [user.fullName, record?.dayStatus ?? "not_marked", timeLabel(record?.checkInAt), timeLabel(record?.checkOutAt), workLabel(record?.workedMinutes), record?.totalBreakMinutes ?? 0])] : activeView === "monthly" ? [["Staff", "Present", "Late", "Absent", "Half day", "Marked"], ...monthlyData.rows.map((row) => [row.user.fullName, row.summary.presentDays, row.summary.lateComingDays, row.summary.absentDays, row.summary.halfDays, row.summary.totalMarkedDays])] : [["Staff", "From", "To", "Type", "Days", "Status"], ...leaveData.requests.map((request) => [request.userId?.fullName ?? "Unknown", request.startDateKey, request.endDateKey, request.leaveType, request.totalDays, request.status])];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = `attendance-${activeView}.csv`; link.click(); URL.revokeObjectURL(url);
+    downloadCsv(`attendance-${activeView}.csv`, rows);
+  }
+  // The regular monthly export above is one row per employee - totals only, no times. This is the
+  // "full month report" version: one row per employee PER DAY of the month (every day, including
+  // ones with no record at all, so a genuinely blank day is visible as blank rather than silently
+  // missing from the report), with the actual check-in/check-out timestamps.
+  function exportMonthlyDetail() {
+    const rows: Array<Array<string | number>> = [["Date", "Staff", "Status", "Check-in", "Check-out", "Work time", "Break"]];
+    for (const row of monthlyData.rows) {
+      const recordsByDate = new Map(row.records.map((record) => [record.dateKey, record] as const));
+      for (const dateKey of dates) {
+        const record = recordsByDate.get(dateKey);
+        const status = record?.dayStatus ?? (isWeekend(dateKey) ? "weekend_off" : "not_marked");
+        rows.push([dateKey, row.user.fullName, titleCase(status === "weekend_off" ? "weekend" : status), timeLabel(record?.checkInAt), timeLabel(record?.checkOutAt), workLabel(record?.workedMinutes), record?.totalBreakMinutes ?? 0]);
+      }
+    }
+    downloadCsv(`attendance-monthly-detail-${monthlyData.monthKey}.csv`, rows);
   }
 
   function renderDateNav(monthly = false) {
@@ -236,7 +255,7 @@ export function AttendanceAdminDesk({ initialDailyDateKey, initialDailyRecords, 
   }
 
   return <section className="min-w-0">
-    <div className="mb-3 flex items-start justify-between gap-3"><div><h1 className="text-[26px] font-semibold leading-8 text-vega-text lg:text-[28px]">Attendance</h1><p className="mt-0.5 text-xs text-vega-text-muted lg:text-sm">Manage your team&apos;s time and leave.</p></div><div className="flex gap-2"><Button variant="secondary" size="lg" onClick={openOfficeSettings}><Settings className="mr-2 h-4 w-4" />Office settings</Button><Button size="lg" className="hidden lg:inline-flex" onClick={exportView}><Download className="mr-2 h-4 w-4" />Export</Button></div></div>
+    <div className="mb-3 flex items-start justify-between gap-3"><div><h1 className="text-[26px] font-semibold leading-8 text-vega-text lg:text-[28px]">Attendance</h1><p className="mt-0.5 text-xs text-vega-text-muted lg:text-sm">Manage your team&apos;s time and leave.</p></div><div className="flex gap-2"><Button variant="secondary" size="lg" onClick={openOfficeSettings}><Settings className="mr-2 h-4 w-4" />Office settings</Button><Button size="lg" className="hidden lg:inline-flex" onClick={exportView}><Download className="mr-2 h-4 w-4" />Export</Button>{activeView === "monthly" ? <Button variant="secondary" size="lg" className="hidden lg:inline-flex" onClick={exportMonthlyDetail}><FileText className="mr-2 h-4 w-4" />Full report</Button> : null}</div></div>
     <div className="mb-4 grid h-10 grid-cols-3 overflow-hidden rounded-md border border-vega-border lg:w-[390px]">{(["daily", "monthly", "leave"] as AttendanceView[]).map((view) => <button key={view} type="button" onClick={() => setActiveView(view)} className={cn("border-r border-vega-border px-2 text-xs font-medium capitalize text-vega-text-secondary last:border-r-0", activeView === view && "bg-vega-accent text-white")}>{view === "leave" ? "Leave requests" : view}</button>)}</div>
     {notice ? <div className={cn("mb-3 rounded-md border px-3 py-2 text-xs", notice.tone === "error" ? "border-vega-red/40 bg-vega-red-soft text-[#ff838b]" : "border-vega-green/35 bg-vega-green-soft text-[#6ce39a]")}>{notice.text}</div> : null}
 
