@@ -1,5 +1,74 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-12 (night): salary calculator built from scratch - base salary, per-day deductions, a late-coming rule, employee self-view, and a payslip PDF
+
+Picks up immediately after the evening session below, which made attendance's `dayStatus` finally
+trustworthy - this is the first real feature built on top of it. Everything below is pushed to
+`origin/master` (`09e3307`..`fa20cd6`) and deployed live on `vega.nemnidhi.com` via `./deploy.sh`
+after each commit, confirmed via `/api/health` plus, for every piece, actually running the
+calculator against the real database over SSH and checking the numbers by hand - not just trusting
+typecheck/build, per the previous session's own closing lesson.
+
+**Scoped with the user before writing any schema, not assumed.** Two real decisions got made
+up front rather than guessed: (1) **standalone in Vega, not integrated with BillStack** - despite
+BillStack already having `SalaryStructure`/`Payment`/`PaymentAllocation` models with real payroll
+machinery, it's a separate product Nemnidhi sells to *other* businesses, not shared internal
+infra, so there's no tenant/employee model to hang an integration on; (2) pay period = calendar
+month, base salary lives as a plain field on `User` (not a versioned structure), per-day
+deduction basis = base salary ÷ calendar days in that month.
+
+**1. Core calculator (`f18cb16`, `lib/salary/calculator.ts`).** `baseSalary` added to `User`
+(nullable - a calculator refuses to price a month for someone until an admin sets it, rather than
+silently treating unset as zero). Per day: present/late → full pay, half day → half deducted,
+absent or no record → check an **approved `LeaveRequest` covering that date**, not just the
+Attendance record alone - casual/sick/planned/other leave is paid, unpaid leave and no-leave-at-all
+are deducted. That leave-linkage was a real gap caught before writing any code: nothing in this
+codebase previously cross-referenced approved leave against attendance for pay purposes, and the
+existing `mark-empty-days-absent.ts` script explicitly doesn't either. Weekends and fixed-date
+national holidays are excluded from possible deduction, reusing the exact same holiday list that
+script already relies on rather than reinventing a second "is this a working day" policy.
+Verified against real September data over SSH: every employee's `worked + late + absent + paidLeave`
+summed to exactly the right number of past weekdays, and one real approved leave (Mahak Gupta, 2
+days) correctly came through as paid rather than a false absence.
+
+**2. Late-coming rule (`88981a2`), added after the user watched the first version live and asked
+for it directly** - first 2 late-coming marks in a calendar month are free, the 3rd and every one
+after deducts 25% of that day's rate. Counted in date order within the month so it resets monthly
+rather than accumulating forever. Verified against real August data (the month with heavy real
+lateness from the evening session's backfill): Aashish Jatav's 12 late days came out to exactly
+2 free + 10 × 25% = 2.5 deduction-days, landing at a sensible ₹7,258 of his ₹25,000 base.
+
+**3. Employee self-view (`f9d1de5`)** - `/salary` now branches by role. Admins keep the full team
+desk; developer/sales/digital_marketing staff get a new read-only view of **only their own** pay,
+same day-by-day transparency admins get. The self-service API (`/api/salary/month`,
+`/api/salary/pdf`) takes no `userId` parameter at all - it always computes the calling session's
+own id, so there's no way to request anyone else's salary through it even by tampering with the
+request, not just a role check that could be bypassed by a bad client. Confirmed both self-service
+and admin routes return `401` with no session, live.
+
+**4. Payslip PDF (`fa20cd6`, `lib/salary/payslip-pdf.tsx`)** - same `@react-pdf/renderer` pattern
+the attendance monthly report already uses, kept as its own template since it's a different
+document. Net pay up front, then an itemized Earnings & Deductions table (late/half-day/unpaid
+leave/absent each as days × rate = amount, not one opaque total), downloadable by admins per
+employee and by an employee for themselves. Rendered a real one for Aashish Jatav against live
+data and read the actual PDF output before calling it done: single page, ₹23,750 net pay, -₹1,250
+late deduction, numbers matching the calculator exactly.
+
+**What's still open, honestly:**
+- Only 3 of 5 staff have a base salary entered so far (the user did this live in the UI) - the
+  other 2 show `--` everywhere until that happens.
+- I never clicked through the UI myself as a non-admin - no login credentials for a member
+  account. The user confirmed the admin desk and the payslip download both work from a real
+  screenshot and a direct "yes it does," but the employee self-view (`SalaryEmployeeView`) has
+  only been verified by me at the code/data level, not by an actual member click-through.
+- No overtime, no other deduction rules beyond late/half-day/unpaid-leave/absent, no versioned
+  salary history (a raise just overwrites `baseSalary` going forward, past payslips aren't
+  protected from a later change).
+- **Next explicitly deferred by the user**: integrating real KPI-linked pay (performance bonuses,
+  target-based variable pay) - "complex KPI" logic is intentionally not part of this build and
+  should not be assumed or half-implemented later without a fresh scoping pass, same as this
+  feature itself was scoped before writing any schema.
+
 ## 2026-09-12 (evening): attendance actually computes lateness now, not just displays a manual guess - late rule, combined status badge, absent backfill with a real holiday near-miss, per-employee PDF, and a genuine desktop bug fix
 
 Everything below is pushed to `origin/master` (`87312d4`..`043075c`) and deployed live on
