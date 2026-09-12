@@ -72,7 +72,8 @@ export async function GET(request: Request, { params }: { params: Params }) {
     }
 
     const records = await AttendanceModel.find({ userId, dateKey: { $regex: `^${monthKey}` } })
-      .select("dateKey dayStatus checkInAt checkOutAt workedMinutes totalBreakMinutes")
+      .select("dateKey dayStatus checkInAt checkOutAt workedMinutes totalBreakMinutes markedByAdminId")
+      .populate("markedByAdminId", "fullName")
       .lean();
     const recordsByDate = new Map(records.map((record) => [record.dateKey, record] as const));
 
@@ -87,6 +88,13 @@ export async function GET(request: Request, { params }: { params: Params }) {
       else if (record?.dayStatus === "half_day") summary.halfDays += 1;
       if (record) summary.totalMarkedDays += 1;
 
+      // markedByAdminId is null both for a real check-in-derived record AND for the auto-generated
+      // absences from scripts/mark-empty-days-absent.ts (deliberately, so an automated default
+      // never gets mistaken for a specific admin's judgement call) - it is only ever set when
+      // someone actually used Admin > Mark attendance for this exact day, which is precisely what
+      // "changed by admin" should mean here.
+      const adminEditor = record?.markedByAdminId as unknown as { fullName?: string } | null | undefined;
+
       return {
         dateKey,
         dayLabel: formatDateLabel(dateKey),
@@ -95,6 +103,7 @@ export async function GET(request: Request, { params }: { params: Params }) {
         checkOut: formatTime(record?.checkOutAt as unknown as string | null),
         workTime: record?.checkInAt && !record?.checkOutAt ? "In progress" : formatWorkTime(record?.workedMinutes),
         breakMinutes: record?.totalBreakMinutes ?? 0,
+        adminEditedBy: adminEditor?.fullName ?? null,
       };
     });
 

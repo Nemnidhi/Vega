@@ -22,6 +22,9 @@ export type MonthlyReportRow = {
   checkOut: string;
   workTime: string;
   breakMinutes: number;
+  // Name of the admin who set this day's status via Admin > Mark attendance, or null for a status
+  // that came from the employee's own check-in (or, for an auto-generated absence, from nobody).
+  adminEditedBy: string | null;
 };
 
 export type MonthlyReportSummary = {
@@ -49,6 +52,7 @@ const styles = StyleSheet.create({
   tRowLast: { flexDirection: "row" },
   tHeadCell: { padding: 4, fontSize: 8, fontWeight: 700, color: "#374151" },
   tCell: { padding: 4, fontSize: 8.5 },
+  adminEditedNote: { fontSize: 6.5, color: MUTED, marginTop: 1, fontStyle: "italic" },
   colDate: { width: "16%" },
   colStatus: { width: "20%" },
   colTime: { width: "16%" },
@@ -126,7 +130,10 @@ export function MonthlyAttendanceReportDocument({
           {rows.map((row, index) => (
             <View key={row.dateKey} style={index === rows.length - 1 ? styles.tRowLast : styles.tRow} wrap={false}>
               <Text style={[styles.tCell, styles.colDate]}>{row.dayLabel}</Text>
-              <Text style={[styles.tCell, styles.colStatus, { color: statusColor(row.statusLabel) }]}>{row.statusLabel}</Text>
+              <View style={[styles.tCell, styles.colStatus]}>
+                <Text style={{ fontSize: 8.5, color: statusColor(row.statusLabel) }}>{row.statusLabel}</Text>
+                {row.adminEditedBy ? <Text style={styles.adminEditedNote}>by {row.adminEditedBy}</Text> : null}
+              </View>
               <Text style={[styles.tCell, styles.colTime]}>{row.checkIn}</Text>
               <Text style={[styles.tCell, styles.colTime]}>{row.checkOut}</Text>
               <Text style={[styles.tCell, styles.colWork]}>{row.workTime}</Text>
