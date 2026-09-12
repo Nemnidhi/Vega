@@ -35,6 +35,7 @@ function initials(name: string) {
 }
 function categoryBadge(category: SalaryDayCategory) {
   if (category === "worked") return { label: "Present", variant: "success" as const };
+  if (category === "late_coming") return { label: "Late", variant: "warning" as const };
   if (category === "half_day") return { label: "Half day", variant: "warning" as const };
   if (category === "paid_leave") return { label: "Paid leave", variant: "accent" as const };
   if (category === "unpaid_leave") return { label: "Unpaid leave", variant: "danger" as const };
@@ -156,11 +157,12 @@ export function SalaryAdminDesk({ initialMonthKey, initialRows }: SalaryAdminDes
 
   function downloadCsv() {
     const csvRows: Array<Array<string | number>> = [
-      ["Staff", "Base salary", "Worked", "Half day", "Paid leave", "Unpaid leave", "Absent", "Deduction", "Net pay"],
+      ["Staff", "Base salary", "Worked", "Late", "Half day", "Paid leave", "Unpaid leave", "Absent", "Deduction", "Net pay"],
       ...rows.map((row) => [
         row.user.fullName,
         row.baseSalary ?? "not set",
         row.workedDays,
+        row.lateComingDays,
         row.halfDays,
         row.paidLeaveDays,
         row.unpaidLeaveDays,
@@ -248,12 +250,13 @@ export function SalaryAdminDesk({ initialMonthKey, initialRows }: SalaryAdminDes
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] table-fixed text-left text-xs">
+          <table className="w-full min-w-[980px] table-fixed text-left text-xs">
             <thead className="bg-[#0b151f] text-[11px] text-vega-text-muted">
               <tr>
                 <th className="w-[22%] px-4 py-2.5 font-medium">Staff</th>
                 <th className="w-[16%] px-3 py-2.5 font-medium">Base salary</th>
                 <th className="px-3 py-2.5 font-medium">Present</th>
+                <th className="px-3 py-2.5 font-medium">Late</th>
                 <th className="px-3 py-2.5 font-medium">Half day</th>
                 <th className="px-3 py-2.5 font-medium">Paid leave</th>
                 <th className="px-3 py-2.5 font-medium">Unpaid / absent</th>
@@ -296,6 +299,7 @@ export function SalaryAdminDesk({ initialMonthKey, initialRows }: SalaryAdminDes
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-vega-text-secondary">{row.workedDays}</td>
+                      <td className="px-3 py-2.5 text-vega-text-secondary">{row.lateComingDays}</td>
                       <td className="px-3 py-2.5 text-vega-text-secondary">{row.halfDays}</td>
                       <td className="px-3 py-2.5 text-vega-text-secondary">{row.paidLeaveDays}</td>
                       <td className="px-3 py-2.5 text-vega-text-secondary">{row.unpaidLeaveDays + row.absentDays}</td>
@@ -309,7 +313,7 @@ export function SalaryAdminDesk({ initialMonthKey, initialRows }: SalaryAdminDes
                     </tr>
                     {isExpanded ? (
                       <tr className="border-t border-vega-border-soft bg-[#0b151f]">
-                        <td colSpan={9} className="px-4 py-3">
+                        <td colSpan={10} className="px-4 py-3">
                           {!detail ? (
                             <p className="text-xs text-vega-text-muted">{loadingKey === `detail-${row.user._id}` ? "Loading breakdown..." : "No data."}</p>
                           ) : (

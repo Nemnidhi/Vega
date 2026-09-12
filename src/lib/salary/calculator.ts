@@ -17,6 +17,7 @@ const NATIONAL_HOLIDAY_DATES = new Map(
 
 export type SalaryDayCategory =
   | "worked"
+  | "late_coming"
   | "half_day"
   | "paid_leave"
   | "unpaid_leave"
@@ -24,6 +25,12 @@ export type SalaryDayCategory =
   | "holiday"
   | "weekend"
   | "future";
+
+// First two late-coming marks in a calendar month are free; the third and every one after costs
+// 25% of that day's pay. Counted in date order within the month, so it resets every month rather
+// than accumulating forever.
+const LATE_COMING_FREE_PER_MONTH = 2;
+const LATE_COMING_DEDUCTION_FRACTION = 0.25;
 
 export type SalaryDayEntry = {
   dateKey: string;
@@ -38,6 +45,7 @@ export type SalaryMonthSummary = {
   daysInMonth: number;
   dailyRate: number;
   workedDays: number;
+  lateComingDays: number;
   halfDays: number;
   paidLeaveDays: number;
   unpaidLeaveDays: number;
@@ -77,12 +85,13 @@ function categorizeDay(params: {
   if (NATIONAL_HOLIDAY_DATES.has(dateKey)) {
     return { category: "holiday", note: NATIONAL_HOLIDAY_DATES.get(dateKey)!, deductionDays: 0 };
   }
-  if (dayStatus === "present" || dayStatus === "late_coming") {
-    return {
-      category: "worked",
-      note: dayStatus === "late_coming" ? "Present (late)" : "Present",
-      deductionDays: 0,
-    };
+  if (dayStatus === "present") {
+    return { category: "worked", note: "Present", deductionDays: 0 };
+  }
+  if (dayStatus === "late_coming") {
+    // Placeholder - applyLateComingPolicy() below fills in the real note/deductionDays once it
+    // knows this day's position among the month's late marks so far.
+    return { category: "late_coming", note: "Late", deductionDays: 0 };
   }
   if (dayStatus === "half_day") {
     return { category: "half_day", note: "Half day", deductionDays: 0.5 };
@@ -100,6 +109,24 @@ function categorizeDay(params: {
   return { category: "absent", note: dayStatus === "absent" ? "Absent" : "No record, no leave", deductionDays: 1 };
 }
 
+// Days must already be in date order (getDateKeysInMonth returns them that way) - the "first two
+// are free" count depends on chronological order within the month, not on iteration order.
+function applyLateComingPolicy(days: SalaryDayEntry[]): SalaryDayEntry[] {
+  let lateCount = 0;
+  return days.map((day) => {
+    if (day.category !== "late_coming") return day;
+    lateCount += 1;
+    if (lateCount <= LATE_COMING_FREE_PER_MONTH) {
+      return { ...day, note: `Late (${lateCount}/${LATE_COMING_FREE_PER_MONTH} free this month)`, deductionDays: 0 };
+    }
+    return {
+      ...day,
+      note: `Late (past ${LATE_COMING_FREE_PER_MONTH} free this month - 25% deducted)`,
+      deductionDays: LATE_COMING_DEDUCTION_FRACTION,
+    };
+  });
+}
+
 function summarize(
   user: { _id: string; fullName: string; email: string; role: string },
   baseSalary: number | null,
@@ -111,6 +138,7 @@ function summarize(
   const counts = days.reduce(
     (acc, day) => {
       if (day.category === "worked") acc.workedDays += 1;
+      else if (day.category === "late_coming") acc.lateComingDays += 1;
       else if (day.category === "half_day") acc.halfDays += 1;
       else if (day.category === "paid_leave") acc.paidLeaveDays += 1;
       else if (day.category === "unpaid_leave") acc.unpaidLeaveDays += 1;
@@ -123,6 +151,7 @@ function summarize(
     },
     {
       workedDays: 0,
+      lateComingDays: 0,
       halfDays: 0,
       paidLeaveDays: 0,
       unpaidLeaveDays: 0,
@@ -208,15 +237,17 @@ export async function computeMonthlySalaryForAllStaff(monthKey: string): Promise
     const attendanceMap = attendanceByUser.get(userId) ?? new Map();
     const leaves = leavesByUser.get(userId) ?? [];
 
-    const days = dateKeys.map((dateKey) => {
-      const { category, note, deductionDays } = categorizeDay({
-        dateKey,
-        todayDateKey,
-        dayStatus: attendanceMap.get(dateKey),
-        leaves,
-      });
-      return { dateKey, category, note, deductionDays };
-    });
+    const days = applyLateComingPolicy(
+      dateKeys.map((dateKey) => {
+        const { category, note, deductionDays } = categorizeDay({
+          dateKey,
+          todayDateKey,
+          dayStatus: attendanceMap.get(dateKey),
+          leaves,
+        });
+        return { dateKey, category, note, deductionDays };
+      }),
+    );
 
     return summarize(
       { _id: userId, fullName: user.fullName, email: user.email, role: user.role },
@@ -246,15 +277,17 @@ export async function computeMonthlySalaryForUser(userId: string, monthKey: stri
   const dateKeys = getDateKeysInMonth(monthKey);
   const todayDateKey = getAttendanceDateKey();
 
-  const days = dateKeys.map((dateKey) => {
-    const { category, note, deductionDays } = categorizeDay({
-      dateKey,
-      todayDateKey,
-      dayStatus: attendanceMap.get(dateKey),
-      leaves,
-    });
-    return { dateKey, category, note, deductionDays };
-  });
+  const days = applyLateComingPolicy(
+    dateKeys.map((dateKey) => {
+      const { category, note, deductionDays } = categorizeDay({
+        dateKey,
+        todayDateKey,
+        dayStatus: attendanceMap.get(dateKey),
+        leaves,
+      });
+      return { dateKey, category, note, deductionDays };
+    }),
+  );
 
   const summary = summarize(
     { _id: String(user._id), fullName: user.fullName, email: user.email, role: user.role },
