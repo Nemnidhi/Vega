@@ -82,4 +82,8 @@ export const permissionRules = {
   // Broader than manageProjectAssignments - anyone non-client can view/read a project's
   // assignments, only managers can change them.
   accessProjectAssignments: ["admin", "partner", "project_manager", "sales", "digital_marketing", "developer"] as UserRole[],
+  // Platform Admin console (master plan Phase 7) - views/manages every client Organization
+  // running on Dashboard-WhatsApp. Admin-only: this is Nemnidhi's whole-platform control plane,
+  // not a per-client or per-department view.
+  managePlatformAdmin: ["admin"] as UserRole[],
 };

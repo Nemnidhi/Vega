@@ -27,6 +27,7 @@ const dashboardNavItems: DashboardNavItem[] = [
   { label: "Pricing Packages", href: "/pricing-packages", group: "pricing", roles: ["admin", "partner", "sales", "digital_marketing"] },
   { label: "Industries", href: "/industries", group: "pricing", roles: ["admin", "partner", "sales", "digital_marketing"] },
   { label: "Pricing Tiers", href: "/pricing-tiers", group: "pricing", roles: ["admin", "partner", "sales", "digital_marketing"] },
+  { label: "Platform Admin", href: "/platform-admin", group: "settings", roles: ["admin"] },
   { label: "Account", href: "/account", group: "settings", roles: ["admin", "developer", "sales", "digital_marketing"] },
 ];
 

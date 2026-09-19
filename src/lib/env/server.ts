@@ -14,6 +14,14 @@ const serverEnvSchema = z.object({
   // haven't configured this yet don't fail the whole server env parse; the route itself checks
   // for its presence and rejects the request (not the process) when it's unset.
   DASHBOARD_INTEGRATION_SECRET: z.string().min(16).optional(),
+  // Master plan Phase 7 (Platform Admin console): the reverse direction from
+  // DASHBOARD_INTEGRATION_SECRET above - this app calling OUT to Dashboard-WhatsApp's
+  // /api/platform-admin/* routes, server-to-server. Reuses the SAME shared secret value as
+  // DASHBOARD_INTEGRATION_SECRET (one shared secret between the two systems, not two) - Dashboard-
+  // WhatsApp's own requireVegaSecret middleware verifies against its VEGA_INTEGRATION_SECRET,
+  // which must already equal this app's DASHBOARD_INTEGRATION_SECRET for the existing dashboard-
+  // events/dashboard-leads calls (the opposite direction) to work at all.
+  DASHBOARD_API_URL: z.string().optional(),
   // Shared secret for /api/client-portal/* - the nemnidhi.com website's backend calls these
   // server-to-server on behalf of its own logged-in client users, same optional-at-parse-time
   // shape as DASHBOARD_INTEGRATION_SECRET above.
