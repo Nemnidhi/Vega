@@ -1,11 +1,7 @@
-import { StaffRoleLoginPage } from "@/components/auth/staff-role-login-page";
+import { redirect } from "next/navigation";
+import { LOGIN_PATH } from "@/lib/auth/constants";
 
-export default async function AdminLoginPage() {
-  return (
-    <StaffRoleLoginPage
-      role="admin"
-      title="Admin Portal Login"
-      description="Admin control access with secure email and password authentication."
-    />
-  );
+// Kept so existing links and redirects still resolve; there is one sign-in page now.
+export default function LegacyPortalLoginPage() {
+  redirect(LOGIN_PATH);
 }

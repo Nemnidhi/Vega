@@ -11,6 +11,24 @@ export const createUserSchema = z.object({
   status: z.enum(["active", "inactive", "invited"]).default("active"),
 });
 
+/**
+ * What somebody may change about their own account.
+ *
+ * Deliberately a separate, much smaller schema than updateUserSchema rather than
+ * a subset picked at the call site: role, status, email and salary decide what a
+ * person can see and what they are paid, so they stay with the admin who granted
+ * them. Everything here is a detail about the person that only they really know.
+ */
+export const updateOwnProfileSchema = z
+  .object({
+    fullName: z.string().trim().min(2).max(120).optional(),
+    phone: z.string().trim().max(30).optional(),
+    department: z.string().trim().max(120).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Nothing to update.",
+  });
+
 export const updateUserSchema = z
   .object({
     fullName: z.string().trim().min(2).max(120).optional(),

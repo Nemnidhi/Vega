@@ -1,3 +1,4 @@
+import { assignedLeadCounts } from "@/lib/leads/user-counts";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { hashPassword } from "@/lib/auth/password";
@@ -79,6 +80,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     return ok(
       serializeForJson({
         id: String(user._id),
+        assignedLeadCount: user.role === "sales" ? (await assignedLeadCounts([String(user._id)])).get(String(user._id)) ?? 0 : 0,
         fullName: user.fullName,
         email: user.email,
         role: user.role,

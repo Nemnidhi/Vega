@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { LeadModel } from "@/models";
 import { leadBaseSchema } from "@/lib/validation/lead";
@@ -20,6 +21,7 @@ export async function GET(_: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     const lead = await LeadModel.findById(id).lean();
     if (!lead) {
       throw new Error("Lead not found");
@@ -39,6 +41,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
 
     const payload = updateLeadSchema.parse(await request.json());
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     const existing = await LeadModel.findById(id);
     if (!existing) {
       throw new Error("Lead not found");

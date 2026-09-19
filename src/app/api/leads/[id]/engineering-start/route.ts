@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess } from "@/lib/auth/permissions";
 import { assertEngineeringCanStart } from "@/lib/workflows/lead-guards";
@@ -12,6 +13,7 @@ export async function GET(_: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: ["admin", "partner", "project_manager", "developer"] });
 
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     await assertEngineeringCanStart(id);
 
     return ok({ allowed: true, message: "Engineering start allowed for this lead." });

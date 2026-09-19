@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { TaskStatusSelect } from "@/components/tasks/task-status-select";
 import { normalizeTaskStatus } from "@/lib/tasks/status";
 import { dueLabel, humanize, initialsOf, priorityTone, progressTone, statusTone } from "@/lib/tasks/tone";
 
@@ -16,6 +17,8 @@ import { dueLabel, humanize, initialsOf, priorityTone, progressTone, statusTone 
 type PopulatedUser = { _id: string; fullName: string; email: string; role: string };
 
 interface TaskWorkspaceHeaderProps {
+  /** When given, Status becomes editable. Omitted, it stays a read-only badge. */
+  taskId?: string;
   title: string;
   code?: string | null;
   status: string;
@@ -41,6 +44,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function TaskWorkspaceHeader({
+  taskId,
   title,
   code,
   status,
@@ -79,14 +83,18 @@ export function TaskWorkspaceHeader({
       {/* Field strip. Vertical separators, not cards. */}
       <div className="flex flex-wrap items-center gap-y-3 divide-x divide-vega-border-soft p-4">
         <Field label="Status">
-          <span
-            className={cn(
-              "inline-flex h-[22px] items-center rounded-md border px-2 text-[10px] font-medium",
-              statusTone(status),
-            )}
-          >
-            {humanize(normalized)}
-          </span>
+          {taskId ? (
+            <TaskStatusSelect taskId={taskId} currentStatus={status} />
+          ) : (
+            <span
+              className={cn(
+                "inline-flex h-[22px] items-center rounded-md border px-2 text-[10px] font-medium",
+                statusTone(status),
+              )}
+            >
+              {humanize(normalized)}
+            </span>
+          )}
         </Field>
 
         <Field label="Priority">

@@ -1,6 +1,6 @@
 import { AttendanceAdminDesk } from "@/components/attendance/attendance-admin-desk";
+import { AttendanceHero } from "@/components/attendance/attendance-hero";
 import { AttendanceTracker } from "@/components/attendance/attendance-tracker";
-import { DashboardHeader } from "@/components/dashboard/header";
 import { requireRoleAccess } from "@/lib/auth/role-access";
 import {
   attendanceAdminRoles,
@@ -63,13 +63,11 @@ export default async function AttendancePage() {
   const initialData = await getAttendanceOverview(session.userId);
 
   return (
-    <section className="space-y-6">
-      <DashboardHeader
-        title="Attendance Desk"
-        subtitle="Daily check-in and check-out tracking for team members."
-        showLeadCta={false}
-      />
-      <AttendanceTracker initialData={initialData} />
+    <section className="-mx-3 sm:-mx-5 lg:-mx-[22px]">
+      <AttendanceHero />
+      <div className="px-4 pt-5 sm:px-6">
+        <AttendanceTracker initialData={initialData} />
+      </div>
     </section>
   );
 }

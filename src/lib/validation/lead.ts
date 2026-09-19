@@ -94,6 +94,7 @@ const inboundRequiredFields = [
 ] as const;
 
 export const createLeadSchema = leadBaseSchema.superRefine((value, ctx) => {
+  if (value.status === "closed_won") ctx.addIssue({ code: "custom", path: ["status"], message: "Create the lead first, then use Close deal to record revenue" });
   if (value.source === "cold_outreach") {
     return;
   }
@@ -111,6 +112,7 @@ export const createLeadSchema = leadBaseSchema.superRefine((value, ctx) => {
 
 export const updateLeadStatusSchema = z.object({
   status: z.enum(leadStatusValues),
+  revenue: z.number().finite().min(0).max(1_000_000_000).refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.001, "Revenue supports two decimal places").optional(),
 });
 
 // Public website intake stays fully strict - none of the relaxations above

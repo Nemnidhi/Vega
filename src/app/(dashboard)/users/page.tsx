@@ -15,6 +15,7 @@ export default async function UsersPage() {
   ])) as [
     Array<{
     _id: string;
+    assignedLeadCount: number;
     fullName: string;
     email: string;
     role: StaffUserItem["role"];
@@ -27,6 +28,7 @@ export default async function UsersPage() {
 
   const initialUsers: StaffUserItem[] = users.map((user) => ({
     id: user._id,
+    assignedLeadCount: user.assignedLeadCount,
     fullName: user.fullName,
     email: user.email,
     role: user.role,

@@ -1,3 +1,4 @@
+import { leadVisibilityFilter } from "@/lib/leads/access";
 import { notFound } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { BlueprintEditor } from "@/components/blueprint/blueprint-editor";
@@ -14,12 +15,12 @@ export const dynamic = "force-dynamic";
 type Params = Promise<{ leadId: string }>;
 
 export default async function BlueprintPage({ params }: { params: Params }) {
-  await requireRoleAccess(permissionRules.manageLeads);
+  const session = await requireRoleAccess(permissionRules.manageLeads);
 
   const { leadId } = await params;
   await connectToDatabase();
 
-  const lead = await LeadModel.findById(leadId)
+  const lead = await LeadModel.findOne({ _id: leadId, ...leadVisibilityFilter(session) })
     .select("title prospecting")
     .lean<Pick<Lead, "_id" | "title" | "prospecting"> | null>();
   if (!lead) {

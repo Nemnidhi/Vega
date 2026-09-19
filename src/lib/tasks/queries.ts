@@ -54,10 +54,28 @@ export async function getKpisForUser(userId: string, role: UserRole) {
   return serializeForJson(withProgress);
 }
 
+/**
+ * Internal staff only.
+ *
+ * This used to be every active account, which put clients in the task assignee
+ * dropdown - so an internal task could be assigned to a customer, and anyone who
+ * holds both a staff and a client login appeared two or three times over. Client
+ * is the only externally-held role, but the allowed set is listed explicitly so a
+ * future external role does not quietly become assignable.
+ */
+const TASK_ASSIGNABLE_ROLES: UserRole[] = [
+  "admin",
+  "partner",
+  "project_manager",
+  "developer",
+  "sales",
+  "digital_marketing",
+];
+
 export async function getAssignableUsers(role: UserRole) {
   if (!canAssignOthers(role)) return [];
   await connectToDatabase();
-  const users = await UserModel.find({ status: "active" })
+  const users = await UserModel.find({ status: "active", role: { $in: TASK_ASSIGNABLE_ROLES } })
     .select("fullName email role")
     .sort({ fullName: 1 })
     .lean();

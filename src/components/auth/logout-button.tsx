@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
+import { LOGIN_PATH } from "@/lib/auth/constants";
 
 interface LogoutButtonProps {
   redirectTo?: string;
@@ -11,7 +12,7 @@ interface LogoutButtonProps {
   showIcon?: boolean;
 }
 
-export function LogoutButton({ redirectTo = "/admin", className, showIcon = false }: LogoutButtonProps) {
+export function LogoutButton({ redirectTo = LOGIN_PATH, className, showIcon = false }: LogoutButtonProps) {
   const router = useRouter();
 
   async function logout() {

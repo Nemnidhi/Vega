@@ -8,6 +8,7 @@ import { connectToDatabase } from "@/lib/db/mongodb";
 import { getServerEnv } from "@/lib/env/server";
 import { LeadModel } from "@/models";
 import { scoreLead } from "@/lib/leads/scoring";
+import { notifyLeadCreated } from "@/lib/notifications/leads";
 import { handleApiError, ok, fail } from "@/lib/api/responses";
 
 const META_GRAPH_VERSION = "v24.0";
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
       const normalized = normalizeFieldData(graphData.field_data ?? []);
 
       try {
-        await LeadModel.create({
+        const createdLead = await LeadModel.create({
           title: `${normalized.name || "Meta Lead"} - Meta Ads inquiry`,
           contactName: normalized.name || "Unknown",
           email: normalized.email || buildFallbackEmail(event.leadId),
@@ -158,6 +159,16 @@ export async function POST(request: Request) {
           ...scoreLead({ source: "paid_ads", category: "other", urgency: "medium" }),
         });
         created += 1;
+
+        // Inbound paid-ads lead: tell the assigned rep and the admins.
+        void notifyLeadCreated({
+          leadId: String(createdLead._id),
+          leadTitle: createdLead.title ?? "Meta Lead",
+          ownerId: createdLead.ownerId ? String(createdLead.ownerId) : null,
+          actorId: null,
+          source: "paid_ads",
+          notifyAdmins: true,
+        }).catch((error) => console.error("meta lead notify failed:", error));
       } catch (createError) {
         // Race: two webhook deliveries for the same leadgen_id landed concurrently - the unique
         // index on metaLeadId is the real guard, the findOne check above is just the fast path.

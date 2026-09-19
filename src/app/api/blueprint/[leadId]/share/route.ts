@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { BlueprintModel } from "@/models";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -16,6 +17,7 @@ export async function POST(_: Request, { params }: { params: Params }) {
     assertRoleAccess(session.role, { oneOf: permissionRules.manageLeads });
 
     const { leadId } = await params;
+    await assertSalesLeadAccess(session, leadId);
     const blueprint = await BlueprintModel.findOne({ leadId }).sort({ version: -1 });
     if (!blueprint) {
       return fail("No blueprint draft to share - create one first", 404);

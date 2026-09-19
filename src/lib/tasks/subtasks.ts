@@ -43,9 +43,26 @@ export function canAssignTasksToOthers(role: string) {
   return (permissionRules.assignTasksToOthers as string[]).includes(role);
 }
 
+/**
+ * The id of a relation, whether or not it has been populated.
+ *
+ * These fields hold a raw ObjectId on a plain query and a full user document
+ * once .populate() has run. String() on the populated form yields
+ * "[object Object]", so a comparison against a user id silently failed - which
+ * is how the task detail page came to 404 for every developer, sales and
+ * digital-marketing user, including on their own tasks.
+ */
+export function refId(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "object" && value !== null && "_id" in value) {
+    return String((value as { _id: unknown })._id);
+  }
+  return String(value);
+}
+
 export function canAccessTask(actor: TaskActor, task: TaskAccessShape) {
   if (canAssignTasksToOthers(actor.role)) return true;
-  return String(task.assignedToUserId ?? "") === actor.userId || String(task.createdBy ?? "") === actor.userId;
+  return refId(task.assignedToUserId) === actor.userId || refId(task.createdBy) === actor.userId;
 }
 
 export async function assertCanAccessTask(actor: TaskActor, task: TaskAccessShape) {
@@ -62,6 +79,37 @@ export async function assertCanAccessTask(actor: TaskActor, task: TaskAccessShap
 export function assertCanAssignSubtask(actor: TaskActor, assignedToUserId?: string | null) {
   if (!assignedToUserId || assignedToUserId === actor.userId) return;
   assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
+}
+
+/** Roles that may hold a task. Client is externally held and must never be one. */
+export const TASK_ASSIGNABLE_ROLES: UserRole[] = [
+  "admin",
+  "partner",
+  "project_manager",
+  "developer",
+  "sales",
+  "digital_marketing",
+];
+
+/**
+ * A task may only be assigned to internal staff.
+ *
+ * The assignee dropdown used to list client accounts, so tasks were genuinely
+ * assigned to customers. Those people were then notified about work they cannot
+ * open - the tasks area rejects the client role - which is what produced 404s
+ * from the notification. Filtering the dropdown is not enough on its own: the id
+ * arrives in the request body, so the rule has to hold at the API.
+ */
+export async function assertAssigneeIsStaff(assignedToUserId?: string | null) {
+  if (!assignedToUserId) return;
+  const user = await TaskModel.db.model("User")
+    .findById(assignedToUserId)
+    .select("role status")
+    .lean<{ role?: string; status?: string } | null>();
+  if (!user) throw new Error("Assignee not found");
+  if (user.status !== "active" || !TASK_ASSIGNABLE_ROLES.includes(user.role as UserRole)) {
+    throw new Error("Tasks can only be assigned to active staff");
+  }
 }
 
 /**

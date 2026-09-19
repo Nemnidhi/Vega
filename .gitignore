@@ -44,5 +44,7 @@ backups/
 
 # local deploy staging and dev logs
 .deploy-temp/
+# release archives built for a deploy - large, and rebuilt per release
+deploy-temp/*.tar.gz
 .next-dev.log
 .next-dev.err.log

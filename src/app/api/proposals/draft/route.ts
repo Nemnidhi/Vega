@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { draftProposalSchema } from "@/lib/validation/proposal";
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
       return fail("Scope manifest not found.", 404);
     }
 
+    await assertSalesLeadAccess(actor, String(scopeManifest.leadId));
     const [client, lead] = await Promise.all([
       ClientModel.findById(scopeManifest.clientId).select("legalName").lean(),
       LeadModel.findById(scopeManifest.leadId).select("title").lean(),

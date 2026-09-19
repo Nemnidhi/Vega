@@ -1,4 +1,5 @@
 import { model, models, Schema, type InferSchemaType } from "mongoose";
+import { allocateLeadOwners } from "@/lib/leads/assignment";
 
 const leadBudgetSchema = new Schema(
   {
@@ -242,6 +243,19 @@ const leadSchema = new Schema(
     },
     priorityFlag: { type: Boolean, default: false, index: true },
     ownerId: { type: Schema.Types.ObjectId, ref: "User", default: null, index: true },
+    closure: {
+      revenuePaise: { type: Number, min: 0 },
+      salespersonId: { type: Schema.Types.ObjectId, ref: "User" },
+      closedAt: { type: Date },
+      recordedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    },
+    assignmentHistory: [{
+      from: { type: Schema.Types.ObjectId, ref: "User", default: null },
+      to: { type: Schema.Types.ObjectId, ref: "User", default: null },
+      actorId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+      method: { type: String, enum: ["round_robin", "manual", "transfer", "rebalance"], required: true },
+      at: { type: Date, default: Date.now },
+    }],
     clientId: { type: Schema.Types.ObjectId, ref: "Client", default: null, index: true },
     tags: [{ type: String, trim: true, maxlength: 40 }],
     prospecting: { type: prospectingSchema, default: null },
@@ -250,6 +264,13 @@ const leadSchema = new Schema(
     timestamps: true,
   },
 );
+
+leadSchema.pre("save", async function () {
+  if (!this.isNew || this.ownerId) return;
+  const [ownerId] = await allocateLeadOwners(1);
+  this.set("ownerId", ownerId);
+  if (ownerId) this.assignmentHistory.push({ from: null, to: ownerId, actorId: null, method: "round_robin", at: new Date() });
+});
 
 leadSchema.index({ status: 1, updatedAt: -1 });
 leadSchema.index({ updatedAt: -1 });
@@ -274,7 +295,9 @@ if (
     (!existingLeadStatusEnum.includes("not_picking_call") ||
       !existingLeadStatusEnum.includes("invalid"))) ||
     !existingLeadModel.schema.path("prospecting") ||
-    !existingLeadModel.schema.path("dashboardConversationId"))
+    !existingLeadModel.schema.path("dashboardConversationId") ||
+    !existingLeadModel.schema.path("assignmentHistory.method")?.options?.enum?.includes("rebalance") ||
+    !existingLeadModel.schema.path("closure.revenuePaise"))
 ) {
   delete models.Lead;
 }

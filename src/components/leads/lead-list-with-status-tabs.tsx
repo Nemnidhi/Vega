@@ -27,6 +27,7 @@ import {
 } from "@/lib/prospecting/tier-display";
 
 type LeadRow = {
+  ownerId?: { _id: string; fullName: string } | null;
   _id: string;
   title: string;
   contactName?: string;
@@ -158,6 +159,7 @@ function normalizePhoneForWhatsApp(phone?: string) {
 export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -227,11 +229,13 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
     const toTime = updatedTo ? new Date(`${updatedTo}T23:59:59`).getTime() : null;
 
     let rows = statusFilter === "all" ? leads : leads.filter((lead) => lead.status === statusFilter);
+    if (ownerFilter !== "all") rows = rows.filter((lead) => ownerFilter === "unassigned" ? !lead.ownerId : lead.ownerId?._id === ownerFilter);
 
     if (normalizedSearch) {
       rows = rows.filter((lead) =>
         [
           lead.title,
+          lead.ownerId?.fullName,
           lead.contactName,
           lead.email,
           lead.phone,
@@ -288,6 +292,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
       return sortBy === "updated_asc" ? aTime - bTime : bTime - aTime;
     });
   }, [
+    ownerFilter,
     categoryFilter,
     leads,
     minScore,
@@ -359,6 +364,14 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
 
   return (
     <div className="space-y-3">
+      <label className="flex flex-wrap items-center gap-2 text-sm text-vega-text-secondary">
+        Assigned to
+        <select aria-label="Filter leads by salesperson" className={selectClass} value={ownerFilter} onChange={(event) => { setOwnerFilter(event.target.value); setPage(1); setMobileVisibleCount(4); }}>
+          <option value="all">All salespeople</option>
+          <option value="unassigned">Unassigned</option>
+          {Array.from(new Map(leads.flatMap((lead) => lead.ownerId ? [[lead.ownerId._id, lead.ownerId] as const] : [])).values()).map((person) => <option key={person._id} value={person._id}>{person.fullName}</option>)}
+        </select>
+      </label>
       <div className="space-y-2.5 xl:hidden">
         <div className="grid grid-cols-[minmax(0,1fr)_50px] gap-2">
           <label className="relative">
@@ -488,6 +501,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-vega-text">{lead.title}</span>
+                      <span className="block text-xs text-vega-text-muted">{lead.ownerId?.fullName || "Unassigned"}</span>
                       <span className="mt-0.5 block truncate text-xs text-vega-text-muted">
                         {humanize(lead.source)}
                         {industryLabel(lead) ? ` - ${industryLabel(lead)}` : ""}
@@ -838,6 +852,7 @@ export function LeadListWithStatusTabs({ leads }: { leads: LeadRow[] }) {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-foreground">{lead.title}</p>
+                        <p className="truncate text-xs text-vega-text-muted">{lead.ownerId?.fullName || "Unassigned"}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {[lead.email, lead.phone].filter(Boolean).join(" | ") ||
                             lead.contactName ||

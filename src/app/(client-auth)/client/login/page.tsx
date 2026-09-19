@@ -1,15 +1,7 @@
 import { redirect } from "next/navigation";
-import { ClientLoginForm } from "@/components/client/client-login-form";
-import { getCurrentSession } from "@/lib/auth/session";
+import { LOGIN_PATH } from "@/lib/auth/constants";
 
-export default async function ClientLoginPage() {
-  const session = await getCurrentSession();
-  if (session?.role === "client") {
-    redirect("/client");
-  }
-  if (session) {
-    redirect("/dashboard");
-  }
-
-  return <ClientLoginForm />;
+// Clients sign in through the same form as everyone else now.
+export default function ClientLoginPage() {
+  redirect(LOGIN_PATH);
 }

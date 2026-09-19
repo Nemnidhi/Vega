@@ -8,6 +8,7 @@ import { TaskDependencyModel, TaskModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { logActivity } from "@/lib/activity/logging";
 import { generateTaskCode, generateSubtaskCode } from "@/lib/tasks/codes";
+import { refId } from "@/lib/tasks/subtasks";
 
 type Params = Promise<{ id: string }>;
 
@@ -17,7 +18,9 @@ function canAssignOthers(role: string) {
 
 function canModify(actor: { userId: string; role: string }, task: { assignedToUserId: unknown; createdBy: unknown }) {
   if (canAssignOthers(actor.role)) return true;
-  return String(task.assignedToUserId) === actor.userId || String(task.createdBy) === actor.userId;
+  // refId, not String: these docs arrive populated, and String() on a populated
+  // ref gives "[object Object]", which never matches a user id.
+  return refId(task.assignedToUserId) === actor.userId || refId(task.createdBy) === actor.userId;
 }
 
 /** Fields carried onto the copy. Everything omitted here is deliberately reset. */

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { allocateLeadOwners } from "@/lib/leads/assignment";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { LeadModel } from "@/models";
 import {
@@ -313,7 +314,6 @@ export async function POST(request: Request) {
         preparedRows.push({
           ...leadData,
           ...scoring,
-          ownerId: actor.userId,
           ...(hasProspectingData
             ? {
                 prospecting: {
@@ -346,7 +346,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const created = await LeadModel.insertMany(preparedRows);
+    const owners = await allocateLeadOwners(preparedRows.length);
+    const created = await LeadModel.insertMany(preparedRows.map((row, index) => ({
+      ...row,
+      ownerId: owners[index],
+      assignmentHistory: owners[index] ? [{ from: null, to: owners[index], actorId: null, method: "round_robin", at: new Date() }] : [],
+    })));
 
     return ok(
       {

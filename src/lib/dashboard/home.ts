@@ -1,3 +1,5 @@
+import { leadVisibilityFilter } from "@/lib/leads/access";
+import { getActorContext } from "@/lib/auth/permissions";
 /* eslint-disable @typescript-eslint/no-explicit-any -- the models are untyped at the call site;
    only the aggregate() shape matters here and it is asserted on the rows below. */
 import type { PipelineStage } from "mongoose";
@@ -150,6 +152,7 @@ function monthlySeriesFromRows(
 }
 
 export async function getHomeDashboard(): Promise<HomeDashboardPayload> {
+  const actor = await getActorContext();
   await connectToDatabase();
 
   const now = new Date();
@@ -162,6 +165,7 @@ export async function getHomeDashboard(): Promise<HomeDashboardPayload> {
   const [leadSummary, clientSummary, taskSummary, meetingSummary, activityLogs] =
     await Promise.all([
       LeadModel.aggregate([
+        { $match: leadVisibilityFilter(actor) },
         {
           $facet: {
             counts: [
@@ -300,7 +304,7 @@ export async function getHomeDashboard(): Promise<HomeDashboardPayload> {
           },
         },
       ] as PipelineStage[]),
-      ActivityLogModel.find({}).sort({ createdAt: -1 }).limit(5).select("action entityType createdAt").lean(),
+      ActivityLogModel.find(actor.role === "sales" ? { actorId: actor.userId, entityType: { $nin: ["lead", "proposal", "blueprint", "scope_manifest"] } } : {}).sort({ createdAt: -1 }).limit(5).select("action entityType createdAt").lean(),
     ]);
 
   const leadResult = (leadSummary[0] ?? { counts: [], monthly: [], sources: [] }) as LeadSummary;

@@ -31,6 +31,7 @@ export default async function TaskDetailPage({ params }: { params: Params }) {
   return (
     <section className="space-y-4">
       <TaskWorkspaceHeader
+        taskId={id}
         title={detail.task.title}
         code={detail.task.code}
         status={detail.task.status}

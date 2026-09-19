@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
@@ -15,6 +16,7 @@ export async function GET(_: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     const lead = await LeadModel.findById(id).select("_id").lean();
     if (!lead) throw new Error("Lead not found");
 
@@ -38,6 +40,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     const lead = await LeadModel.findById(id).select("_id title").lean();
     if (!lead) throw new Error("Lead not found");
 

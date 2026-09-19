@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
@@ -18,6 +19,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     const payload = updateLeadFollowUpSchema.parse(await request.json());
     const followUp = await LeadFollowUpModel.findById(id);
     if (!followUp) throw new Error("Follow-up not found");
+    await assertSalesLeadAccess(actor, String(followUp.leadId));
 
     const previousStatus = followUp.status;
     Object.assign(followUp, payload);

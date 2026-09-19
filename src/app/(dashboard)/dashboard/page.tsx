@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 import { getHomeDashboard, type HomeSeriesPoint, type HomeSlice } from "@/lib/dashboard/home";
 import { requireRoleAccess } from "@/lib/auth/role-access";
+import { getDeveloperDashboard, getRoleDashboard, usesBusinessOverview } from "@/lib/dashboard/role-home";
+import { RoleDashboardView } from "@/components/dashboard/role-dashboard";
+import { DeveloperDashboardView } from "@/components/dashboard/developer-dashboard";
 import { cn } from "@/lib/utils/cn";
 
 export const dynamic = "force-dynamic";
@@ -205,9 +208,31 @@ function priorityClass(priority: string) {
 }
 
 export default async function DashboardPage() {
-  const session = await requireRoleAccess(["admin", "sales", "digital_marketing"], {
-    redirectTo: "/tasks",
-  });
+  // Every staff role has a dashboard now, so this no longer turns anyone away.
+  const session = await requireRoleAccess([
+    "admin",
+    "partner",
+    "project_manager",
+    "sales",
+    "digital_marketing",
+    "developer",
+  ]);
+  const firstNameOnly = (session.fullName ?? session.email).split(/\s+/)[0];
+
+  // Admin and partner get the business overview below. Everyone else gets
+  // figures scoped to their own work rather than the company's revenue.
+  // Developers get the fuller treatment: schedule, weekly output and real
+  // seven-day history behind each figure.
+  if (session.role === "developer") {
+    const devData = await getDeveloperDashboard(session.userId, firstNameOnly);
+    return <DeveloperDashboardView data={devData} />;
+  }
+
+  if (!usesBusinessOverview(session.role)) {
+    const roleData = await getRoleDashboard(session.role, session.userId);
+    return <RoleDashboardView data={roleData} firstName={firstNameOnly} />;
+  }
+
   const data = await getHomeDashboard();
   const firstName = (session.fullName ?? session.email).split(/\s+/)[0];
   const todaysTotal = data.todaysTasks.length;

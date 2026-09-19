@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 // Digital-presence audit report for a lead.
 //   POST - generate (or regenerate) the PDF and store it
 //   GET  - download the stored PDF
@@ -42,6 +43,7 @@ export async function POST(_: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     const lead = await LeadModel.findById(id).lean<Lead | null>();
     if (!lead) {
       return fail("Lead not found", 404);
@@ -160,6 +162,7 @@ export async function GET(_: Request, { params }: { params: Params }) {
     // their own - same ownership check the blueprint routes use.
     const session = await getCurrentSession();
     if (!session) throw new Error("Unauthorized");
+    await assertSalesLeadAccess(session, id);
 
     let pdf: Buffer;
     if (session.role === "client") {

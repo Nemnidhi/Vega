@@ -13,6 +13,11 @@ const notificationTypeValues = [
   "approval_accepted",
   "approval_rejected",
   "workflow_changed",
+  // Lead pipeline
+  "lead_assigned",
+  "lead_transferred",
+  "lead_created",
+  "lead_rebalanced",
 ] as const;
 
 const notificationSchema = new Schema(
@@ -22,8 +27,12 @@ const notificationSchema = new Schema(
     type: { type: String, enum: notificationTypeValues, required: true, index: true },
     title: { type: String, required: true, trim: true, maxlength: 180 },
     body: { type: String, trim: true, maxlength: 1000, default: "" },
-    entityType: { type: String, enum: ["task"], default: "task", required: true, index: true },
-    entityId: { type: Schema.Types.ObjectId, ref: "Task", required: true, index: true },
+    entityType: { type: String, enum: ["task", "lead"], default: "task", required: true, index: true },
+    // Polymorphic across entityType, so deliberately not a populated ref.
+    entityId: { type: Schema.Types.ObjectId, required: true, index: true },
+    // Where tapping the notification should land. Stored rather than derived so a
+    // push sent from the server and the in-app row always agree on the target.
+    url: { type: String, trim: true, maxlength: 500, default: "" },
     subtaskId: { type: Schema.Types.ObjectId, ref: "Task", default: null, index: true },
     dependencyId: { type: Schema.Types.ObjectId, ref: "TaskDependency", default: null },
     channels: { type: [String], default: ["in_app"] },

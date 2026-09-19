@@ -10,6 +10,7 @@ type UserStatus = "active" | "inactive" | "invited";
 
 export interface StaffUserItem {
   id: string;
+  assignedLeadCount?: number;
   fullName: string;
   email: string;
   role: LoginRole;

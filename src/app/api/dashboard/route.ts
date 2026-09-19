@@ -1,3 +1,4 @@
+import { leadVisibilityFilter, relatedLeadFilter } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
@@ -12,6 +13,7 @@ export async function GET() {
 
     const [leadMetricRows, proposalMetricRows, scopeMetricRows, recentActivity] = await Promise.all([
       LeadModel.aggregate([
+        { $match: leadVisibilityFilter(actor) },
         {
           $group: {
             _id: null,
@@ -26,14 +28,16 @@ export async function GET() {
         },
       ]),
       ProposalModel.aggregate([
+        { $match: await relatedLeadFilter(actor) },
         { $match: { status: "signed" } },
         { $count: "signedProposals" },
       ]),
       ScopeManifestModel.aggregate([
+        { $match: await relatedLeadFilter(actor) },
         { $match: { isCompleted: true, signedAt: { $ne: null } } },
         { $count: "completedScopes" },
       ]),
-      ActivityLogModel.find({})
+      ActivityLogModel.find(actor.role === "sales" ? { actorId: actor.userId, entityType: { $nin: ["lead", "proposal", "blueprint", "scope_manifest"] } } : {})
         .sort({ createdAt: -1 })
         .limit(12)
         .select("action entityType createdAt")

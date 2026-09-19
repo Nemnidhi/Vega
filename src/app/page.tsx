@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
-import { getStaffHomeRoute, LOGIN_ROLES } from "@/lib/auth/constants";
+import { getStaffHomeRoute, LOGIN_PATH, LOGIN_ROLES } from "@/lib/auth/constants";
 
 export default async function HomePage() {
   const session = await getCurrentSession();
 
   if (!session) {
-    redirect("/admin");
+    redirect(LOGIN_PATH);
   }
 
   if (session.role === "client") {
@@ -17,5 +17,5 @@ export default async function HomePage() {
     redirect(getStaffHomeRoute(session.role as (typeof LOGIN_ROLES)[number]));
   }
 
-  redirect("/admin");
+  redirect(LOGIN_PATH);
 }

@@ -1,3 +1,4 @@
+import { leadVisibilityFilter } from "@/lib/leads/access";
 import { notFound } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { ProposalGeneratorForm } from "@/components/proposals/proposal-generator-form";
@@ -27,12 +28,12 @@ function proposalStatusVariant(status: string): "success" | "warning" | "danger"
 }
 
 export default async function ProposalsLeadPage({ params }: { params: Params }) {
-  await requireRoleAccess(permissionRules.manageProposals);
+  const session = await requireRoleAccess(permissionRules.manageProposals);
 
   const { id: leadId } = await params;
   await connectToDatabase();
 
-  const lead = await LeadModel.findById(leadId).select("title").lean();
+  const lead = await LeadModel.findOne({ _id: leadId, ...leadVisibilityFilter(session) }).select("title").lean();
   if (!lead) {
     notFound();
   }

@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 // Emails a previously-generated audit report to the lead.
 //
 // This is the one route in the audit pipeline that touches the outside
@@ -25,6 +26,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
     const { id } = await params;
+    await assertSalesLeadAccess(actor, id);
     const url = new URL(request.url);
     const resend = url.searchParams.get("resend") === "true";
 

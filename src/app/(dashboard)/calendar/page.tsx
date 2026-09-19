@@ -1,3 +1,4 @@
+import { relatedLeadFilter } from "@/lib/leads/access";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { HolidayCalendarView } from "@/components/calendar/holiday-calendar-view";
 import { FollowUpsWorkspace, type FollowUpsWorkspaceItem } from "@/components/leads/follow-ups-workspace";
@@ -31,7 +32,7 @@ export default async function CalendarPage() {
   const followUps = canViewFollowUps
     ? await (async () => {
         await connectToDatabase();
-        const followUpDocs = await LeadFollowUpModel.find({})
+        const followUpDocs = await LeadFollowUpModel.find(await relatedLeadFilter(session))
           .sort({ status: 1, dueAt: 1 })
           .limit(500)
           .select(

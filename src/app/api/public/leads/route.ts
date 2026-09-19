@@ -3,6 +3,7 @@ import { handleApiError, fail, ok } from "@/lib/api/responses";
 import { LeadModel } from "@/models";
 import { createWebsiteLeadSchema } from "@/lib/validation/lead";
 import { scoreLead } from "@/lib/leads/scoring";
+import { notifyLeadCreated } from "@/lib/notifications/leads";
 import { serializeForJson } from "@/lib/utils/serialize";
 import {
   extractLeadSourceTracking,
@@ -71,6 +72,17 @@ export async function POST(request: Request) {
       sourcePath: tracking.sourcePath,
       sourceReferrer: tracking.sourceReferrer,
     });
+
+    // Inbound from the website: the assigned rep and the admins both want this.
+    // Best-effort - the lead is saved and the caller gets its 201 regardless.
+    void notifyLeadCreated({
+      leadId: String(lead._id),
+      leadTitle: lead.title ?? "Lead",
+      ownerId: lead.ownerId ? String(lead.ownerId) : null,
+      actorId: null,
+      source: lead.source ?? null,
+      notifyAdmins: true,
+    }).catch((error) => console.error("public lead notify failed:", error));
 
     return withCors(ok(serializeForJson(lead), { status: 201 }), origin, request);
   } catch (error) {

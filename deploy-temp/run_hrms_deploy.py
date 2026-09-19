@@ -7,7 +7,11 @@ import paramiko
 HOST = "72.60.97.58"
 PORT = 2424
 USER = "samvid"
-PASSWORD = "Nemgiri@2026"
+# Never hardcode this. The previous literal here was committed and published to a
+# public GitHub repo; the account password had to be rotated as a result.
+PASSWORD = os.environ.get("HRMS_DEPLOY_PASSWORD", "")
+if not PASSWORD:
+    sys.exit("Set HRMS_DEPLOY_PASSWORD in the environment before running this deploy.")
 SHA = "3ac6472"
 
 LOCAL_ARCHIVE = os.path.abspath(f"deploy-temp/hrms-release-{SHA}.tar.gz")

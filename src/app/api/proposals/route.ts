@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess, relatedLeadFilter } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    const query: Record<string, string> = {};
+    const query: Record<string, unknown> = { ...await relatedLeadFilter(actor) };
     if (status) query.status = status;
 
     const proposals = await ProposalModel.find(query)
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageProposals });
 
     const payload = createProposalSchema.parse(await request.json());
+    await assertSalesLeadAccess(actor, payload.leadId);
     const lead = await LeadModel.findById(payload.leadId).lean();
     if (!lead) {
       throw new Error("Lead not found");

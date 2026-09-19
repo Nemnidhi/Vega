@@ -1,7 +1,7 @@
-import { Types } from "mongoose";
 import { logActivity } from "@/lib/activity/logging";
 import { connectToDatabase } from "@/lib/db/mongodb";
-import { ActivityLogModel, NotificationModel, TaskDependencyModel, TaskModel, UserModel } from "@/models";
+import { ActivityLogModel, TaskDependencyModel, TaskModel, UserModel } from "@/models";
+import { notifyUser } from "@/lib/notifications/dispatch";
 import type { ActivityAction } from "@/types/activity-log";
 
 type NotificationType =
@@ -55,32 +55,23 @@ function notificationDedupe(type: string, parentTaskId: string, subtaskId?: stri
 }
 
 export async function createWorkflowNotification(input: WorkflowNotificationInput) {
-  if (!input.recipientUserId) return null;
-  await connectToDatabase();
-
-  return NotificationModel.updateOne(
-    {
-      recipientUserId: input.recipientUserId,
-      dedupeKey: input.dedupeKey ?? notificationDedupe(input.type, input.parentTaskId, input.subtaskId),
-    },
-    {
-      $setOnInsert: {
-        recipientUserId: new Types.ObjectId(input.recipientUserId),
-        actorId: input.actorId ? new Types.ObjectId(input.actorId) : null,
-        type: input.type,
-        title: input.title,
-        body: input.body ?? "",
-        entityType: "task",
-        entityId: new Types.ObjectId(input.parentTaskId),
-        subtaskId: input.subtaskId ? new Types.ObjectId(input.subtaskId) : null,
-        dependencyId: input.dependencyId ? new Types.ObjectId(input.dependencyId) : null,
-        channels: ["in_app"],
-        metadata: input.metadata ?? {},
-        dedupeKey: input.dedupeKey ?? notificationDedupe(input.type, input.parentTaskId, input.subtaskId),
-      },
-    },
-    { upsert: true },
-  );
+  // Delegates to the shared dispatcher, which is what gives every workflow
+  // notification a push as well as a bell entry. Tapping one opens the parent
+  // task, since that is where a subtask is worked on.
+  return notifyUser({
+    recipientUserId: input.recipientUserId,
+    actorId: input.actorId,
+    type: input.type,
+    title: input.title,
+    body: input.body,
+    entityType: "task",
+    entityId: input.parentTaskId,
+    url: `/tasks/${input.parentTaskId}`,
+    subtaskId: input.subtaskId,
+    dependencyId: input.dependencyId,
+    dedupeKey: input.dedupeKey ?? notificationDedupe(input.type, input.parentTaskId, input.subtaskId),
+    metadata: input.metadata,
+  });
 }
 
 export async function recordWorkflowActivity(input: {

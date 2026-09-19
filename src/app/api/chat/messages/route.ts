@@ -6,6 +6,7 @@ import { handleApiError, ok } from "@/lib/api/responses";
 import { getChatThreadSchema, sendChatMessageSchema } from "@/lib/validation/chat";
 import { ChatMessageModel, UserModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
+import { sendPushToUser } from "@/lib/push/send";
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,11 +90,25 @@ export async function POST(request: Request) {
       throw new Error("Recipient is not available for chat.");
     }
 
+    const sender = await UserModel.findById(actor.userId).select("fullName email").lean();
+
     const created = await ChatMessageModel.create({
       senderId: actor.userId,
       recipientId: payload.recipientId,
       message: payload.message,
     });
+
+    // Fire-and-forget: the message is already saved, and a push failure must not
+    // turn a delivered message into a 4xx for the sender.
+    void sendPushToUser(String(payload.recipientId), {
+      title: sender?.fullName || sender?.email || "New message",
+      body: created.message.slice(0, 180),
+      url: `/chat/${actor.userId}`,
+      // One collapsing row per conversation instead of one per message.
+      tag: `chat-${actor.userId}`,
+      // Lets the recipient answer straight from the notification drawer.
+      replyTo: actor.userId,
+    }).catch((error) => console.error("chat push failed:", error));
 
     return ok(
       serializeForJson({

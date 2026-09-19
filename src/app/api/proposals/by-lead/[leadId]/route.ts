@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 // Lead-keyed proposal lookup, matching how Blueprint and the audit report
 // are already reached by leadId rather than an opaque document id - the
 // client doesn't and shouldn't need to know a proposal's own _id.
@@ -19,6 +20,7 @@ export async function GET(_: Request, { params }: { params: Params }) {
 
     const session = await getCurrentSession();
     if (!session) throw new Error("Unauthorized");
+    await assertSalesLeadAccess(session, leadId);
 
     if (session.role === "client") {
       const clientLeadId = await resolveClientLeadId(session);

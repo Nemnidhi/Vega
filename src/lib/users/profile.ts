@@ -1,3 +1,4 @@
+import { assignedLeadCounts } from "@/lib/leads/user-counts";
 import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { LOGIN_ROLES } from "@/lib/auth/constants";
@@ -49,6 +50,7 @@ export type UserProfilePayload = {
     department: string;
     avatarUrl: string;
     employeeId: string;
+    assignedLeadCount: number;
     manager: { id: string; fullName: string } | null;
   };
   managers: Array<{ id: string; fullName: string }>;
@@ -189,6 +191,7 @@ export async function getUserProfile(userId: string, monthKey: string) {
     user: {
       id: String(user._id),
       fullName: user.fullName,
+      assignedLeadCount: user.role === "sales" ? (await assignedLeadCounts([String(user._id)])).get(String(user._id)) ?? 0 : 0,
       email: user.email,
       role: user.role,
       status: user.status,

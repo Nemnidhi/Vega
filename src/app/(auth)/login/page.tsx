@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
+import { UniversalLoginForm } from "@/components/auth/universal-login-form";
 import { getCurrentSession } from "@/lib/auth/session";
-import { getStaffHomeRoute, LOGIN_ROLES } from "@/lib/auth/constants";
+import { getHomeRouteForRole } from "@/lib/auth/constants";
 
 export default async function LoginPage() {
   const session = await getCurrentSession();
-  if (session?.role === "client") {
-    redirect("/client/queries");
-  }
-  if (session && LOGIN_ROLES.includes(session.role as (typeof LOGIN_ROLES)[number])) {
-    redirect(getStaffHomeRoute(session.role as (typeof LOGIN_ROLES)[number]));
+  if (session) {
+    redirect(getHomeRouteForRole(session.role));
   }
 
-  redirect("/admin");
+  return <UniversalLoginForm />;
 }

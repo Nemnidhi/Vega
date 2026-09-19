@@ -1,15 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AlarmClock,
+  ChevronRight,
+  CircleCheck,
+  CalendarDays,
+  CalendarX,
+  Clock,
+  Coffee,
+  Contrast,
+  FileText,
+  LogIn,
+  LogOut,
+  Play,
+  RefreshCw,
+  Square,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils/cn";
 import type {
   AttendancePayload,
   AttendanceRecord,
@@ -35,12 +44,34 @@ type AttendanceLocationPayload = {
   accuracy?: number;
 };
 
-function formatDateFromKey(dateKey?: string) {
-  if (!dateKey) {
-    return "--";
-  }
+
+/**
+ * The summary always covers the current month - the query takes no month
+ * argument - so this is a label, not a picker. Rendered without a chevron for
+ * that reason: a dropdown arrow on something that cannot be opened is a lie.
+ */
+function monthLabel() {
+  return new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
+function dayOfMonth(dateKey?: string) {
+  if (!dateKey) return "--";
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit" });
+}
+
+function monthAndYear(dateKey?: string) {
+  if (!dateKey) return "";
   return new Date(`${dateKey}T00:00:00`).toLocaleDateString("en-IN", {
-    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatFullDate(dateKey?: string) {
+  const date = dateKey ? new Date(`${dateKey}T00:00:00`) : new Date();
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
     month: "short",
     year: "numeric",
   });
@@ -102,6 +133,9 @@ function getLiveWorkedMinutes(
   return Math.max(0, elapsedMinutes - completedBreakMinutes - activeBreakMinutes);
 }
 
+/** Rows shown before "View all" is used. */
+const VISIBLE_ENTRIES = 6;
+
 function statusFromEntry(entry: AttendanceRecord | null) {
   if (!entry) {
     return { label: "Not Marked", variant: "warning" as const };
@@ -113,7 +147,7 @@ function statusFromEntry(entry: AttendanceRecord | null) {
     return { label: "Half Day", variant: "warning" as const };
   }
   if (entry.dayStatus === "late_coming") {
-    return { label: "Late Coming", variant: "accent" as const };
+    return { label: "Late Coming", variant: "warning" as const };
   }
   if (entry.checkOutAt) {
     return { label: "Checked Out", variant: "success" as const };
@@ -258,6 +292,10 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
     return monthSummary.workedMinutes - storedTodayMinutes + liveTodayWorkedMinutes;
   }, [liveTodayWorkedMinutes, monthSummary.workedMinutes, todayEntry?.workedMinutes]);
   const attendanceStatus = statusFromEntry(todayEntry);
+  const [showAllEntries, setShowAllEntries] = useState(false);
+  const visibleEntries = showAllEntries
+    ? data.recentEntries
+    : data.recentEntries.slice(0, VISIBLE_ENTRIES);
   const canCheckIn = !todayEntry;
   const canCheckOut = Boolean(todayEntry?.checkInAt && !todayEntry?.checkOutAt && !activeBreak);
   const canStartBreak = Boolean(todayEntry?.checkInAt && !todayEntry?.checkOutAt && !activeBreak);
@@ -276,255 +314,304 @@ export function AttendanceTracker({ initialData }: AttendanceTrackerProps) {
   }, [todayEntry?.checkInAt, todayEntry?.checkOutAt]);
 
   return (
-    <section className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-7">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Present Days (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">{monthSummary.presentDays}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Worked Time (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">
-              {formatMinutesAsHours(liveMonthWorkedMinutes)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Completed Days (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">{monthSummary.completedDays}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Half Days (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">{monthSummary.halfDays}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Late Coming (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">{monthSummary.lateComingDays}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Absent Days (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">{monthSummary.absentDays}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Break Time (Month)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-foreground">
-              {formatMinutesAsHours(monthSummary.breakMinutes)}
-            </p>
-          </CardContent>
-        </Card>
+    <section className="space-y-5">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-[19px] font-bold tracking-tight text-vega-text">Monthly Summary</h2>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden text-[13px] text-vega-text-muted min-[400px]:inline">This Month</span>
+            <span className="inline-flex items-center gap-2 rounded-lg border border-vega-border bg-vega-surface-1 px-2.5 py-1.5 text-[12.5px] font-medium text-vega-text-secondary">
+              <CalendarDays className="h-4 w-4 shrink-0 text-vega-text-muted" strokeWidth={1.8} />
+              {monthLabel()}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-x-5 sm:gap-x-7 lg:grid-cols-3 2xl:grid-cols-4">
+          <SummaryRow icon={CalendarDays} tone="green" label="Present Days" value={String(monthSummary.presentDays)} />
+          <SummaryRow icon={Clock} tone="green" label="Worked Time" value={formatMinutesAsHours(liveMonthWorkedMinutes)} />
+          <SummaryRow icon={CircleCheck} tone="blue" label="Completed Days" value={String(monthSummary.completedDays)} />
+          <SummaryRow icon={Contrast} tone="amber" label="Half Days" value={String(monthSummary.halfDays)} />
+          <SummaryRow icon={AlarmClock} tone="orange" label="Late Coming" value={String(monthSummary.lateComingDays)} />
+          <SummaryRow icon={Coffee} tone="pink" label="Break Time" value={formatMinutesAsHours(monthSummary.breakMinutes)} />
+          <SummaryRow icon={CalendarX} tone="pink" label="Absent Days" value={String(monthSummary.absentDays)} />
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Today&apos;s Attendance</CardTitle>
-          <CardDescription>
-            Mark check-in and check-out once per day. Admin is excluded from this flow.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant={attendanceStatus.variant}>{attendanceStatus.label}</Badge>
-            <p className="text-sm text-muted-foreground">
-              Date: <span className="font-medium text-foreground">{formatDateFromKey(todayEntry?.dateKey)}</span>
-            </p>
+      <div className="border-t border-vega-border-soft pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]">
+              <CalendarDays className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            </span>
+            <h2 className="truncate text-[19px] font-bold tracking-tight text-vega-text">
+              Today&apos;s Attendance
+            </h2>
           </div>
+          <span className="text-[13px] text-vega-text-muted">
+            {formatFullDate(todayEntry?.dateKey)}
+          </span>
+        </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
-              <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Check-in</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {formatTime(todayEntry?.checkInAt)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
-              <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Check-out</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {formatTime(todayEntry?.checkOutAt)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
-              <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Worked Time</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {formatMinutesAsHours(liveTodayWorkedMinutes)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-vega-surface-1 p-3">
-              <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Break Time</p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {formatMinutesAsHours(todayEntry?.totalBreakMinutes ?? 0)}
-              </p>
-            </div>
-          </div>
+        <p className="mt-2.5 text-[13.5px] text-vega-text-muted">
+          Mark check-in and check-out once per day.
+        </p>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              onClick={() =>
-                runAction(
-                  "check-in",
-                  "/api/attendance",
-                  "POST",
-                  "Check-in marked successfully.",
-                  { requiresLocation: true },
-                )
-              }
-              disabled={loading || actionLoading !== null || !canCheckIn}
-            >
-              {actionLoading === "check-in" ? "Checking In..." : "Check In"}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={confirmBeforeCheckout}
-              disabled={loading || actionLoading !== null || !canCheckOut}
-            >
-              {actionLoading === "check-out" ? "Checking Out..." : "Check Out"}
-            </Button>
-            <Button
-              variant="subtle"
-              onClick={() =>
-                runAction("break-start", "/api/attendance/break/start", "PATCH", "Break started.")
-              }
-              disabled={loading || actionLoading !== null || !canStartBreak}
-            >
-              {actionLoading === "break-start" ? "Starting Break..." : "Start Break"}
-            </Button>
-            <Button
-              variant="subtle"
-              onClick={() =>
-                runAction("break-end", "/api/attendance/break/end", "PATCH", "Break ended.")
-              }
-              disabled={loading || actionLoading !== null || !canEndBreak}
-            >
-              {actionLoading === "break-end" ? "Ending Break..." : "End Break"}
-            </Button>
-            <Button
-              variant="subtle"
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Badge variant={attendanceStatus.variant}>{attendanceStatus.label}</Badge>
+          <span className="text-[13px] text-vega-text-muted">Admin is excluded from this flow.</span>
+        </div>
+
+        {/* One panel split by rules rather than four separate boxes, so the four
+            figures read as one row of today's state. */}
+        <div className="mt-4 grid grid-cols-4 divide-x divide-vega-border-soft overflow-hidden rounded-xl border border-vega-border">
+          <TodayFigure icon={LogIn} tone="green" label="Check-In" value={formatTime(todayEntry?.checkInAt)} />
+          <TodayFigure icon={LogOut} tone="pink" label="Check-Out" value={formatTime(todayEntry?.checkOutAt)} />
+          <TodayFigure icon={Clock} tone="blue" label="Worked Time" value={formatMinutesAsHours(liveTodayWorkedMinutes)} />
+          <TodayFigure icon={Coffee} tone="violet" label="Break Time" value={formatMinutesAsHours(todayEntry?.totalBreakMinutes ?? 0)} />
+        </div>
+
+        <div className="mt-3.5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+          <ActionButton
+            icon={Play}
+            primary
+            label={actionLoading === "check-in" ? "Checking In..." : "Check In"}
+            onClick={() =>
+              runAction("check-in", "/api/attendance", "POST", "Check-in marked successfully.", {
+                requiresLocation: true,
+              })
+            }
+            disabled={loading || actionLoading !== null || !canCheckIn}
+          />
+          <ActionButton
+            icon={LogOut}
+            label={actionLoading === "check-out" ? "Checking Out..." : "Check Out"}
+            onClick={confirmBeforeCheckout}
+            disabled={loading || actionLoading !== null || !canCheckOut}
+          />
+          <ActionButton
+            icon={Coffee}
+            label={actionLoading === "break-start" ? "Starting Break..." : "Start Break"}
+            onClick={() => runAction("break-start", "/api/attendance/break/start", "PATCH", "Break started.")}
+            disabled={loading || actionLoading !== null || !canStartBreak}
+          />
+          <ActionButton
+            icon={Square}
+            label={actionLoading === "break-end" ? "Ending Break..." : "End Break"}
+            onClick={() => runAction("break-end", "/api/attendance/break/end", "PATCH", "Break ended.")}
+            disabled={loading || actionLoading !== null || !canEndBreak}
+          />
+          <div className="col-span-2 sm:contents">
+            <ActionButton
+              icon={RefreshCw}
+              label={loading ? "Refreshing..." : "Refresh"}
               onClick={() => void refreshAttendance()}
               disabled={loading || actionLoading !== null}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </Button>
+            />
           </div>
+        </div>
 
-          {activeBreak ? (
-            <div className="rounded-lg border border-warning/30 bg-[#f8f1e4] p-3 text-sm text-warning">
-              Break in progress since {formatTime(activeBreak.startAt)}.
-            </div>
+        {activeBreak ? (
+          <p className="mt-3 rounded-lg border border-vega-yellow/35 bg-vega-yellow/10 px-3 py-2.5 text-[13px] text-vega-yellow">
+            Break in progress since {formatTime(activeBreak.startAt)}.
+          </p>
+        ) : null}
+
+        {notice ? (
+          <p
+            role="alert"
+            className={
+              notice.tone === "error"
+                ? "mt-3 rounded-lg border border-vega-red/35 bg-vega-red/10 px-3 py-2.5 text-[13px] text-vega-red"
+                : "mt-3 rounded-lg border border-vega-green/35 bg-vega-green/10 px-3 py-2.5 text-[13px] text-[#66dc91]"
+            }
+          >
+            {notice.text}
+          </p>
+        ) : null}
+
+        {todayBreakSessions.length > 0 ? (
+          <div className="mt-4 overflow-hidden rounded-xl border border-vega-border">
+            {todayBreakSessions.map((session, index) => (
+              <div
+                key={`${session.startAt ?? "start"}-${index}`}
+                className="flex items-center justify-between gap-3 border-b border-vega-border-soft px-3 py-2.5 text-[13px] last:border-b-0"
+              >
+                <span className="text-vega-text">{formatTime(session.startAt)}</span>
+                <span className="text-vega-text-muted">
+                  {session.endAt ? formatTime(session.endAt) : "In Progress"}
+                </span>
+                <span className="text-vega-text-muted">{formatMinutesAsHours(session.minutes ?? 0)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="border-t border-vega-border-soft pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-vega-accent-border bg-vega-accent-soft text-[#93c5fd]">
+              <FileText className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            </span>
+            <h2 className="truncate text-[19px] font-bold tracking-tight text-vega-text">
+              Recent Attendance
+            </h2>
+          </div>
+          {data.recentEntries.length > VISIBLE_ENTRIES ? (
+            <button
+              type="button"
+              onClick={() => setShowAllEntries((shown) => !shown)}
+              className="inline-flex shrink-0 items-center gap-1 text-[13px] font-medium text-vega-text-secondary transition-colors hover:text-vega-text"
+            >
+              {showAllEntries ? "Show less" : "View all"}
+              <ChevronRight
+                className={cn("h-4 w-4 transition-transform", showAllEntries && "rotate-90")}
+                strokeWidth={1.8}
+              />
+            </button>
           ) : null}
+        </div>
 
-          {notice ? (
-            <p className={notice.tone === "error" ? "text-sm text-danger" : "text-sm text-success"}>
-              {notice.text}
-            </p>
-          ) : null}
+        {data.recentEntries.length === 0 ? (
+          <p className="mt-4 text-[13px] text-vega-text-muted">No attendance records yet.</p>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-xl border border-vega-border">
+            {visibleEntries.map((entry) => {
+              const status = statusFromEntry(entry);
+              const worked =
+                entry._id === todayEntry?._id ? liveTodayWorkedMinutes : entry.workedMinutes ?? 0;
 
-          {todayBreakSessions.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="px-2 py-2">Break Start</th>
-                    <th className="px-2 py-2">Break End</th>
-                    <th className="px-2 py-2">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {todayBreakSessions.map((session, index) => (
-                    <tr key={`${session.startAt ?? "start"}-${index}`} className="border-b border-border/60">
-                      <td className="px-2 py-2 text-foreground">{formatTime(session.startAt)}</td>
-                      <td className="px-2 py-2 text-muted-foreground">
-                        {session.endAt ? formatTime(session.endAt) : "In Progress"}
-                      </td>
-                      <td className="px-2 py-2 text-muted-foreground">
-                        {formatMinutesAsHours(session.minutes ?? 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+              return (
+                <div
+                  key={entry._id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-vega-border-soft px-3.5 py-3.5 last:border-b-0"
+                >
+                  <div className="w-[72px] shrink-0">
+                    <p className="text-[19px] font-bold leading-none text-vega-text">
+                      {dayOfMonth(entry.dateKey)}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-none text-vega-text-muted">
+                      {monthAndYear(entry.dateKey)}
+                    </p>
+                  </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Attendance</CardTitle>
-          <CardDescription>Last 21 entries from your attendance log.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {data.recentEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No attendance records yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="px-2 py-2">Date</th>
-                    <th className="px-2 py-2">Check-in</th>
-                    <th className="px-2 py-2">Check-out</th>
-                    <th className="px-2 py-2">Worked Time</th>
-                    <th className="px-2 py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recentEntries.map((entry) => {
-                    const status = statusFromEntry(entry);
-                    return (
-                      <tr key={entry._id} className="border-b border-border/60">
-                        <td className="px-2 py-2 text-foreground">
-                          {formatDateFromKey(entry.dateKey)}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatTime(entry.checkInAt)}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatTime(entry.checkOutAt)}
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {formatMinutesAsHours(
-                            entry._id === todayEntry?._id
-                              ? liveTodayWorkedMinutes
-                              : entry.workedMinutes ?? 0,
-                          )}
-                        </td>
-                        <td className="px-2 py-2">
-                          <Badge variant={status.variant}>{status.label}</Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="flex min-w-0 flex-1 flex-wrap gap-x-5 gap-y-2.5">
+                    <EntryFigure label="Check-in" value={formatTime(entry.checkInAt)} />
+                    <EntryFigure label="Check-out" value={formatTime(entry.checkOutAt)} />
+                    <EntryFigure label="Worked Time" value={formatMinutesAsHours(worked)} />
+                  </div>
+
+                  <Badge variant={status.variant} className="shrink-0 whitespace-nowrap">
+                    {status.label}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
+  );
+}
+
+const TONE_TEXT = {
+  blue: "text-[#6da2ff]",
+  green: "text-[#5fd88c]",
+  violet: "text-[#a98bff]",
+  amber: "text-[#e6bb3f]",
+  pink: "text-[#f07cb5]",
+  orange: "text-[#f59e5c]",
+} as const;
+
+type Tone = keyof typeof TONE_TEXT;
+type IconType = ComponentType<{ className?: string; strokeWidth?: number }>;
+
+/** One month figure: icon, label, and the number pushed to the right. */
+function SummaryRow({
+  icon: Icon,
+  tone,
+  label,
+  value,
+}: {
+  icon: IconType;
+  tone: Tone;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-b border-vega-border-soft py-3">
+      <Icon className={cn("h-[19px] w-[19px] shrink-0", TONE_TEXT[tone])} strokeWidth={1.9} />
+      <span className="min-w-0 flex-1 truncate text-[14px] text-vega-text-secondary">{label}</span>
+      <span className="shrink-0 text-[15px] font-bold text-vega-text">{value}</span>
+    </div>
+  );
+}
+
+/** One cell of today's four-up panel. */
+function TodayFigure({
+  icon: Icon,
+  tone,
+  label,
+  value,
+}: {
+  icon: IconType;
+  tone: Tone;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 px-1.5 py-3 sm:px-3.5">
+      <span className="flex items-center gap-1.5">
+        <Icon className={cn("h-[15px] w-[15px] shrink-0", TONE_TEXT[tone])} strokeWidth={1.9} />
+        <span className="truncate text-[11px] text-vega-text-muted sm:text-[12.5px]">{label}</span>
+      </span>
+      <p className="mt-1.5 truncate text-[13.5px] font-bold text-vega-text sm:text-[15px]">{value}</p>
+    </div>
+  );
+}
+
+/** A label/value pair inside a recent-attendance row. */
+function EntryFigure({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="min-w-0">
+      <span className="block text-[12px] leading-none text-vega-text-muted">{label}</span>
+      <span className="mt-1.5 block whitespace-nowrap text-[13.5px] font-medium text-vega-text">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+function ActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+  primary = false,
+}: {
+  icon: IconType;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex h-[50px] w-full items-center justify-center gap-2.5 rounded-xl text-[14.5px] font-semibold transition-colors",
+        "sm:h-[42px] sm:w-auto sm:px-5 sm:text-[13.5px]",
+        primary
+          ? "bg-vega-accent text-white hover:bg-vega-accent-hover"
+          : "border border-vega-border bg-vega-surface-1 text-vega-text-secondary hover:bg-vega-surface-hover hover:text-vega-text",
+        "disabled:cursor-not-allowed disabled:opacity-45",
+      )}
+    >
+      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.9} />
+      <span className="truncate">{label}</span>
+    </button>
   );
 }

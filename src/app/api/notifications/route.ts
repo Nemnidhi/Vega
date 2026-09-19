@@ -36,6 +36,24 @@ export async function GET(request: Request) {
   }
 }
 
+/**
+ * Clear the bell.
+ *
+ * Marking everything read leaves the list exactly as long as it was, which is
+ * not what "clear" means to anyone looking at it - so this removes the rows.
+ * Scoped to the caller: a notification belongs to the person it was raised for.
+ */
+export async function DELETE() {
+  try {
+    await connectToDatabase();
+    const actor = await getActorContext();
+    const result = await NotificationModel.deleteMany({ recipientUserId: actor.userId });
+    return ok({ cleared: result.deletedCount ?? 0 });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
 export async function PATCH(request: Request) {
   try {
     await connectToDatabase();

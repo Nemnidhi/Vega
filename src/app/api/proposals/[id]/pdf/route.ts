@@ -1,3 +1,4 @@
+import { relatedLeadFilter } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { handleApiError } from "@/lib/api/responses";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -26,7 +27,7 @@ export async function GET(request: Request, { params }: { params: Params }) {
       // getClientProposalDocumentHtml does doesn't apply; render directly.
       assertRoleAccess(session.role, { oneOf: permissionRules.manageProposals });
 
-      const proposalDoc = await ProposalModel.findById(id);
+      const proposalDoc = await ProposalModel.findOne({ _id: id, ...await relatedLeadFilter(session) });
       if (!proposalDoc) throw new Error("Proposal not found");
 
       html = await renderProposalDocumentHtml(proposalDoc);

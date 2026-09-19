@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 // Blueprint = the discovery-call requirements capture that sits between the
 // audit report and the ScopeManifest (see src/models/Blueprint.ts's own doc
 // comment). GET is shared between staff (any lead) and a client (their own
@@ -34,6 +35,7 @@ async function assertCanViewBlueprint(leadId: string) {
   }
 
   assertRoleAccess(session.role, { oneOf: permissionRules.manageLeads });
+  await assertSalesLeadAccess(session, leadId);
   return session;
 }
 
@@ -61,6 +63,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
     assertRoleAccess(session.role, { oneOf: permissionRules.manageLeads });
 
     const { leadId } = await params;
+    await assertSalesLeadAccess(session, leadId);
     const payload = createBlueprintSchema.parse(await request.json());
 
     const lead = await LeadModel.findById(leadId).lean<Lead | null>();

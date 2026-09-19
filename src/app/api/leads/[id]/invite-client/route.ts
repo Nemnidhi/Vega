@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess } from "@/lib/leads/access";
 // Staff-initiated client-portal invite for a lead, any source - unlike the
 // self-serve website signup (clientSignupSchema), which only ever
 // auto-links source:"website" leads. Cold-outreach leads have no way to
@@ -25,6 +26,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.manageLeads });
 
     const { id: leadId } = await params;
+    await assertSalesLeadAccess(actor, leadId);
     const payload = inviteClientSchema.parse(await request.json().catch(() => ({})));
 
     const lead = await LeadModel.findById(leadId).lean<Lead | null>();

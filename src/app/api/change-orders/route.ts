@@ -1,3 +1,4 @@
+import { assertSalesLeadAccess, relatedLeadFilter } from "@/lib/leads/access";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { handleApiError, ok } from "@/lib/api/responses";
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 500)
       : 200;
-    const changeOrders = await ChangeOrderModel.find({})
+    const changeOrders = await ChangeOrderModel.find(await relatedLeadFilter(actor))
       .sort({ updatedAt: -1 })
       .limit(limit)
       .populate("leadId", "title status")
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     assertRoleAccess(actor.role, { oneOf: permissionRules.createChangeOrders });
 
     const payload = createChangeOrderSchema.parse(await request.json());
+    await assertSalesLeadAccess(actor, payload.leadId);
     const lead = await LeadModel.findById(payload.leadId).lean();
     if (!lead) {
       throw new Error("Lead not found");

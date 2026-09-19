@@ -1,3 +1,4 @@
+import { assignedLeadCounts } from "@/lib/leads/user-counts";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { getActorContext, assertRoleAccess, permissionRules } from "@/lib/auth/permissions";
 import { hashPassword } from "@/lib/auth/password";
@@ -18,7 +19,8 @@ export async function GET() {
       .select("fullName email role status lastLoginAt createdAt")
       .lean();
 
-    return ok(serializeForJson(users));
+    const counts = await assignedLeadCounts(users.filter((user) => user.role === "sales").map((user) => String(user._id)));
+    return ok(serializeForJson(users.map((user) => ({ ...user, assignedLeadCount: counts.get(String(user._id)) ?? 0 }))));
   } catch (error) {
     return handleApiError(error);
   }
@@ -49,6 +51,7 @@ export async function POST(request: Request) {
     return ok(
       serializeForJson({
         id: String(user._id),
+        assignedLeadCount: 0,
         fullName: user.fullName,
         email: user.email,
         role: user.role,

@@ -13,6 +13,19 @@ const nextConfig: NextConfig = {
   // @react-pdf/renderer is ESM-only and breaks bundling if webpack tries to
   // process it - it has to stay external and be required at runtime.
   serverExternalPackages: ["@react-pdf/renderer"],
+  async headers() {
+    return [
+      {
+        // The push service worker must never be served from cache, or a deploy
+        // that changes sw.js leaves phones running the old one indefinitely.
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

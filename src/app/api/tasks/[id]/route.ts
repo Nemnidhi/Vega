@@ -6,6 +6,8 @@ import { fail, handleApiError, ok } from "@/lib/api/responses";
 import { TaskDependencyModel, TaskModel } from "@/models";
 import { serializeForJson } from "@/lib/utils/serialize";
 import { logActivity } from "@/lib/activity/logging";
+import { notifyTaskAssigned, notifyTaskStatusChanged } from "@/lib/notifications/tasks";
+import { assertAssigneeIsStaff, refId } from "@/lib/tasks/subtasks";
 import { getCompletionFields, normalizeTaskStatus } from "@/lib/tasks/status";
 import { recalculateSuccessorsForPredecessor } from "@/lib/tasks/dependencies";
 import { syncParentTaskProgress } from "@/lib/tasks/workflow-execution";
@@ -25,7 +27,9 @@ function canAssignOthers(role: string) {
 
 function canModify(actor: { userId: string; role: string }, task: { assignedToUserId: unknown; createdBy: unknown }) {
   if (canAssignOthers(actor.role)) return true;
-  return String(task.assignedToUserId) === actor.userId || String(task.createdBy) === actor.userId;
+  // refId, not String: these docs arrive populated, and String() on a populated
+  // ref gives "[object Object]", which never matches a user id.
+  return refId(task.assignedToUserId) === actor.userId || refId(task.createdBy) === actor.userId;
 }
 
 export async function GET(_request: Request, { params }: { params: Params }) {
@@ -77,6 +81,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
 
     if (payload.assignedToUserId && payload.assignedToUserId !== previousAssignee) {
       assertRoleAccess(actor.role, { oneOf: permissionRules.assignTasksToOthers });
+      await assertAssigneeIsStaff(payload.assignedToUserId);
       task.assignedToUserId = payload.assignedToUserId as unknown as typeof task.assignedToUserId;
     }
 
@@ -163,6 +168,28 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
         entityId: String(task._id),
         details: { code: task.code ?? null, from: previousStatus, to: nextStatus },
       });
+
+      // Admins track progress; the person who just moved it does not need telling.
+      void notifyTaskStatusChanged({
+        taskId: String(task._id),
+        code: task.code ?? null,
+        title: task.title,
+        from: previousStatus,
+        to: nextStatus,
+        actorId: actor.userId,
+      }).catch((error) => console.error("task status notify failed:", error));
+    }
+
+    if (nextAssignee && nextAssignee !== previousAssignee) {
+      void notifyTaskAssigned({
+        taskId: String(task._id),
+        code: task.code ?? null,
+        title: task.title,
+        assignedToUserId: nextAssignee,
+        actorId: actor.userId,
+        dueAt: task.dueAt ?? null,
+        isNew: false,
+      }).catch((error) => console.error("task reassign notify failed:", error));
     }
 
     if (nextAssignee !== previousAssignee) {

@@ -319,10 +319,36 @@ export function UniversalChat({
       }
     }
     void poll();
-    const timer = setInterval(() => void poll(), 35000);
+    // The poll is the fallback path - for anyone who has not granted notification
+    // permission, and for messages arriving while push is unavailable. The push
+    // listener below is what actually makes an open thread feel live, so this only
+    // has to be frequent enough not to feel stale.
+    const timer = setInterval(() => void poll(), 10000);
+
+    // A push reaches the service worker even while the tab is open, so use it as
+    // the cue to pull the message in immediately instead of waiting out the
+    // interval. Without this the thread only caught up on the next poll, which is
+    // what made messages look like they needed a manual refresh.
+    function onServiceWorkerMessage(event: MessageEvent) {
+      if ((event.data as { type?: string } | null)?.type === "chat-message") void poll();
+    }
+
+    // Returning to a backgrounded tab should show the thread at once; the interval
+    // above deliberately does nothing while the page is hidden.
+    function onBackToForeground() {
+      if (document.visibilityState === "visible") void poll();
+    }
+
+    navigator.serviceWorker?.addEventListener("message", onServiceWorkerMessage);
+    document.addEventListener("visibilitychange", onBackToForeground);
+    window.addEventListener("focus", onBackToForeground);
+
     return () => {
       controller.abort();
       clearInterval(timer);
+      navigator.serviceWorker?.removeEventListener("message", onServiceWorkerMessage);
+      document.removeEventListener("visibilitychange", onBackToForeground);
+      window.removeEventListener("focus", onBackToForeground);
     };
   }, [loadMessages, refreshUsers, selectedUserId]);
 

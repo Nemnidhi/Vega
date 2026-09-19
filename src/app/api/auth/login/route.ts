@@ -18,8 +18,23 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(72),
   fullName: z.string().trim().min(2).max(120).optional(),
-  role: roleSchema,
+  /**
+   * Optional, and only still accepted so the old per-role portal pages keep
+   * working. The single sign-in form omits it: which portal someone happens to
+   * be looking at is not an authentication fact, and making people pick their
+   * own role was only ever a way to get the answer wrong.
+   */
+  role: roleSchema.optional(),
+  /**
+   * Unchecked gives a session cookie that dies with the browser, which is what
+   * people expect on a shared or borrowed machine. Checked keeps the existing
+   * persistent window.
+   */
+  rememberMe: z.boolean().optional(),
 });
+
+/** Roles that may sign in at all. Clients included - they use the same form. */
+const SIGN_IN_ROLES = [...LOGIN_ROLES, "client"] as const;
 
 function defaultNameFromEmail(email: string) {
   const value = email.split("@")[0] ?? "User";
@@ -41,7 +56,10 @@ export async function POST(request: Request) {
       const staffAccountCount = await UserModel.countDocuments({
         role: { $in: LOGIN_ROLES },
       });
-      const canBootstrapFirstAdmin = staffAccountCount === 0 && payload.role === "admin";
+      // First run only: with no staff at all there is nothing to protect, and
+      // somebody has to be able to get in. Once one staff account exists this can
+      // never fire again.
+      const canBootstrapFirstAdmin = staffAccountCount === 0;
 
       if (!canBootstrapFirstAdmin) {
         return fail("Invalid email or password.", 401);
@@ -56,11 +74,14 @@ export async function POST(request: Request) {
         lastLoginAt: new Date(),
       });
     } else {
-      if (user.role !== payload.role) {
+      // A role in the body now narrows rather than identifies: the old portal
+      // pages still send one, and it must match. The universal form sends none,
+      // and the account's own role decides where they land.
+      if (payload.role && user.role !== payload.role) {
         return fail("Invalid email or password.", 401);
       }
-      if (!LOGIN_ROLES.includes(user.role as (typeof LOGIN_ROLES)[number])) {
-        throw new Error("This role is not allowed to login.");
+      if (!SIGN_IN_ROLES.includes(user.role as (typeof SIGN_IN_ROLES)[number])) {
+        return fail("This account cannot sign in here.", 403);
       }
       if (user.status !== "active") {
         return fail("This account is not active. Please contact admin.", 403);
@@ -103,7 +124,8 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+      // Omitting maxAge makes it a session cookie - gone when the browser closes.
+      ...(payload.rememberMe === false ? {} : { maxAge: AUTH_COOKIE_MAX_AGE_SECONDS }),
     });
 
     return response;

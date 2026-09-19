@@ -209,7 +209,7 @@ export function UserProfileWorkspace({ initialProfile }: UserProfileWorkspacePro
           <div className="flex min-w-0 items-start gap-4 lg:items-center">
             <Avatar name={user.fullName} />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3"><h2 className="truncate text-lg font-semibold text-vega-text lg:text-xl">{user.fullName}</h2><span className={cn("rounded-md px-2 py-1 text-[10px] font-medium capitalize", user.status === "active" ? "bg-vega-green-soft text-[#62df90]" : "bg-vega-surface-2 text-vega-text-muted")}>{user.status}</span></div>
+              <div className="flex flex-wrap items-center gap-3"><h2 className="truncate text-lg font-semibold text-vega-text lg:text-xl">{user.fullName}</h2>{user.role === "sales" && <span className="rounded-md bg-vega-accent-soft px-2 py-1 text-xs font-medium text-vega-accent">{user.assignedLeadCount} assigned leads</span>}<span className={cn("rounded-md px-2 py-1 text-[10px] font-medium capitalize", user.status === "active" ? "bg-vega-green-soft text-[#62df90]" : "bg-vega-surface-2 text-vega-text-muted")}>{user.status}</span></div>
               <p className="mt-1 text-sm text-vega-text-secondary">{titleCase(user.role)}<span className="hidden lg:inline"><span className="px-2 text-vega-text-muted">·</span>{user.department || "No department"}</span></p>
               <p className="mt-1 text-xs text-vega-text-muted lg:hidden">{user.department || "No department"} <span className="px-1">·</span> {user.employeeId}</p>
             </div>

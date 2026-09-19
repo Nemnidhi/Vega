@@ -1,4 +1,5 @@
 import { CheckCircle2, Phone, TrendingUp, Users } from "lucide-react";
+import { LeadRebalancePanel } from "@/components/leads/lead-rebalance-panel";
 import { Badge } from "@/components/ui/badge";
 import { TIER_LABEL, TIER_ORDER, TIER_VARIANT } from "@/lib/prospecting/tier-display";
 import { LeadIntakeLauncher } from "@/components/leads/lead-intake-launcher";
@@ -18,7 +19,7 @@ function isWithinDays(value: string | undefined, days: number) {
 }
 
 export default async function LeadsPage() {
-  await requireRoleAccess(["admin", "sales", "digital_marketing"]);
+  const session = await requireRoleAccess(["admin", "sales", "digital_marketing"]);
 
   const leads = (await getLeads({ limit: 200 })) as Array<{
     _id: string;
@@ -66,6 +67,7 @@ export default async function LeadsPage() {
 
   return (
     <section className="space-y-3">
+      {session.role === "admin" && <LeadRebalancePanel />}
       <div className="flex flex-row flex-wrap items-end justify-between gap-3 border-b border-vega-border-soft pb-3">
         <div className="min-w-0">
           <p className="text-xs text-vega-text-muted xl:text-sm">Operations &gt; Leads</p>
