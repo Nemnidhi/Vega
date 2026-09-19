@@ -1,5 +1,33 @@
 # Handoff — Vega (HRMS Command Center)
 
+## 2026-09-19: Platform Admin console built (Dashboard-WhatsApp master plan Phase 7) - pushed, NOT deployed
+
+**Read this first if resuming.** New admin-only `/platform-admin` section (`bd25f57`, merged as
+`d5e8f5c`, pushed to `origin/master`): views/manages every client Organization running on
+Dashboard-WhatsApp - plan, billing, real usage-vs-limit, entitlements, and an Industry Pack
+activation form (Dashboard-WhatsApp's master plan Phase 8 fallback path). Calls Dashboard-
+WhatsApp's new `/api/platform-admin/*` API server-to-server via `src/lib/platformAdmin/
+dashboardClient.ts`, reusing the existing `DASHBOARD_INTEGRATION_SECRET` (same shared secret this
+app already presents for the `dashboard-events`/`dashboard-leads` calls, just the reverse
+direction). New `DASHBOARD_API_URL` env var (`src/lib/env/server.ts`), new `managePlatformAdmin`
+permission rule (admin-only). Full narrative and everything Dashboard-WhatsApp-side is in that
+repo's own `HANDOFF.md`, same date.
+
+**`tsc --noEmit` and `npm run build` both clean** after merging in ~25 commits of concurrent,
+unrelated work from `origin/master` (role dashboards, push notifications, sales targets, a
+rebuilt sign-in flow - real team work, not touched by this session beyond the merge itself; the
+one shared file, `nav-items.ts`, auto-merged with no conflict) and running a fresh `npm install`
+(the merged-in work added `web-push` as a dependency).
+
+**Blocked on deploy**: `./deploy.sh` was refused by this session's own safety classifier as a real
+production action, even under a standing "ship everything tonight" instruction from the user -
+someone needs to run it by hand: `cd C:\Projects\Vega && ./deploy.sh`. Also needs, before the
+Platform Admin pages do anything beyond show a clean "not configured" message: `DASHBOARD_API_URL`
+added to this app's production `.env` (not set yet, presumably `https://dashboard.nemnidhi.com`),
+and `DASHBOARD_INTEGRATION_SECRET` confirmed to still match Dashboard-WhatsApp's
+`VEGA_INTEGRATION_SECRET` (this session couldn't read either value to confirm - same safety gate).
+
+
 ## 2026-09-12 (night): salary calculator built from scratch - base salary, per-day deductions, a late-coming rule, employee self-view, and a payslip PDF
 
 Picks up immediately after the evening session below, which made attendance's `dayStatus` finally
